@@ -7,21 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  BarChart3, CreditCard, Users, QrCode, Bell, Settings, Palette,
-  Shield, Crown,
-} from "lucide-react";
+import { businessSidebarItems } from "@/lib/sidebarItems";
+import { Shield, Crown } from "lucide-react";
 import { toast } from "sonner";
-
-const sidebarItems = [
-  { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
-  { icon: CreditCard, label: "Cartes", path: "/dashboard/cards" },
-  { icon: Users, label: "Clients", path: "/dashboard/clients" },
-  { icon: QrCode, label: "Scanner", path: "/dashboard/scanner" },
-  { icon: Bell, label: "Notifications", path: "/dashboard/notifications" },
-  { icon: Palette, label: "Personnalisation", path: "/dashboard/customize" },
-  { icon: Settings, label: "Paramètres", path: "/dashboard/settings" },
-];
 
 const planLabels: Record<string, string> = {
   starter: "Starter — 29€/mois",
@@ -59,7 +47,7 @@ const SettingsPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar items={sidebarItems} onLogout={logout} />
+      <DashboardSidebar items={businessSidebarItems} onLogout={logout} />
       <main className="lg:ml-64 p-6 lg:p-8">
         <MobileHeader onLogout={logout} />
 

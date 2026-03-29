@@ -8,20 +8,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  BarChart3, CreditCard, Users, QrCode, Bell, Settings, Palette,
-} from "lucide-react";
+import { businessSidebarItems } from "@/lib/sidebarItems";
 import { motion } from "framer-motion";
-
-const sidebarItems = [
-  { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
-  { icon: CreditCard, label: "Cartes", path: "/dashboard/cards" },
-  { icon: Users, label: "Clients", path: "/dashboard/clients" },
-  { icon: QrCode, label: "Scanner", path: "/dashboard/scanner" },
-  { icon: Bell, label: "Notifications", path: "/dashboard/notifications" },
-  { icon: Palette, label: "Personnalisation", path: "/dashboard/customize" },
-  { icon: Settings, label: "Paramètres", path: "/dashboard/settings" },
-];
 
 const CardsPage = () => {
   const { loading, business, logout } = useAuth();
@@ -48,7 +36,7 @@ const CardsPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar items={sidebarItems} onLogout={logout} />
+      <DashboardSidebar items={businessSidebarItems} onLogout={logout} />
       <main className="lg:ml-64 p-6 lg:p-8">
         <MobileHeader onLogout={logout} />
 

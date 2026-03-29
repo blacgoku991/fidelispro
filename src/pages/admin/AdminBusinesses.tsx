@@ -12,17 +12,9 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  LayoutDashboard, Building2, Users, Settings, Search,
-} from "lucide-react";
+import { adminSidebarItems } from "@/lib/sidebarItems";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
-
-const sidebarItems = [
-  { icon: LayoutDashboard, label: "Vue d'ensemble", path: "/admin" },
-  { icon: Building2, label: "Entreprises", path: "/admin/businesses" },
-  { icon: Users, label: "Utilisateurs", path: "/admin/users" },
-  { icon: Settings, label: "Configuration", path: "/admin/settings" },
-];
 
 const AdminBusinesses = () => {
   const navigate = useNavigate();
@@ -71,7 +63,7 @@ const AdminBusinesses = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar items={sidebarItems} onLogout={logout} />
+      <DashboardSidebar items={adminSidebarItems} onLogout={logout} />
       <main className="lg:ml-64 p-6 lg:p-8">
         <MobileHeader onLogout={logout} />
 

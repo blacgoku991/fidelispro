@@ -4,25 +4,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { StatsCard } from "@/components/dashboard/StatsCard";
+import { AnalyticsChart } from "@/components/dashboard/AnalyticsChart";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
+import { businessSidebarItems } from "@/lib/sidebarItems";
 import {
-  CreditCard, Users, TrendingUp, QrCode, Bell,
-  BarChart3, Settings, Crown, Flame, Palette,
+  Users, TrendingUp, QrCode,
+  Crown, Flame,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const sidebarItems = [
-  { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
-  { icon: CreditCard, label: "Cartes", path: "/dashboard/cards" },
-  { icon: Users, label: "Clients", path: "/dashboard/clients" },
-  { icon: QrCode, label: "Scanner", path: "/dashboard/scanner" },
-  { icon: Bell, label: "Notifications", path: "/dashboard/notifications" },
-  { icon: Palette, label: "Personnalisation", path: "/dashboard/customize" },
-  { icon: Settings, label: "Paramètres", path: "/dashboard/settings" },
-];
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const { user, loading, business, logout } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0 });
 
   useEffect(() => {
@@ -75,7 +69,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar items={sidebarItems} onLogout={logout} />
+      <DashboardSidebar items={businessSidebarItems} onLogout={logout} />
       <main className="lg:ml-64 p-6 lg:p-8">
         <MobileHeader onLogout={logout} />
 
@@ -93,6 +87,20 @@ const Dashboard = () => {
             <StatsCard key={stat.label} {...stat} index={i} />
           ))}
         </div>
+
+        {/* Analytics charts */}
+        {business && (
+          <div className="grid lg:grid-cols-2 gap-6 mb-8">
+            <div className="p-6 rounded-2xl bg-card border border-border/50">
+              <h2 className="text-lg font-display font-semibold mb-4">Scans (14 jours)</h2>
+              <AnalyticsChart businessId={business.id} type="scans" />
+            </div>
+            <div className="p-6 rounded-2xl bg-card border border-border/50">
+              <h2 className="text-lg font-display font-semibold mb-4">Nouveaux clients (14 jours)</h2>
+              <AnalyticsChart businessId={business.id} type="customers" />
+            </div>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="p-6 rounded-2xl bg-card border border-border/50">
@@ -115,17 +123,24 @@ const Dashboard = () => {
           <div className="p-6 rounded-2xl bg-card border border-border/50">
             <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
               <Flame className="w-5 h-5 text-accent" />
-              Scan rapide
+              Actions rapides
             </h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              Scannez le QR code de vos clients pour ajouter des points instantanément.
-            </p>
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-48 h-48 rounded-2xl bg-secondary flex items-center justify-center">
-                <QrCode className="w-16 h-16 text-muted-foreground/30" />
-              </div>
-              <Button className="bg-gradient-primary text-primary-foreground rounded-xl hover:opacity-90 px-8">
-                Ouvrir le scanner
+            <div className="grid grid-cols-2 gap-3">
+              <Button onClick={() => navigate("/dashboard/scanner")} className="h-20 rounded-2xl bg-gradient-primary text-primary-foreground flex flex-col gap-1">
+                <QrCode className="w-6 h-6" />
+                <span className="text-sm">Scanner</span>
+              </Button>
+              <Button onClick={() => navigate("/dashboard/qrcode")} variant="outline" className="h-20 rounded-2xl flex flex-col gap-1">
+                <QrCode className="w-6 h-6" />
+                <span className="text-sm">QR Vitrine</span>
+              </Button>
+              <Button onClick={() => navigate("/dashboard/campaigns")} variant="outline" className="h-20 rounded-2xl flex flex-col gap-1">
+                <Crown className="w-6 h-6" />
+                <span className="text-sm">Campagne</span>
+              </Button>
+              <Button onClick={() => navigate("/dashboard/clients")} variant="outline" className="h-20 rounded-2xl flex flex-col gap-1">
+                <Users className="w-6 h-6" />
+                <span className="text-sm">Clients</span>
               </Button>
             </div>
           </div>
