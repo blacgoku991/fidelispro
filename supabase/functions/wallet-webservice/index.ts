@@ -400,22 +400,13 @@ async function buildPkpassForUpdate(
 // ── Icon helpers (square, for notification icon) ─────────────────
 
 async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Array; icon2xPng: Uint8Array; icon3xPng: Uint8Array }> {
-  if (business.logo_url) {
-    try {
-      const logoUrl = business.logo_url.split("?")[0];
-      const response = await fetch(logoUrl);
-      if (response.ok) {
-        const imageBytes = new Uint8Array(await response.arrayBuffer());
-        return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
-      }
-    } catch (err) {
-      console.error("[Pass] Failed to fetch logo for icons, using fallback:", err);
-    }
-  }
-
-  const iconPng = generateSolidColorPng(29, 29, business.primary_color || "#6B46C1");
-  const icon2xPng = generateSolidColorPng(58, 58, business.primary_color || "#6B46C1");
-  const icon3xPng = generateSolidColorPng(87, 87, business.primary_color || "#6B46C1");
+  // Apple Wallet notification icon must be a square PNG at exact sizes.
+  // Never use the business logo directly — it may be JPEG or non-square.
+  // Generate proper square PNG icons using brand color.
+  const color = business.primary_color || "#6B46C1";
+  const iconPng   = generateSolidColorPng(29, 29, color);
+  const icon2xPng = generateSolidColorPng(58, 58, color);
+  const icon3xPng = generateSolidColorPng(87, 87, color);
   return { iconPng, icon2xPng, icon3xPng };
 }
 
