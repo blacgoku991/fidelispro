@@ -22,6 +22,41 @@ const BusinessPublicPage = () => {
   const [customer, setCustomer] = useState<any>(null);
   const [card, setCard] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [walletLoading, setWalletLoading] = useState(false);
+
+  const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+
+  const handleAddToWallet = async (cardCode: string) => {
+    setWalletLoading(true);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/generate-pass`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ card_code: cardCode }),
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erreur");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${cardCode}.pkpass`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Carte ajoutée au Wallet !");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Impossible de générer la carte Wallet");
+    } finally {
+      setWalletLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchBusiness = async () => {
