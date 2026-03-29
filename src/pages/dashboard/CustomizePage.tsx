@@ -445,51 +445,94 @@ const CustomizePage = () => {
         {/* === QR CODE === */}
         <TabsContent value="qrcode">
           <div className="grid lg:grid-cols-2 gap-5">
-            <div className="p-6 rounded-2xl bg-card border border-border/50 flex flex-col items-center">
-              <div className="p-5 bg-background rounded-2xl">
-                <QRCodeSVG
-                  id="business-qr-svg"
-                  value={publicUrl}
-                  size={240}
-                  level="H"
-                  includeMargin
-                  fgColor={business?.primary_color || "#6B46C1"}
-                />
+            {/* QR Code display */}
+            <div className="p-6 rounded-2xl bg-card border border-border/50 flex flex-col items-center space-y-5">
+              <h2 className="font-display font-semibold text-sm self-start">Votre QR Code vitrine</h2>
+
+              {/* QR Preview with brand frame */}
+              <div
+                id="qr-printable"
+                className="relative p-8 rounded-3xl flex flex-col items-center gap-4"
+                style={{
+                  background: `linear-gradient(145deg, ${form.primary_color}12 0%, ${form.secondary_color || form.primary_color}08 100%)`,
+                  border: `2px solid ${form.primary_color}20`,
+                }}
+              >
+                {logoUrl && (
+                  <img src={logoUrl} alt={form.name} className="w-12 h-12 rounded-xl object-cover" />
+                )}
+                <div className="p-4 bg-background rounded-2xl shadow-sm">
+                  <QRCodeSVG
+                    id="business-qr-svg"
+                    value={publicUrl}
+                    size={200}
+                    level="H"
+                    includeMargin={false}
+                    fgColor={form.primary_color || "#6B46C1"}
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="font-display font-bold text-sm">{form.name || "Mon Commerce"}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Scannez pour votre carte de fidélité</p>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-3 text-center">
-                Scannez pour obtenir la carte de fidélité de <strong>{business?.name}</strong>
-              </p>
-              <div className="flex gap-2 mt-4">
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-2 justify-center">
                 <Button onClick={downloadQR} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs">
-                  <Download className="w-3.5 h-3.5" /> PNG
+                  <Download className="w-3.5 h-3.5" /> Télécharger PNG
                 </Button>
                 <Button onClick={copyLink} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs">
-                  <Copy className="w-3.5 h-3.5" /> Lien
+                  <Copy className="w-3.5 h-3.5" /> Copier le lien
+                </Button>
+                <Button
+                  onClick={() => {
+                    const printContent = document.getElementById("qr-printable");
+                    if (!printContent) return;
+                    const w = window.open("", "_blank");
+                    if (!w) return;
+                    w.document.write(`<!DOCTYPE html><html><head><title>QR Code - ${form.name}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui,sans-serif;}</style></head><body>${printContent.outerHTML}</body></html>`);
+                    w.document.close();
+                    w.focus();
+                    w.print();
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1.5 text-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Imprimer
                 </Button>
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
-              <h2 className="font-display font-semibold text-sm">Comment ça marche</h2>
-              {[
-                { step: "1", title: "Affichez le QR code", desc: "Vitrine, comptoir ou site web" },
-                { step: "2", title: "Le client scanne", desc: "Avec l'appareil photo de son téléphone" },
-                { step: "3", title: "Inscription instantanée", desc: "Carte de fidélité en 10 secondes" },
-              ].map((s) => (
-                <div key={s.step} className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">{s.step}</div>
-                  <div>
-                    <p className="text-sm font-medium">{s.title}</p>
-                    <p className="text-xs text-muted-foreground">{s.desc}</p>
+            {/* Instructions + Link */}
+            <div className="space-y-5">
+              <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+                <h2 className="font-display font-semibold text-sm">Comment ça marche</h2>
+                {[
+                  { step: "1", emoji: "🖨️", title: "Imprimez ou affichez le QR", desc: "Vitrine, comptoir, menu, flyer..." },
+                  { step: "2", emoji: "📱", title: "Le client scanne", desc: "Appareil photo ou application QR" },
+                  { step: "3", emoji: "🎉", title: "Carte créée en 10 sec", desc: "Inscription instantanée et gratuite" },
+                ].map((s) => (
+                  <div key={s.step} className="flex gap-3 items-start">
+                    <span className="text-xl">{s.emoji}</span>
+                    <div>
+                      <p className="text-sm font-medium">{s.title}</p>
+                      <p className="text-xs text-muted-foreground">{s.desc}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
-              <div className="pt-3 border-t border-border/50">
-                <Label className="text-xs text-muted-foreground">Lien direct</Label>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <code className="text-[11px] bg-secondary px-2.5 py-1.5 rounded-lg flex-1 overflow-hidden text-ellipsis">{publicUrl}</code>
-                  <Button size="icon" variant="outline" className="rounded-xl h-8 w-8 shrink-0" onClick={() => window.open(publicUrl, "_blank")}>
+              <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-3">
+                <h2 className="font-display font-semibold text-sm">Lien direct</h2>
+                <p className="text-xs text-muted-foreground">Partagez ce lien sur vos réseaux sociaux, votre site web ou par email.</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-[11px] bg-secondary px-3 py-2 rounded-xl flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{publicUrl}</code>
+                  <Button size="icon" variant="outline" className="rounded-xl h-9 w-9 shrink-0" onClick={copyLink}>
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="icon" variant="outline" className="rounded-xl h-9 w-9 shrink-0" onClick={() => window.open(publicUrl, "_blank")}>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </Button>
                 </div>
