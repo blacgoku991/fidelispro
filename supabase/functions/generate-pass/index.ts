@@ -226,16 +226,41 @@ export async function buildPkpass(
     },
   };
 
-  // Apple Wallet native geofencing
+  // Apple Wallet native geofencing with multi-point coverage
   if (business.geofence_enabled && business.latitude && business.longitude) {
-    passJson.locations = [
-      {
-        latitude: parseFloat(String(business.latitude)),
-        longitude: parseFloat(String(business.longitude)),
-        relevantText: business.geofence_message || `Passez nous voir chez ${business.name} !`,
-      },
-    ];
-    passJson.maxDistance = business.geofence_radius || 200;
+    const lat = parseFloat(String(business.latitude));
+    const lng = parseFloat(String(business.longitude));
+    const radiusMeters = business.geofence_radius || 200;
+    const relevantText = business.geofence_message || `Passez nous voir chez ${business.name} !`;
+
+    // Center point
+    const locations: any[] = [{ latitude: lat, longitude: lng, relevantText }];
+
+    // Add satellite points if radius > 100m (iOS only detects ~100m per point)
+    if (radiusMeters > 100) {
+      // Place points at ~80m from each other to cover the radius
+      const stepMeters = 80;
+      const rings = Math.min(3, Math.ceil(radiusMeters / stepMeters));
+      const pointsPerRing = [4, 4]; // N/S/E/W for each ring
+      
+      for (let ring = 1; ring <= rings && locations.length < 10; ring++) {
+        const dist = stepMeters * ring;
+        const count = pointsPerRing[Math.min(ring - 1, pointsPerRing.length - 1)] || 4;
+        for (let i = 0; i < count && locations.length < 10; i++) {
+          const angle = (2 * Math.PI * i) / count;
+          const dLat = (dist * Math.cos(angle)) / 111320;
+          const dLng = (dist * Math.sin(angle)) / (111320 * Math.cos(lat * Math.PI / 180));
+          locations.push({
+            latitude: parseFloat((lat + dLat).toFixed(7)),
+            longitude: parseFloat((lng + dLng).toFixed(7)),
+            relevantText,
+          });
+        }
+      }
+    }
+
+    passJson.locations = locations;
+    passJson.maxDistance = radiusMeters;
   }
 
   const passJsonStr = JSON.stringify(passJson);
