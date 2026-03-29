@@ -50,6 +50,11 @@ const Dashboard = () => {
   // Clients
   const [customers, setCustomers] = useState<any[]>([]);
   const [clientSearch, setClientSearch] = useState("");
+  const [expandedClient, setExpandedClient] = useState<string | null>(null);
+  const [clientHistory, setClientHistory] = useState<Record<string, any[]>>({});
+
+  // Client detail dialog
+  const [selectedClient, setSelectedClient] = useState<any>(null);
 
   useEffect(() => {
     if (!business) return;
