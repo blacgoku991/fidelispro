@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useRef } from "react";
 
 interface GeofenceMapProps {
   latitude: number;
@@ -6,69 +6,113 @@ interface GeofenceMapProps {
   radius: number;
 }
 
-const MAP_WIDTH = 640;
-const MAP_HEIGHT = 250;
+function getZoomForRadius(meters: number): number {
+  if (meters <= 100) return 16;
+  if (meters <= 200) return 15;
+  if (meters <= 500) return 14;
+  if (meters <= 1000) return 13;
+  return 12;
+}
 
 const GeofenceMap = ({ latitude, longitude, radius }: GeofenceMapProps) => {
-  const { mapUrl, circleDiameterPx } = useMemo(() => {
-    const cosLat = Math.max(0.2, Math.cos((latitude * Math.PI) / 180));
+  const mapRef = useRef<any>(null);
+  const circleRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const initializedRef = useRef(false);
 
-    // Zoom calculé pour avoir un cercle lisible et fidèle au rayon réel
-    const targetDiameterPx = MAP_WIDTH * 0.5;
-    const rawZoom = Math.log2((156543.03392 * cosLat * targetDiameterPx) / (radius * 2));
-    const zoom = Math.min(19, Math.max(12, Math.round(rawZoom)));
+  // Init map
+  useEffect(() => {
+    if (!latitude || !longitude) return;
 
-    const metersPerPixel = (156543.03392 * cosLat) / Math.pow(2, zoom);
-    const diameter = Math.max(12, Math.min((radius * 2) / metersPerPixel, MAP_WIDTH * 0.95));
+    // Load Leaflet CSS
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
 
-    const url = `https://staticmap.openstreetmap.de/staticmap.php?center=${latitude},${longitude}&zoom=${zoom}&size=${MAP_WIDTH}x${MAP_HEIGHT}&maptype=mapnik`;
+    const initMap = () => {
+      const L = (window as any).L;
+      if (!L) return;
 
-    return {
-      mapUrl: url,
-      circleDiameterPx: diameter,
+      const container = document.getElementById("geofence-map");
+      if (!container) return;
+
+      // Destroy previous instance
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        circleRef.current = null;
+        markerRef.current = null;
+      }
+
+      const map = L.map("geofence-map", {
+        center: [latitude, longitude],
+        zoom: getZoomForRadius(radius),
+        zoomControl: true,
+        scrollWheelZoom: false,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap",
+      }).addTo(map);
+
+      mapRef.current = map;
+
+      circleRef.current = L.circle([latitude, longitude], {
+        radius: radius,
+        color: "#EAB308",
+        fillColor: "#FEF9C3",
+        fillOpacity: 0.35,
+        weight: 2,
+      }).addTo(map);
+
+      markerRef.current = L.marker([latitude, longitude]).addTo(map);
+
+      // Fit to circle bounds
+      map.fitBounds(circleRef.current.getBounds(), { padding: [30, 30] });
+      initializedRef.current = true;
     };
-  }, [latitude, longitude, radius]);
+
+    if ((window as any).L) {
+      initMap();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      script.onload = initMap;
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        circleRef.current = null;
+        markerRef.current = null;
+        initializedRef.current = false;
+      }
+    };
+  }, [latitude, longitude]);
+
+  // Update radius when slider changes
+  useEffect(() => {
+    if (!circleRef.current || !mapRef.current) return;
+    circleRef.current.setRadius(radius);
+    mapRef.current.fitBounds(circleRef.current.getBounds(), { padding: [30, 30] });
+  }, [radius]);
 
   return (
-    <div className="relative h-[250px] w-full overflow-hidden rounded-xl border border-border/50 select-none">
-      <img
-        src={mapUrl}
-        alt="Carte de localisation"
-        className="h-full w-full object-cover pointer-events-none"
-        draggable={false}
-        loading="lazy"
-      />
-
-      {/* Point exact du commerce (centre géographique) */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "12px",
-          height: "12px",
-          borderRadius: "9999px",
-          background: "hsl(var(--primary))",
-          boxShadow: "0 0 0 4px hsl(var(--background) / 0.85)",
-        }}
-      />
-
-      {/* Rayon réel en mètres */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: `${circleDiameterPx}px`,
-          height: `${circleDiameterPx}px`,
-          borderRadius: "9999px",
-          border: "2px solid hsl(48 96% 53%)",
-          background: "hsl(48 96% 53% / 0.2)",
-        }}
-      />
-    </div>
+    <div
+      id="geofence-map"
+      style={{
+        height: "320px",
+        width: "100%",
+        borderRadius: "12px",
+        overflow: "hidden",
+      }}
+    />
   );
 };
 
