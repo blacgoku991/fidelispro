@@ -93,7 +93,36 @@ const SettingsPage = () => {
   };
 
   const selectSuggestion = (s: any) => {
-    setAddress(s.display_name);
+    // Extract the street number the user typed (e.g. "189" from "189 rue des...")
+    const userNumber = address.match(/^\s*(\d+\s*[-/]?\s*\d*)/)?.[1]?.trim();
+    const suggestionHasNumber = /^\d/.test(s.display_name);
+    
+    // If user typed a number but the suggestion doesn't start with one, prepend it
+    let finalAddress = s.display_name;
+    if (userNumber && !suggestionHasNumber) {
+      finalAddress = `${userNumber} ${s.display_name}`;
+    }
+    
+    // Geocode with the exact number for precise coordinates
+    if (userNumber && !suggestionHasNumber) {
+      fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(finalAddress)}&format=json&limit=1&countrycodes=fr`,
+        { headers: { "Accept-Language": "fr" } }
+      ).then(r => r.json()).then(data => {
+        if (data.length > 0) {
+          setLatitude(parseFloat(parseFloat(data[0].lat).toFixed(7)));
+          setLongitude(parseFloat(parseFloat(data[0].lon).toFixed(7)));
+          setAddress(data[0].display_name || finalAddress);
+        } else {
+          setAddress(finalAddress);
+        }
+      }).catch(() => {
+        setAddress(finalAddress);
+      });
+    } else {
+      setAddress(finalAddress);
+    }
+    
     setLatitude(parseFloat(parseFloat(s.lat).toFixed(7)));
     setLongitude(parseFloat(parseFloat(s.lon).toFixed(7)));
     setShowSuggestions(false);
