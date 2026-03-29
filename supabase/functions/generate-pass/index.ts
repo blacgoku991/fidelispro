@@ -147,7 +147,7 @@ export async function buildPkpass(
     logoText: business.name,
     foregroundColor: "rgb(255, 255, 255)",
     backgroundColor: bgColor,
-    labelColor: "rgb(255, 255, 255)",
+    labelColor: "rgb(200, 200, 200)",
     webServiceURL,
     authenticationToken: authToken,
     barcode: {
@@ -169,13 +169,13 @@ export async function buildPkpass(
           label: "POINTS",
           value: pointsCurrent,
           textAlignment: "PKTextAlignmentRight",
-          changeMessage: "Vous avez gagné %@ points !",
+          changeMessage: "%@ points !",
         },
       ],
       primaryFields: [
         {
           key: "name",
-          label: "CLIENT",
+          label: "",
           value: customer?.full_name || "Client",
         },
       ],
@@ -189,7 +189,13 @@ export async function buildPkpass(
           key: "progress",
           label: "PROGRESSION",
           value: `${pointsCurrent} / ${pointsMax}`,
-          changeMessage: "Vous avez maintenant %@ points !",
+          changeMessage: "%@ points !",
+        },
+        {
+          key: "next_reward",
+          label: "PROCHAINE",
+          value: pointsToReward > 0 ? `encore ${pointsToReward}` : "🎁 Dispo !",
+          textAlignment: "PKTextAlignmentRight",
         },
       ],
       auxiliaryFields: [
@@ -199,14 +205,14 @@ export async function buildPkpass(
           value: `${customer?.total_visits || 0}`,
         },
         {
+          key: "streak",
+          label: "SÉRIE",
+          value: `${customer?.current_streak || 0}`,
+        },
+        {
           key: "rewards",
           label: "RÉCOMPENSES",
           value: `${card.rewards_earned || 0}`,
-        },
-        {
-          key: "next_reward",
-          label: "PROCHAINE",
-          value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !",
           textAlignment: "PKTextAlignmentRight",
         },
       ],
