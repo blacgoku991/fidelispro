@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
@@ -5,6 +6,16 @@ import { PricingSection } from "@/components/landing/PricingSection";
 import { Footer } from "@/components/landing/Footer";
 
 const Index = () => {
+  useEffect(() => {
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
+    if (!isStandalone) return;
+
+    const lastCardPath = localStorage.getItem("customer_last_card_path");
+    if (lastCardPath && lastCardPath.startsWith("/card/")) {
+      window.location.replace(lastCardPath);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
