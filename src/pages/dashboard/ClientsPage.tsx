@@ -12,12 +12,15 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Star, Crown, Flame, Trash2 } from "lucide-react";
+import { Plus, Search, Star, Crown, Flame, Trash2, Copy, Mail, Phone, Calendar, Award } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -37,6 +40,7 @@ const ClientsPage = () => {
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selected, setSelected] = useState<any>(null);
 
   const fetchCustomers = async () => {
     if (!business) return;
