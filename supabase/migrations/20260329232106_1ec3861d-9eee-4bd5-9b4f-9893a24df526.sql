@@ -1,0 +1,1 @@
+DELETE FROM web_push_subscriptions WHERE business_id = 'aaa46ae5-c000-4d10-b13f-ee10d0dbcfac';
