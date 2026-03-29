@@ -248,6 +248,7 @@ export async function buildPkpass(
       }
     }
 
+    console.log("[Pass] locations injected:", JSON.stringify(locations));
     passJson.locations = locations;
     passJson.maxDistance = radiusMeters;
   }
