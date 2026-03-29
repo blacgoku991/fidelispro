@@ -1,5 +1,5 @@
 import {
-  BarChart3, CreditCard, Users, QrCode, Bell, Settings, Palette, Gift,
+  BarChart3, CreditCard, Users, QrCode, Bell, Settings, Palette, Gift, Send, Link,
   LayoutDashboard, Building2,
 } from "lucide-react";
 
@@ -9,7 +9,9 @@ export const businessSidebarItems = [
   { icon: Users, label: "Clients", path: "/dashboard/clients" },
   { icon: Gift, label: "Récompenses", path: "/dashboard/rewards" },
   { icon: QrCode, label: "Scanner", path: "/dashboard/scanner" },
+  { icon: Link, label: "QR Vitrine", path: "/dashboard/qrcode" },
   { icon: Bell, label: "Notifications", path: "/dashboard/notifications" },
+  { icon: Send, label: "Campagnes", path: "/dashboard/campaigns" },
   { icon: Palette, label: "Personnalisation", path: "/dashboard/customize" },
   { icon: Settings, label: "Paramètres", path: "/dashboard/settings" },
 ];
