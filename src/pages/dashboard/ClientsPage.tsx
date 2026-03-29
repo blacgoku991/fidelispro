@@ -11,8 +11,13 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Star, Crown, Flame } from "lucide-react";
+import { Plus, Search, Star, Crown, Flame, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -31,6 +36,7 @@ const ClientsPage = () => {
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchCustomers = async () => {
     if (!business) return;
@@ -61,6 +67,48 @@ const ClientsPage = () => {
     setAddOpen(false);
     setNewName(""); setNewEmail(""); setNewPhone("");
     fetchCustomers();
+  };
+
+  const handleDeleteCustomer = async (customerId: string, customerName: string) => {
+    if (!business) return;
+    setDeleting(customerId);
+
+    // 1. Deactivate all cards (so scanner rejects them)
+    await supabase
+      .from("customer_cards")
+      .update({ is_active: false, wallet_change_message: "❌ Cette carte n'est plus valide." })
+      .eq("customer_id", customerId)
+      .eq("business_id", business.id);
+
+    // 2. Try to push wallet update so the card shows as invalid on iPhone
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_id: business.id,
+          customer_id: customerId,
+          action_type: "card_deactivated",
+          change_message: "❌ Cette carte n'est plus valide.",
+        }),
+      });
+    } catch { /* non-blocking */ }
+
+    // 3. Delete the customer (cascading FK will delete cards too)
+    const { error } = await supabase
+      .from("customers")
+      .delete()
+      .eq("id", customerId)
+      .eq("business_id", business.id);
+
+    if (error) {
+      toast.error("Erreur lors de la suppression");
+    } else {
+      toast.success(`${customerName} supprimé`, { description: "Sa carte de fidélité est désormais invalide." });
+      fetchCustomers();
+    }
+    setDeleting(null);
   };
 
   const filtered = customers.filter((c) =>
@@ -115,6 +163,7 @@ const ClientsPage = () => {
               <TableHead>Visites</TableHead>
               <TableHead className="hidden sm:table-cell">Streak</TableHead>
               <TableHead className="hidden sm:table-cell">Dernière visite</TableHead>
+              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -150,12 +199,44 @@ const ClientsPage = () => {
                   <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                     {customer.last_visit_at ? new Date(customer.last_visit_at).toLocaleDateString("fr-FR") : "Jamais"}
                   </TableCell>
+                  <TableCell>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          disabled={deleting === customer.id}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Supprimer {customer.full_name} ?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Cette action est irréversible. La carte de fidélité sera <strong>désactivée définitivement</strong> — 
+                            si le client la scanne, elle sera refusée. Son historique de points sera également supprimé.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="rounded-xl">Annuler</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteCustomer(customer.id, customer.full_name || "Client")}
+                            className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Supprimer
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
                 </motion.tr>
               );
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Aucun client trouvé</TableCell>
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">Aucun client trouvé</TableCell>
               </TableRow>
             )}
           </TableBody>
