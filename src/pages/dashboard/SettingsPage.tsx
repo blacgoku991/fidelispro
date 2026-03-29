@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation } from "lucide-react";
+import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2 } from "lucide-react";
 import GeofenceMap from "@/components/dashboard/GeofenceMap";
 import { toast } from "sonner";
+import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
 
 const planLabels: Record<string, string> = {
   starter: "Starter — 29€/mois",
