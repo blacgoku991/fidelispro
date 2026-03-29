@@ -3,7 +3,9 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { motion } from "framer-motion";
-import { Flame, Star, Crown, Trophy } from "lucide-react";
+import { Flame, Star, Crown, Trophy, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const badgeIcons: Record<string, string> = {
   first_visit: "🎯",
@@ -20,6 +22,42 @@ const CardViewPage = () => {
   const [customer, setCustomer] = useState<any>(null);
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [walletLoading, setWalletLoading] = useState(false);
+
+  const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+
+  const handleAddToWallet = async () => {
+    if (!cardCode) return;
+    setWalletLoading(true);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/generate-pass`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ card_code: cardCode }),
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erreur");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${cardCode}.pkpass`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Carte téléchargée !");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Impossible de générer la carte Wallet");
+    } finally {
+      setWalletLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetch = async () => {
@@ -88,6 +126,18 @@ const CardViewPage = () => {
           cardId={card.card_code || card.id}
           accentColor={business.primary_color}
         />
+
+        {/* Apple Wallet button */}
+        {isAppleDevice && (
+          <Button
+            onClick={handleAddToWallet}
+            disabled={walletLoading}
+            className="w-full h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-semibold gap-2"
+          >
+            <Wallet className="w-5 h-5" />
+            {walletLoading ? "Génération..." : "Ajouter à Apple Wallet"}
+          </Button>
+        )}
 
         {/* Progress info */}
         <div className="p-5 rounded-2xl bg-card border border-border/50">
