@@ -37,6 +37,7 @@ export type Database = {
           feature_special_events: boolean
           feature_wallet: boolean | null
           geofence_enabled: boolean | null
+          geofence_message: string | null
           geofence_radius: number | null
           geofence_time_end: string
           geofence_time_start: string
@@ -106,6 +107,7 @@ export type Database = {
           feature_special_events?: boolean
           feature_wallet?: boolean | null
           geofence_enabled?: boolean | null
+          geofence_message?: string | null
           geofence_radius?: number | null
           geofence_time_end?: string
           geofence_time_start?: string
@@ -175,6 +177,7 @@ export type Database = {
           feature_special_events?: boolean
           feature_wallet?: boolean | null
           geofence_enabled?: boolean | null
+          geofence_message?: string | null
           geofence_radius?: number | null
           geofence_time_end?: string
           geofence_time_start?: string

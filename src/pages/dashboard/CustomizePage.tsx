@@ -7,6 +7,7 @@ import { LogoUpload } from "@/components/dashboard/LogoUpload";
 import { TemplatePicker } from "@/components/dashboard/TemplatePicker";
 import { FeatureToggles } from "@/components/dashboard/FeatureToggles";
 import { defaultConfig, type BusinessConfig, type BusinessTemplate } from "@/lib/businessTemplates";
+import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  Save, Palette, CreditCard, Bell, Zap, Shield, Layout, Users, Download, Copy, Printer, ExternalLink, Link,
+  Save, Palette, CreditCard, Bell, Zap, Shield, Layout, Users, Download, Copy, Printer, ExternalLink, Link, MapPin, Radar, Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,8 +34,8 @@ const cardStyles = [
 
 const CustomizePage = () => {
   const { user, business } = useAuth();
-  const [form, setForm] = useState<BusinessConfig & { name: string; description: string; address: string; city: string; phone: string; website: string }>(
-    { ...defaultConfig, name: "", description: "", address: "", city: "", phone: "", website: "" }
+  const [form, setForm] = useState<BusinessConfig & { name: string; description: string; address: string; city: string; phone: string; website: string; latitude: number | null; longitude: number | null; geofence_message: string }>(
+    { ...defaultConfig, name: "", description: "", address: "", city: "", phone: "", website: "", latitude: null, longitude: null, geofence_message: "Passez nous voir, on vous attend ! 🎉" }
   );
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -79,6 +80,9 @@ const CustomizePage = () => {
       feature_analytics: business.feature_analytics ?? true,
       category: business.category || "general",
       business_template: business.business_template || "custom",
+      latitude: business.latitude || null,
+      longitude: business.longitude || null,
+      geofence_message: business.geofence_message || "Passez nous voir, on vous attend ! 🎉",
     });
     setLogoUrl(business.logo_url || null);
   }, [business]);
@@ -86,9 +90,9 @@ const CustomizePage = () => {
   const handleSave = async () => {
     if (!business) return;
     setSaving(true);
-    const { name, description, address, city, phone, website, ...config } = form;
+    const { name, description, address, city, phone, website, latitude, longitude, geofence_message, ...config } = form;
     const { error } = await supabase.from("businesses").update({
-      name, description, address, city, phone, website, ...config,
+      name, description, address, city, phone, website, latitude, longitude, geofence_message, ...config,
     } as any).eq("id", business.id);
     if (error) toast.error("Erreur de sauvegarde");
     else toast.success("Configuration sauvegardée !");
@@ -393,27 +397,147 @@ const CustomizePage = () => {
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
-              <h2 className="font-display font-semibold text-sm">Géofencing</h2>
+            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm">Notifications par proximité</p>
-                  <p className="text-xs text-muted-foreground">Alerter quand les clients passent à proximité</p>
+                  <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+                    <Radar className="w-4 h-4 text-primary" /> Géofencing — Zone de proximité
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Notification automatique quand un client passe à proximité</p>
                 </div>
                 <Switch checked={form.geofence_enabled} onCheckedChange={(v) => update("geofence_enabled", v)} />
               </div>
+
               {form.geofence_enabled && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Rayon</Label>
-                  <Select value={String(form.geofence_radius)} onValueChange={(v) => update("geofence_radius", parseInt(v))}>
-                    <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="100">100m</SelectItem>
-                      <SelectItem value="200">200m</SelectItem>
-                      <SelectItem value="500">500m</SelectItem>
-                      <SelectItem value="1000">1 km</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+                  {/* Address */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs flex items-center gap-1.5">
+                      <MapPin className="w-3 h-3" /> Adresse de votre boutique
+                    </Label>
+                    <Input
+                      value={form.address}
+                      onChange={(e) => update("address", e.target.value)}
+                      placeholder="Ex: 12 rue de la Paix, 75002 Paris"
+                      className="rounded-xl text-sm"
+                    />
+                  </div>
+
+                  {/* GPS auto */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl gap-2 text-xs"
+                        onClick={() => {
+                          if (!navigator.geolocation) {
+                            toast.error("Géolocalisation non supportée par votre navigateur");
+                            return;
+                          }
+                          toast.info("Localisation en cours...");
+                          navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                              setForm(prev => ({
+                                ...prev,
+                                latitude: parseFloat(pos.coords.latitude.toFixed(7)),
+                                longitude: parseFloat(pos.coords.longitude.toFixed(7)),
+                              }));
+                              toast.success("Position détectée !");
+                            },
+                            (err) => {
+                              toast.error("Impossible d'obtenir la position. Vérifiez vos permissions.");
+                            },
+                            { enableHighAccuracy: true, timeout: 10000 }
+                          );
+                        }}
+                      >
+                        <Navigation className="w-3.5 h-3.5" /> Localiser automatiquement
+                      </Button>
+                      {form.latitude && form.longitude && (
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                          📍 {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
+                        </span>
+                      )}
+                    </div>
+                    {!form.latitude && (
+                      <p className="text-[10px] text-destructive/80">
+                        ⚠️ Coordonnées GPS requises pour le géofencing Apple Wallet
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Radius slider */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs flex items-center gap-1.5">
+                        <Radar className="w-3 h-3" /> Rayon de notification
+                      </Label>
+                      <span className="text-sm font-mono font-bold text-primary">
+                        {form.geofence_radius >= 1000 ? `${(form.geofence_radius / 1000).toFixed(1)} km` : `${form.geofence_radius} m`}
+                      </span>
+                    </div>
+                    <Slider
+                      value={[form.geofence_radius]}
+                      onValueChange={(v) => update("geofence_radius", v[0])}
+                      min={50}
+                      max={500}
+                      step={50}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>50m</span>
+                      <span>200m</span>
+                      <span>500m</span>
+                    </div>
+                  </div>
+
+                  {/* Proximity message */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Message de proximité</Label>
+                      <span className={`text-[10px] tabular-nums ${(form.geofence_message?.length || 0) > 80 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {form.geofence_message?.length || 0}/80
+                      </span>
+                    </div>
+                    <Input
+                      value={form.geofence_message}
+                      onChange={(e) => { if (e.target.value.length <= 80) update("geofence_message", e.target.value); }}
+                      placeholder="Passez nous voir, on vous attend ! 🎉"
+                      className="rounded-xl text-sm"
+                    />
+                  </div>
+
+                  {/* Info box */}
+                  <div className="rounded-xl bg-primary/5 border border-primary/10 p-3.5 space-y-1.5">
+                    <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                      📱 Géré nativement par Apple Wallet
+                    </p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      La notification s'affiche automatiquement sur l'iPhone du client quand il passe à proximité.
+                      <strong> Maximum 1 fois par jour.</strong> Aucune app requise — iOS surveille la position en arrière-plan sans impact batterie.
+                    </p>
+                  </div>
+
+                  {/* Notification preview */}
+                  <div className="rounded-2xl bg-muted/60 p-3.5 border border-border/30">
+                    <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider font-medium">Aperçu sur écran verrouillé</p>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                        <MapPin className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-xs truncate">{form.name || "Votre commerce"}</p>
+                          <span className="text-[10px] text-muted-foreground ml-2">maintenant</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {form.geofence_message || "Passez nous voir, on vous attend ! 🎉"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
