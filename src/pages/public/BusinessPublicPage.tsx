@@ -310,13 +310,9 @@ const BusinessPublicPage = () => {
               </Button>
             )}
 
-            <div className="p-4 rounded-2xl bg-card border border-border/50">
-              <p className="text-sm text-muted-foreground">Votre code carte</p>
-              <p className="text-2xl font-mono font-bold tracking-wider mt-1">{card.card_code}</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Présentez ce code en magasin pour gagner des points
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Code : <span className="font-mono">{card.card_code}</span>
+            </p>
 
             <p className="text-sm text-muted-foreground">
               {business.reward_description || "Récompense offerte"} après {card.max_points} points !

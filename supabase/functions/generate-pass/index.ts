@@ -1,18 +1,12 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as forge from "https://esm.sh/node-forge@1.3.1";
-import JSZip from "https://esm.sh/jszip@3.10.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import forge from "npm:node-forge@1.3.1";
+import JSZip from "npm:jszip@3.10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-function sha1Hex(data: Uint8Array): string {
-  const md = forge.md.sha1.create();
-  md.update(forge.util.binary.raw.encode(data));
-  return md.digest().toHex();
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -120,22 +114,27 @@ Deno.serve(async (req) => {
       },
     };
 
-    const passJsonBytes = new TextEncoder().encode(JSON.stringify(passJson));
+    const passJsonStr = JSON.stringify(passJson);
+    const passJsonBytes = new TextEncoder().encode(passJsonStr);
+
+    // Compute SHA-1 hash using forge
+    const passHash = forgeSha1(passJsonBytes);
 
     // Build manifest
     const manifest: Record<string, string> = {
-      "pass.json": sha1Hex(passJsonBytes),
+      "pass.json": passHash,
     };
-    const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
+    const manifestStr = JSON.stringify(manifest);
+    const manifestBytes = new TextEncoder().encode(manifestStr);
 
-    // Sign manifest with PKCS#7
+    // Parse .p12 certificate
     const p12Der = forge.util.decode64(p12Base64);
     const p12Asn1 = forge.asn1.fromDer(p12Der);
     const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, p12Password);
 
     // Extract cert and key
-    let signerCert: forge.pki.Certificate | null = null;
-    let signerKey: forge.pki.PrivateKey | null = null;
+    let signerCert: any = null;
+    let signerKey: any = null;
 
     for (const safeContents of p12.safeContents) {
       for (const safeBag of safeContents.safeBags) {
@@ -149,6 +148,12 @@ Deno.serve(async (req) => {
     }
 
     if (!signerCert || !signerKey) {
+      console.error("Could not extract cert/key from p12. SafeContents count:", p12.safeContents.length);
+      for (const sc of p12.safeContents) {
+        for (const sb of sc.safeBags) {
+          console.error("Bag type:", sb.type);
+        }
+      }
       return new Response(
         JSON.stringify({ error: "Could not extract cert/key from p12" }),
         {
@@ -158,11 +163,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create PKCS#7 signed data
+    // Create PKCS#7 signed data (detached signature of manifest)
     const p7 = forge.pkcs7.createSignedData();
-    p7.content = forge.util.createBuffer(
-      forge.util.binary.raw.encode(manifestBytes)
-    );
+    p7.content = forge.util.createBuffer(manifestStr, "utf8");
     p7.addCertificate(signerCert);
     p7.addSigner({
       key: signerKey,
@@ -184,10 +187,12 @@ Deno.serve(async (req) => {
     });
     p7.sign({ detached: true });
 
-    const signatureDer = forge.asn1.toDer(p7.toAsn1()).getBytes();
-    const signatureBytes = new Uint8Array(
-      [...signatureDer].map((c) => c.charCodeAt(0))
-    );
+    const signatureAsn1 = p7.toAsn1();
+    const signatureDer = forge.asn1.toDer(signatureAsn1).getBytes();
+    const signatureBytes = new Uint8Array(signatureDer.length);
+    for (let i = 0; i < signatureDer.length; i++) {
+      signatureBytes[i] = signatureDer.charCodeAt(i);
+    }
 
     // Build .pkpass ZIP
     const zip = new JSZip();
@@ -204,7 +209,7 @@ Deno.serve(async (req) => {
         "Content-Disposition": `attachment; filename="${card.card_code}.pkpass"`,
       },
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error generating pass:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error", details: String(err) }),
@@ -215,6 +220,12 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+function forgeSha1(data: Uint8Array): string {
+  const md = forge.md.sha1.create();
+  md.update(forge.util.binary.raw.encode(data));
+  return md.digest().toHex();
+}
 
 function hexToRgb(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16);

@@ -135,9 +135,13 @@ const CardViewPage = () => {
             className="w-full h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-semibold gap-2"
           >
             <Wallet className="w-5 h-5" />
-            {walletLoading ? "Génération..." : "Ajouter à Apple Wallet"}
+            {walletLoading ? "Génération..." : " Ajouter à Apple Wallet"}
           </Button>
         )}
+
+        <p className="text-center text-xs text-muted-foreground">
+          Code : <span className="font-mono">{card.card_code}</span>
+        </p>
 
         {/* Progress info */}
         <div className="p-5 rounded-2xl bg-card border border-border/50">
