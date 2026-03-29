@@ -65,6 +65,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Fetch active rewards for this business
+    const { data: rewards } = await supabase
+      .from("rewards")
+      .select("title, description, points_required")
+      .eq("business_id", card.business_id)
+      .eq("is_active", true)
+      .order("points_required", { ascending: true });
+
     // Generate or retrieve auth token for this card
     let authToken = card.wallet_auth_token;
     if (!authToken) {
@@ -75,7 +83,7 @@ Deno.serve(async (req) => {
         .eq("id", card.id);
     }
 
-    const pkpassBuffer = await buildPkpass(card, business, card.customers, authToken);
+    const pkpassBuffer = await buildPkpass(card, business, card.customers, authToken, rewards || []);
 
     return new Response(pkpassBuffer, {
       headers: {
@@ -103,7 +111,8 @@ export async function buildPkpass(
   card: any,
   business: any,
   customer: any,
-  authToken: string
+  authToken: string,
+  rewards: any[] = []
 ): Promise<Uint8Array> {
   const teamId = requireEnv("APPLE_TEAM_ID").trim();
   const p12Base64 = requireEnv("APPLE_P12_BASE64");
@@ -207,6 +216,12 @@ export async function buildPkpass(
           label: "🎁 Récompense",
           value: business.reward_description || "Récompense offerte !",
         },
+        // Dynamic rewards from database
+        ...(rewards.length > 0 ? [{
+          key: "rewards_catalog",
+          label: "🏆 Récompenses disponibles",
+          value: rewards.map((r: any) => `• ${r.title} — ${r.points_required} pts${r.description ? ` (${r.description})` : ""}`).join("\n"),
+        }] : []),
         {
           key: "visits",
           label: "📊 Statistiques",
