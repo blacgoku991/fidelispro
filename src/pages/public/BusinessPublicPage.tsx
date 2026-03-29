@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, Wallet, AlertCircle, RefreshCw } from "lucide-react";
+import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, Wallet, AlertCircle, RefreshCw, Bell, Download, Share, X } from "lucide-react";
 import { toast } from "sonner";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
+import { registerPushSubscription, isPushSubscribed } from "@/lib/webPush";
 
 type Step = "landing" | "register" | "card";
 
@@ -25,8 +26,13 @@ const BusinessPublicPage = () => {
   const [card, setCard] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [showInstallHint, setShowInstallHint] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
 
   const handleAddToWallet = (cardCode: string) => {
     setWalletLoading(true);
@@ -40,6 +46,47 @@ const BusinessPublicPage = () => {
     } finally {
       setTimeout(() => setWalletLoading(false), 3000);
     }
+  };
+
+  const handleAddToGoogleWallet = async (cardCode: string) => {
+    setGoogleWalletLoading(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/generate-google-pass?card_code=${encodeURIComponent(cardCode)}`
+      );
+      const data = await res.json();
+      if (data.saveUrl) {
+        window.open(data.saveUrl, "_blank");
+      } else {
+        toast.error(data.error || "Impossible de générer la carte Google Wallet");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Erreur Google Wallet");
+    } finally {
+      setGoogleWalletLoading(false);
+    }
+  };
+
+  const handleSubscribePush = async () => {
+    if (!business || !customer) return;
+    setPushLoading(true);
+    try {
+      const success = await registerPushSubscription(business.id, customer.id);
+      setPushSubscribed(success);
+      if (success) {
+        toast.success("Notifications activées ! 🔔");
+      } else {
+        // If not standalone, suggest installing the app first
+        if (!isStandalone) {
+          setShowInstallHint(true);
+        }
+      }
+    } catch {
+      toast.error("Erreur lors de l'activation des notifications");
+    }
+    setPushLoading(false);
   };
 
   const fetchBusiness = async () => {
@@ -375,6 +422,7 @@ const BusinessPublicPage = () => {
               rewardsEarned={card.rewards_earned || 0}
             />
 
+            {/* Apple Wallet */}
             {isAppleDevice && card.card_code && (
               <button
                 onClick={() => handleAddToWallet(card.card_code)}
@@ -389,6 +437,85 @@ const BusinessPublicPage = () => {
                 />
               </button>
             )}
+
+            {/* Google Wallet */}
+            {!isAppleDevice && card.card_code && (
+              <button
+                onClick={() => handleAddToGoogleWallet(card.card_code)}
+                disabled={googleWalletLoading}
+                className="w-full flex justify-center"
+              >
+                <div
+                  className="h-14 px-6 rounded-lg flex items-center gap-3 hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: "#1f1f1f",
+                    filter: googleWalletLoading ? "grayscale(1) opacity(0.5)" : "none",
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
+                    <path d="M21.4 11.3l-1-1.6-2.1 1.2.1-2.4h-1.9l.1 2.4-2.1-1.2-1 1.6 2.1 1.2-2.1 1.2 1 1.6 2.1-1.2-.1 2.4h1.9l-.1-2.4 2.1 1.2 1-1.6-2.1-1.2 2.1-1.2z" fill="#FBBC04"/>
+                    <path d="M7.5 20C4.5 20 2 17.5 2 14.5S4.5 9 7.5 9c1.7 0 3 .6 4 1.7l-1.6 1.5c-.6-.6-1.4-.9-2.4-.9-2 0-3.6 1.6-3.6 3.6s1.6 3.6 3.6 3.6c1.5 0 2.3-.6 2.8-1.1.4-.4.7-1 .8-1.8H7.5v-2.1h5.8c.1.3.1.7.1 1.1 0 1.3-.4 3-1.5 4.1-1.1 1.2-2.5 1.8-4.4 1.8z" fill="#4285F4"/>
+                  </svg>
+                  <div className="text-left">
+                    <p className="text-[10px] text-gray-400 leading-none">Ajouter à</p>
+                    <p className="text-white font-medium text-base leading-tight">Google Wallet</p>
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {/* Web Push notifications */}
+            {!pushSubscribed && "Notification" in window && Notification.permission !== "denied" && (
+              <Button
+                onClick={handleSubscribePush}
+                disabled={pushLoading}
+                variant="outline"
+                className="w-full rounded-xl gap-2 h-12"
+              >
+                <Bell className="w-4 h-4" />
+                {pushLoading ? "Activation..." : "🔔 Recevoir les offres et promos"}
+              </Button>
+            )}
+            {pushSubscribed && (
+              <div className="flex items-center justify-center gap-2 text-xs text-primary font-medium">
+                <Bell className="w-3.5 h-3.5" />
+                Notifications activées ✓
+              </div>
+            )}
+
+            {/* PWA install hint */}
+            <AnimatePresence>
+              {showInstallHint && !isStandalone && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="p-4 rounded-2xl bg-card border border-border/50 text-left"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Download className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="text-xs">
+                      <p className="font-semibold text-sm">💡 Astuce</p>
+                      {isAppleDevice ? (
+                        <p className="text-muted-foreground mt-1">
+                          Pour recevoir les notifications : appuyez sur{" "}
+                          <Share className="w-3 h-3 inline text-primary" /> puis « Sur l'écran d'accueil »
+                        </p>
+                      ) : (
+                        <p className="text-muted-foreground mt-1">
+                          Pour recevoir les notifications : menu ⋮ → « Ajouter à l'écran d'accueil »
+                        </p>
+                      )}
+                    </div>
+                    <button onClick={() => setShowInstallHint(false)} className="shrink-0 p-1">
+                      <X className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <p className="text-xs text-muted-foreground">
               Code : <span className="font-mono">{card.card_code}</span>
