@@ -331,7 +331,7 @@ const Dashboard = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-display font-semibold text-sm truncate">{lastScan.customerName}</p>
-                        <p className="text-xs text-muted-foreground">{lastScan.points}/{lastScan.maxPoints} points</p>
+                        <p className="text-xs text-muted-foreground">{lastScan.points}/{lastScan.maxPoints} {lastScan.loyaltyType === "stamps" ? "tampons" : "points"}</p>
                       </div>
                     </div>
                     <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
