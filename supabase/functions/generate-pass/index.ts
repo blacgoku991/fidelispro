@@ -110,8 +110,11 @@ export async function buildPkpass(
   const p12Password = requireEnv("APPLE_P12_PASSWORD");
 
   const { signerCert, signerKey, certificateChain } = extractSigningMaterial(p12Base64, p12Password);
-  const iconPng = decodeBase64ToBytes(ICON_PNG_BASE64);
-  const icon2xPng = decodeBase64ToBytes(ICON_2X_PNG_BASE64);
+
+  // Fetch business logo for icons (square) and logo (rectangular)
+  const { iconPng, icon2xPng, icon3xPng } = await fetchOrGenerateIcons(business);
+  const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
+  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
   const level = (customer?.level || "bronze").toLowerCase();
@@ -122,15 +125,8 @@ export async function buildPkpass(
   const levelEmoji = level === "gold" ? "⭐" : level === "silver" ? "🥈" : "🥉";
   const levelLabel = level.toUpperCase();
 
-  // webServiceURL for PassKit registration
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const webServiceURL = `${supabaseUrl}/functions/v1/wallet-webservice`;
-
-  // Fetch merchant logo if available
-  const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
-
-  // Generate strip image with brand color
-  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
 
   const passJson: any = {
     formatVersion: 1,
@@ -232,6 +228,7 @@ export async function buildPkpass(
     "pass.json": forgeSha1(passJsonBytes),
     "icon.png": forgeSha1(iconPng),
     "icon@2x.png": forgeSha1(icon2xPng),
+    "icon@3x.png": forgeSha1(icon3xPng),
     "logo.png": forgeSha1(logoPng),
     "logo@2x.png": forgeSha1(logo2xPng),
     "strip.png": forgeSha1(stripPng),
@@ -266,6 +263,7 @@ export async function buildPkpass(
   zip.file("signature", signatureBytes);
   zip.file("icon.png", iconPng);
   zip.file("icon@2x.png", icon2xPng);
+  zip.file("icon@3x.png", icon3xPng);
   zip.file("logo.png", logoPng);
   zip.file("logo@2x.png", logo2xPng);
   zip.file("strip.png", stripPng);
