@@ -111,6 +111,7 @@ const CampaignsPage = () => {
       return;
     }
 
+    // Insert notification logs
     const logs = customers.map(c => ({
       business_id: business.id,
       customer_id: c.id,
@@ -122,12 +123,38 @@ const CampaignsPage = () => {
     const { error } = await supabase.from("notifications_log").insert(logs);
     if (error) {
       toast.error("Erreur d'envoi");
-    } else {
-      toast.success(`Campagne envoyée à ${customers.length} client(s) !`);
-      setSendOpen(false);
-      setForm({ title: "", message: "", segment: "all" });
-      fetchCampaigns();
+      setSending(false);
+      return;
     }
+
+    // Trigger Wallet pass updates for all registered devices
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/wallet-push`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            business_id: business.id,
+            change_message: `${form.title}: ${form.message}`.slice(0, 100),
+          }),
+        }
+      );
+      const walletResult = await res.json();
+      if (walletResult.pushed > 0) {
+        toast.success(`Campagne envoyée à ${customers.length} client(s) + ${walletResult.pushed} carte(s) Wallet mises à jour !`);
+      } else {
+        toast.success(`Campagne envoyée à ${customers.length} client(s) !`);
+      }
+    } catch (walletErr) {
+      console.error("Wallet push error:", walletErr);
+      toast.success(`Campagne envoyée à ${customers.length} client(s) !`);
+    }
+
+    setSendOpen(false);
+    setForm({ title: "", message: "", segment: "all" });
+    fetchCampaigns();
     setSending(false);
   };
 
