@@ -5,7 +5,6 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { businessSidebarItems } from "@/lib/sidebarItems";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +14,13 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Send, Users, Zap, Clock, Crown, Megaphone } from "lucide-react";
+import { Send, Users, Zap, Clock, Crown, Megaphone, Gift, PartyPopper, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { WalletDebugPanel } from "@/components/dashboard/WalletDebugPanel";
 
 type Segment = "all" | "active" | "inactive" | "vip" | "close_to_reward";
+type Tone = "offer" | "urgent" | "event" | "simple";
 
 const segmentLabels: Record<Segment, { label: string; desc: string; icon: React.ElementType }> = {
   all: { label: "Tous les clients", desc: "Envoyer à tous", icon: Users },
@@ -30,12 +30,21 @@ const segmentLabels: Record<Segment, { label: string; desc: string; icon: React.
   close_to_reward: { label: "Proches récompense", desc: "À 2 points ou moins", icon: Zap },
 };
 
+const toneOptions: { value: Tone; emoji: string; label: string }[] = [
+  { value: "offer", emoji: "🎁", label: "Offre spéciale" },
+  { value: "urgent", emoji: "⚡", label: "Urgence / Flash" },
+  { value: "event", emoji: "🎉", label: "Événement" },
+  { value: "simple", emoji: "💬", label: "Message simple" },
+];
+
+const MAX_MESSAGE_LENGTH = 100;
+
 const CampaignsPage = () => {
   const { loading, business, logout } = useAuth();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [sendOpen, setSendOpen] = useState(false);
   const [sending, setSending] = useState(false);
-  const [form, setForm] = useState({ title: "", message: "", segment: "all" as Segment });
+  const [form, setForm] = useState({ message: "", segment: "all" as Segment, tone: "offer" as Tone });
   const [segmentCounts, setSegmentCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -99,8 +108,8 @@ const CampaignsPage = () => {
   };
 
   const handleSendCampaign = async () => {
-    if (!form.title.trim() || !form.message.trim() || !business) {
-      toast.error("Titre et message requis");
+    if (!form.message.trim() || !business) {
+      toast.error("Veuillez écrire un message");
       return;
     }
     setSending(true);
@@ -112,12 +121,15 @@ const CampaignsPage = () => {
       return;
     }
 
+    const title = business.name;
+    const message = form.message.trim();
+
     // Insert notification logs
     const logs = customers.map(c => ({
       business_id: business.id,
       customer_id: c.id,
-      title: form.title.trim(),
-      message: form.message.trim(),
+      title,
+      message,
       type: "custom" as const,
     }));
 
@@ -128,7 +140,7 @@ const CampaignsPage = () => {
       return;
     }
 
-    // Trigger Wallet pass updates for all registered devices
+    // Trigger Wallet pass updates
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
@@ -139,7 +151,7 @@ const CampaignsPage = () => {
           body: JSON.stringify({
             business_id: business.id,
             action_type: "campaign",
-            change_message: `${form.title}: ${form.message}`.slice(0, 100),
+            change_message: message,
           }),
         }
       );
@@ -155,7 +167,7 @@ const CampaignsPage = () => {
     }
 
     setSendOpen(false);
-    setForm({ title: "", message: "", segment: "all" });
+    setForm({ message: "", segment: "all", tone: "offer" });
     fetchCampaigns();
     setSending(false);
   };
@@ -165,6 +177,8 @@ const CampaignsPage = () => {
       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
     </div>;
   }
+
+  const businessName = business?.name || "Mon Commerce";
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,6 +200,7 @@ const CampaignsPage = () => {
             <DialogContent className="max-w-lg">
               <DialogHeader><DialogTitle>Envoyer une campagne</DialogTitle></DialogHeader>
               <div className="space-y-4 mt-4">
+                {/* Segment */}
                 <div className="space-y-2">
                   <Label>Segment</Label>
                   <Select value={form.segment} onValueChange={(v) => setForm({ ...form, segment: v as Segment })}>
@@ -200,15 +215,78 @@ const CampaignsPage = () => {
                   </Select>
                   <p className="text-xs text-muted-foreground">{segmentLabels[form.segment].desc}</p>
                 </div>
+
+                {/* Tone selector */}
                 <div className="space-y-2">
-                  <Label>Titre</Label>
-                  <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Offre spéciale cette semaine !" className="rounded-xl" />
+                  <Label>Ton du message</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {toneOptions.map((t) => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setForm({ ...form, tone: t.value })}
+                        className={`p-2 rounded-xl border text-center text-xs transition-all ${
+                          form.tone === t.value
+                            ? "border-primary bg-primary/10 text-primary font-medium"
+                            : "border-border/50 text-muted-foreground hover:border-primary/30"
+                        }`}
+                      >
+                        <span className="text-lg block mb-0.5">{t.emoji}</span>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Message */}
                 <div className="space-y-2">
-                  <Label>Message</Label>
-                  <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Profitez de -20% sur..." className="rounded-xl" rows={4} />
+                  <div className="flex items-center justify-between">
+                    <Label>Message</Label>
+                    <span className={`text-xs ${form.message.length > MAX_MESSAGE_LENGTH ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                      {form.message.length}/{MAX_MESSAGE_LENGTH}
+                    </span>
+                  </div>
+                  <Textarea
+                    value={form.message}
+                    onChange={(e) => {
+                      if (e.target.value.length <= MAX_MESSAGE_LENGTH) {
+                        setForm({ ...form, message: e.target.value });
+                      }
+                    }}
+                    placeholder="Ex: -20% sur toute la carte aujourd'hui seulement 🎉"
+                    className="rounded-xl resize-none"
+                    rows={3}
+                  />
                 </div>
-                <Button onClick={handleSendCampaign} disabled={sending} className="w-full bg-gradient-primary text-primary-foreground rounded-xl gap-2">
+
+                {/* Live iPhone notification preview */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Aperçu notification iPhone</Label>
+                  <div className="rounded-2xl bg-muted/60 p-4 border border-border/30">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-bold text-primary">
+                          {businessName.slice(0, 2).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-sm truncate">{businessName}</p>
+                          <span className="text-[10px] text-muted-foreground ml-2 flex-shrink-0">maintenant</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5 break-words">
+                          {form.message || "Votre message apparaîtra ici…"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleSendCampaign}
+                  disabled={sending || !form.message.trim()}
+                  className="w-full bg-gradient-primary text-primary-foreground rounded-xl gap-2"
+                >
                   <Send className="w-4 h-4" /> {sending ? "Envoi..." : `Envoyer à ${segmentCounts[form.segment] || 0} client(s)`}
                 </Button>
               </div>

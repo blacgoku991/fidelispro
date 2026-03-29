@@ -126,6 +126,12 @@ export async function buildPkpass(
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const webServiceURL = `${supabaseUrl}/functions/v1/wallet-webservice`;
 
+  // Fetch merchant logo if available
+  const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
+
+  // Generate strip image with brand color
+  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
+
   const passJson: any = {
     formatVersion: 1,
     passTypeIdentifier: PASS_TYPE_ID,
@@ -137,7 +143,6 @@ export async function buildPkpass(
     foregroundColor: "rgb(255, 255, 255)",
     backgroundColor: bgColor,
     labelColor: "rgb(255, 255, 255)",
-    // PassKit web service for automatic updates
     webServiceURL,
     authenticationToken: authToken,
     barcode: {
@@ -176,12 +181,6 @@ export async function buildPkpass(
           value: `${levelEmoji} ${levelLabel}`,
         },
         {
-          key: "progress",
-          label: "PROGRESSION",
-          value: `${pointsCurrent} / ${pointsMax}`,
-          textAlignment: "PKTextAlignmentRight",
-        },
-        {
           key: "offer",
           label: "OFFRE DU JOUR",
           value: latestOffer,
@@ -190,9 +189,9 @@ export async function buildPkpass(
       ],
       auxiliaryFields: [
         {
-          key: "rewards",
-          label: "RÉCOMPENSES",
-          value: `${card.rewards_earned || 0} obtenues`,
+          key: "progress",
+          label: "PROGRESSION",
+          value: `${pointsCurrent} / ${pointsMax}`,
         },
         {
           key: "next_reward",
@@ -233,6 +232,10 @@ export async function buildPkpass(
     "pass.json": forgeSha1(passJsonBytes),
     "icon.png": forgeSha1(iconPng),
     "icon@2x.png": forgeSha1(icon2xPng),
+    "logo.png": forgeSha1(logoPng),
+    "logo@2x.png": forgeSha1(logo2xPng),
+    "strip.png": forgeSha1(stripPng),
+    "strip@2x.png": forgeSha1(strip2xPng),
   };
   const manifestStr = JSON.stringify(manifest);
   const manifestBytes = new TextEncoder().encode(manifestStr);
@@ -263,8 +266,211 @@ export async function buildPkpass(
   zip.file("signature", signatureBytes);
   zip.file("icon.png", iconPng);
   zip.file("icon@2x.png", icon2xPng);
+  zip.file("logo.png", logoPng);
+  zip.file("logo@2x.png", logo2xPng);
+  zip.file("strip.png", stripPng);
+  zip.file("strip@2x.png", strip2xPng);
 
   return zip.generateAsync({ type: "uint8array" });
+}
+
+// ── Logo helpers ──────────────────────────────────────────────────
+
+async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array; logo2xPng: Uint8Array }> {
+  if (business.logo_url) {
+    try {
+      const logoUrl = business.logo_url.split("?")[0]; // Remove cache buster
+      const response = await fetch(logoUrl);
+      if (response.ok) {
+        const imageBytes = new Uint8Array(await response.arrayBuffer());
+        // Use the fetched image for both sizes (browser/Wallet handles scaling)
+        return { logoPng: imageBytes, logo2xPng: imageBytes };
+      }
+    } catch (err) {
+      console.error("[Pass] Failed to fetch logo, using fallback:", err);
+    }
+  }
+
+  // Generate text-based initials logo
+  const logoPng = generateInitialsLogo(business.name, business.primary_color || "#6B46C1", 160, 50);
+  const logo2xPng = generateInitialsLogo(business.name, business.primary_color || "#6B46C1", 320, 100);
+  return { logoPng, logo2xPng };
+}
+
+function generateInitialsLogo(name: string, hexColor: string, width: number, height: number): Uint8Array {
+  // Generate a minimal BMP with initials rendered as a solid color block
+  // Since we can't use Canvas in Deno edge functions, we create a simple solid-color PNG
+  // The logoText field in pass.json shows the business name, so the logo just needs brand color
+  return generateSolidColorPng(width, height, hexColor);
+}
+
+function generateSolidColorPng(width: number, height: number, hexColor: string): Uint8Array {
+  const hex = /^#[0-9A-Fa-f]{6}$/.test(hexColor) ? hexColor : "#6B46C1";
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+
+  // Minimal valid PNG: solid color
+  // We'll create raw pixel data and wrap in PNG format
+  const rawData: number[] = [];
+  for (let y = 0; y < height; y++) {
+    rawData.push(0); // filter byte
+    for (let x = 0; x < width; x++) {
+      rawData.push(r, g, b, 255);
+    }
+  }
+
+  const rawBytes = new Uint8Array(rawData);
+  const compressed = deflateRaw(rawBytes);
+
+  // Build PNG
+  const chunks: Uint8Array[] = [];
+
+  // Signature
+  chunks.push(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]));
+
+  // IHDR
+  const ihdr = new Uint8Array(13);
+  writeUint32BE(ihdr, 0, width);
+  writeUint32BE(ihdr, 4, height);
+  ihdr[8] = 8;  // bit depth
+  ihdr[9] = 6;  // color type RGBA
+  ihdr[10] = 0; // compression
+  ihdr[11] = 0; // filter
+  ihdr[12] = 0; // interlace
+  chunks.push(makeChunk("IHDR", ihdr));
+
+  // IDAT
+  chunks.push(makeChunk("IDAT", compressed));
+
+  // IEND
+  chunks.push(makeChunk("IEND", new Uint8Array(0)));
+
+  // Concatenate
+  let totalLen = 0;
+  for (const c of chunks) totalLen += c.length;
+  const png = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const c of chunks) {
+    png.set(c, offset);
+    offset += c.length;
+  }
+  return png;
+}
+
+function makeChunk(type: string, data: Uint8Array): Uint8Array {
+  const chunk = new Uint8Array(4 + 4 + data.length + 4);
+  writeUint32BE(chunk, 0, data.length);
+  for (let i = 0; i < 4; i++) chunk[4 + i] = type.charCodeAt(i);
+  chunk.set(data, 8);
+  const crc = crc32(chunk.subarray(4, 8 + data.length));
+  writeUint32BE(chunk, 8 + data.length, crc);
+  return chunk;
+}
+
+function writeUint32BE(buf: Uint8Array, offset: number, val: number) {
+  buf[offset] = (val >>> 24) & 0xff;
+  buf[offset + 1] = (val >>> 16) & 0xff;
+  buf[offset + 2] = (val >>> 8) & 0xff;
+  buf[offset + 3] = val & 0xff;
+}
+
+function crc32(data: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data[i];
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function deflateRaw(data: Uint8Array): Uint8Array {
+  // Use zlib stored blocks (no compression) — simple and always valid
+  const blocks: number[] = [];
+  const MAX_BLOCK = 65535;
+
+  // zlib header
+  blocks.push(0x78, 0x01);
+
+  let offset = 0;
+  while (offset < data.length) {
+    const remaining = data.length - offset;
+    const blockSize = Math.min(remaining, MAX_BLOCK);
+    const isFinal = offset + blockSize >= data.length;
+    blocks.push(isFinal ? 0x01 : 0x00);
+    blocks.push(blockSize & 0xff, (blockSize >> 8) & 0xff);
+    blocks.push((~blockSize) & 0xff, ((~blockSize) >> 8) & 0xff);
+    for (let i = 0; i < blockSize; i++) {
+      blocks.push(data[offset + i]);
+    }
+    offset += blockSize;
+  }
+
+  // Adler-32 checksum
+  let a = 1, b2 = 0;
+  for (let i = 0; i < data.length; i++) {
+    a = (a + data[i]) % 65521;
+    b2 = (b2 + a) % 65521;
+  }
+  const adler = ((b2 << 16) | a) >>> 0;
+  blocks.push((adler >>> 24) & 0xff, (adler >>> 16) & 0xff, (adler >>> 8) & 0xff, adler & 0xff);
+
+  return new Uint8Array(blocks);
+}
+
+// ── Strip image generation ────────────────────────────────────────
+
+function generateStripImages(hexColor: string): { stripPng: Uint8Array; strip2xPng: Uint8Array } {
+  const stripPng = generateStripPng(320, 123, hexColor);
+  const strip2xPng = generateStripPng(640, 246, hexColor);
+  return { stripPng, strip2xPng };
+}
+
+function generateStripPng(width: number, height: number, hexColor: string): Uint8Array {
+  const hex = /^#[0-9A-Fa-f]{6}$/.test(hexColor) ? hexColor : "#6B46C1";
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+
+  // Create strip with diagonal pattern overlay
+  const rawData: number[] = [];
+  for (let y = 0; y < height; y++) {
+    rawData.push(0); // filter byte
+    for (let x = 0; x < width; x++) {
+      // Diagonal stripe pattern: every 8px, slightly lighter
+      const stripe = ((x + y) % 16) < 4;
+      const lightness = stripe ? 20 : 0;
+      // Gradient from top to bottom (slightly darker at bottom)
+      const gradientDarken = Math.floor((y / height) * 30);
+      const pr = Math.min(255, Math.max(0, r + lightness - gradientDarken));
+      const pg = Math.min(255, Math.max(0, g + lightness - gradientDarken));
+      const pb = Math.min(255, Math.max(0, b + lightness - gradientDarken));
+      rawData.push(pr, pg, pb, 255);
+    }
+  }
+
+  const rawBytes = new Uint8Array(rawData);
+  const compressed = deflateRaw(rawBytes);
+
+  const chunks: Uint8Array[] = [];
+  chunks.push(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]));
+
+  const ihdr = new Uint8Array(13);
+  writeUint32BE(ihdr, 0, width);
+  writeUint32BE(ihdr, 4, height);
+  ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  chunks.push(makeChunk("IHDR", ihdr));
+  chunks.push(makeChunk("IDAT", compressed));
+  chunks.push(makeChunk("IEND", new Uint8Array(0)));
+
+  let totalLen = 0;
+  for (const c of chunks) totalLen += c.length;
+  const png = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const c of chunks) { png.set(c, offset); offset += c.length; }
+  return png;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
