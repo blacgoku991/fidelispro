@@ -301,7 +301,7 @@ const SettingsPage = () => {
               </div>
 
               {/* Proximity message */}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs">Message de proximité</Label>
                   <span className={`text-[10px] tabular-nums ${geoMessage.length > 80 ? "text-destructive" : "text-muted-foreground"}`}>
@@ -314,37 +314,46 @@ const SettingsPage = () => {
                   placeholder="Passez nous voir, on vous attend ! 🎉"
                   className="rounded-xl text-sm"
                 />
-              </div>
 
-              {/* Time window */}
-              <div className="space-y-2">
-                <Label className="text-xs flex items-center gap-1.5">
-                  <Clock className="w-3 h-3" /> Plage horaire d'envoi
-                </Label>
-                <div className="flex items-center gap-3">
-                  <Input type="time" value={geoTimeStart} onChange={(e) => setGeoTimeStart(e.target.value)} className="rounded-xl text-sm w-28" />
-                  <span className="text-xs text-muted-foreground">à</span>
-                  <Input type="time" value={geoTimeEnd} onChange={(e) => setGeoTimeEnd(e.target.value)} className="rounded-xl text-sm w-28" />
+                {/* Suggested messages */}
+                <div className="space-y-1">
+                  <p className="text-[10px] text-muted-foreground font-medium">💡 Suggestions :</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "🎁 Une surprise vous attend juste à côté !",
+                      "☕ Passez prendre votre café préféré !",
+                      "⭐ Vos points fidélité vous attendent !",
+                      "🔥 -20% en ce moment, passez en profiter !",
+                      "👋 On est juste là, venez nous voir !",
+                    ].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => { if (suggestion.length <= 80) setGeoMessage(suggestion); }}
+                        className="text-[10px] px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/10 truncate max-w-full"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Les notifications ne sont envoyées que pendant ces heures.
-                </p>
               </div>
 
-              {/* Info box */}
-              <div className="rounded-xl bg-primary/5 border border-primary/10 p-3.5 space-y-1.5">
-                <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                  📱 Géré nativement par Apple Wallet
+              {/* Info: proximity vs push */}
+              <div className="rounded-xl bg-accent/10 border border-accent/20 p-3 space-y-1">
+                <p className="text-[11px] font-semibold text-accent flex items-center gap-1.5">
+                  ⚠️ Notification discrète (écran verrouillé uniquement)
                 </p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  La notification s'affiche automatiquement sur l'iPhone du client quand il passe à proximité.
-                  <strong> Maximum 1 fois par jour.</strong> Aucune app requise.
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                </p>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Ce message s'affiche <strong>uniquement sur l'écran verrouillé</strong> de l'iPhone — pas de bannière, pas de son. Pour une alerte visible avec bannière, utilisez les <strong>Campagnes push</strong>.
                 </p>
               </div>
 
               {/* Preview */}
               <div className="rounded-2xl bg-muted/60 p-3.5 border border-border/30">
-                <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider font-medium">Aperçu notification</p>
+                <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider font-medium">Aperçu écran verrouillé</p>
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
                     <Bell className="w-4 h-4 text-primary" />
@@ -352,7 +361,7 @@ const SettingsPage = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
                       <p className="font-semibold text-xs truncate">{business?.name || "Votre commerce"}</p>
-                      <span className="text-[10px] text-muted-foreground ml-2">maintenant</span>
+                      <span className="text-[10px] text-muted-foreground ml-2">🔒 verrouillé</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                       {geoMessage || "Passez nous voir, on vous attend ! 🎉"}
