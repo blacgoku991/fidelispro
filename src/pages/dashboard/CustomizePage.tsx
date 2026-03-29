@@ -39,6 +39,31 @@ const CustomizePage = () => {
   );
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+
+  const geocodeAddress = async (address: string) => {
+    if (!address.trim()) { toast.error("Entrez une adresse d'abord"); return; }
+    setGeocoding(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`, {
+        headers: { "Accept-Language": "fr" },
+      });
+      const data = await res.json();
+      if (data.length === 0) {
+        toast.error("Adresse introuvable. Essayez d'être plus précis.");
+        setGeocoding(false);
+        return;
+      }
+      const result = data[0];
+      const lat = parseFloat(parseFloat(result.lat).toFixed(7));
+      const lng = parseFloat(parseFloat(result.lon).toFixed(7));
+      setForm(prev => ({ ...prev, latitude: lat, longitude: lng }));
+      toast.success(`📍 Position trouvée : ${result.display_name.split(",").slice(0, 3).join(",")}`);
+    } catch {
+      toast.error("Erreur de géocodage. Réessayez.");
+    }
+    setGeocoding(false);
+  };
 
   useEffect(() => {
     if (!business) return;
@@ -410,63 +435,95 @@ const CustomizePage = () => {
 
               {form.geofence_enabled && (
                 <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
-                  {/* Address */}
+                  {/* Address + geocoding */}
                   <div className="space-y-1.5">
                     <Label className="text-xs flex items-center gap-1.5">
-                      <MapPin className="w-3 h-3" /> Adresse de votre boutique
+                      <MapPin className="w-3 h-3" /> Adresse de votre établissement
                     </Label>
-                    <Input
-                      value={form.address}
-                      onChange={(e) => update("address", e.target.value)}
-                      placeholder="Ex: 12 rue de la Paix, 75002 Paris"
-                      className="rounded-xl text-sm"
-                    />
-                  </div>
-
-                  {/* GPS auto */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
+                    <div className="flex gap-2">
+                      <Input
+                        value={form.address}
+                        onChange={(e) => update("address", e.target.value)}
+                        placeholder="Ex: 12 rue de la Paix, 75002 Paris"
+                        className="rounded-xl text-sm flex-1"
+                        onKeyDown={(e) => e.key === "Enter" && geocodeAddress(form.address)}
+                      />
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="rounded-xl gap-2 text-xs"
-                        onClick={() => {
-                          if (!navigator.geolocation) {
-                            toast.error("Géolocalisation non supportée par votre navigateur");
-                            return;
-                          }
-                          toast.info("Localisation en cours...");
-                          navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                              setForm(prev => ({
-                                ...prev,
-                                latitude: parseFloat(pos.coords.latitude.toFixed(7)),
-                                longitude: parseFloat(pos.coords.longitude.toFixed(7)),
-                              }));
-                              toast.success("Position détectée !");
-                            },
-                            (err) => {
-                              toast.error("Impossible d'obtenir la position. Vérifiez vos permissions.");
-                            },
-                            { enableHighAccuracy: true, timeout: 10000 }
-                          );
-                        }}
+                        className="rounded-xl gap-1.5 text-xs shrink-0"
+                        disabled={geocoding}
+                        onClick={() => geocodeAddress(form.address)}
                       >
-                        <Navigation className="w-3.5 h-3.5" /> Localiser automatiquement
+                        {geocoding ? "..." : "📍 Localiser"}
                       </Button>
-                      {form.latitude && form.longitude && (
-                        <span className="text-[11px] text-muted-foreground font-mono">
-                          📍 {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
-                        </span>
-                      )}
                     </div>
-                    {!form.latitude && (
-                      <p className="text-[10px] text-destructive/80">
-                        ⚠️ Coordonnées GPS requises pour le géofencing Apple Wallet
-                      </p>
-                    )}
+                    <p className="text-[10px] text-muted-foreground">
+                      Tapez l'adresse puis cliquez "Localiser" pour obtenir les coordonnées GPS
+                    </p>
                   </div>
+
+                  {/* GPS manual / browser fallback */}
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-xl gap-1.5 text-[11px] text-muted-foreground"
+                      onClick={() => {
+                        if (!navigator.geolocation) { toast.error("Géolocalisation non supportée"); return; }
+                        toast.info("Localisation GPS en cours...");
+                        navigator.geolocation.getCurrentPosition(
+                          (pos) => {
+                            setForm(prev => ({
+                              ...prev,
+                              latitude: parseFloat(pos.coords.latitude.toFixed(7)),
+                              longitude: parseFloat(pos.coords.longitude.toFixed(7)),
+                            }));
+                            toast.success("Position GPS détectée !");
+                          },
+                          () => toast.error("Impossible d'obtenir la position GPS"),
+                          { enableHighAccuracy: true, timeout: 10000 }
+                        );
+                      }}
+                    >
+                      <Navigation className="w-3 h-3" /> Ou utiliser ma position actuelle
+                    </Button>
+                  </div>
+
+                  {/* Map confirmation */}
+                  {form.latitude && form.longitude && (
+                    <div className="space-y-2 animate-in fade-in duration-300">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                          ✅ Position confirmée
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
+                        </span>
+                      </div>
+                      <div className="rounded-xl overflow-hidden border border-border/50 h-[200px]">
+                        <iframe
+                          title="Position de votre boutique"
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${form.longitude - 0.005},${form.latitude - 0.003},${form.longitude + 0.005},${form.latitude + 0.003}&layer=mapnik&marker=${form.latitude},${form.longitude}`}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        Si la position n'est pas exacte, ajustez l'adresse et relocalisez
+                      </p>
+                    </div>
+                  )}
+
+                  {!form.latitude && (
+                    <p className="text-[10px] text-destructive/80">
+                      ⚠️ Coordonnées GPS requises — localisez votre adresse ci-dessus
+                    </p>
+                  )}
 
                   {/* Radius slider */}
                   <div className="space-y-3">
