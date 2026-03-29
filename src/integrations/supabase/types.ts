@@ -14,16 +14,500 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      businesses: {
+        Row: {
+          address: string | null
+          auto_notifications: boolean | null
+          card_style: string | null
+          category: string | null
+          city: string | null
+          created_at: string
+          description: string | null
+          geofence_enabled: boolean | null
+          geofence_radius: number | null
+          id: string
+          latitude: number | null
+          logo_url: string | null
+          longitude: number | null
+          max_points_per_card: number | null
+          name: string
+          owner_id: string
+          phone: string | null
+          primary_color: string | null
+          reward_description: string | null
+          secondary_color: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_plan:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          subscription_status:
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
+          trial_ends_at: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          auto_notifications?: boolean | null
+          card_style?: string | null
+          category?: string | null
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          geofence_enabled?: boolean | null
+          geofence_radius?: number | null
+          id?: string
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          max_points_per_card?: number | null
+          name: string
+          owner_id: string
+          phone?: string | null
+          primary_color?: string | null
+          reward_description?: string | null
+          secondary_color?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_plan?:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          subscription_status?:
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          auto_notifications?: boolean | null
+          card_style?: string | null
+          category?: string | null
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          geofence_enabled?: boolean | null
+          geofence_radius?: number | null
+          id?: string
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          max_points_per_card?: number | null
+          name?: string
+          owner_id?: string
+          phone?: string | null
+          primary_color?: string | null
+          reward_description?: string | null
+          secondary_color?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_plan?:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          subscription_status?:
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      customer_cards: {
+        Row: {
+          business_id: string
+          card_code: string | null
+          created_at: string
+          current_points: number | null
+          customer_id: string
+          id: string
+          is_active: boolean | null
+          max_points: number | null
+          rewards_earned: number | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          card_code?: string | null
+          created_at?: string
+          current_points?: number | null
+          customer_id: string
+          id?: string
+          is_active?: boolean | null
+          max_points?: number | null
+          rewards_earned?: number | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          card_code?: string | null
+          created_at?: string
+          current_points?: number | null
+          customer_id?: string
+          id?: string
+          is_active?: boolean | null
+          max_points?: number | null
+          rewards_earned?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_cards_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_cards_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          badges: string[] | null
+          business_id: string
+          created_at: string
+          current_streak: number | null
+          email: string | null
+          full_name: string | null
+          id: string
+          last_visit_at: string | null
+          level: Database["public"]["Enums"]["loyalty_level"] | null
+          longest_streak: number | null
+          phone: string | null
+          push_token: string | null
+          total_points: number | null
+          total_visits: number | null
+          updated_at: string
+        }
+        Insert: {
+          badges?: string[] | null
+          business_id: string
+          created_at?: string
+          current_streak?: number | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          last_visit_at?: string | null
+          level?: Database["public"]["Enums"]["loyalty_level"] | null
+          longest_streak?: number | null
+          phone?: string | null
+          push_token?: string | null
+          total_points?: number | null
+          total_visits?: number | null
+          updated_at?: string
+        }
+        Update: {
+          badges?: string[] | null
+          business_id?: string
+          created_at?: string
+          current_streak?: number | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          last_visit_at?: string | null
+          level?: Database["public"]["Enums"]["loyalty_level"] | null
+          longest_streak?: number | null
+          phone?: string | null
+          push_token?: string | null
+          total_points?: number | null
+          total_visits?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_templates: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          message: string
+          title: string
+          trigger_days_inactive: number | null
+          trigger_distance: number | null
+          trigger_points_remaining: number | null
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          message: string
+          title: string
+          trigger_days_inactive?: number | null
+          trigger_distance?: number | null
+          trigger_points_remaining?: number | null
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          message?: string
+          title?: string
+          trigger_days_inactive?: number | null
+          trigger_distance?: number | null
+          trigger_points_remaining?: number | null
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_templates_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications_log: {
+        Row: {
+          business_id: string
+          customer_id: string
+          id: string
+          message: string
+          read_at: string | null
+          sent_at: string
+          template_id: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          business_id: string
+          customer_id: string
+          id?: string
+          message: string
+          read_at?: string | null
+          sent_at?: string
+          template_id?: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          business_id?: string
+          customer_id?: string
+          id?: string
+          message?: string
+          read_at?: string | null
+          sent_at?: string
+          template_id?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_log_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_log_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "notification_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      points_history: {
+        Row: {
+          action: string | null
+          business_id: string
+          card_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          note: string | null
+          points_added: number
+          scanned_by: string | null
+        }
+        Insert: {
+          action?: string | null
+          business_id: string
+          card_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          note?: string | null
+          points_added?: number
+          scanned_by?: string | null
+        }
+        Update: {
+          action?: string | null
+          business_id?: string
+          card_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          note?: string | null
+          points_added?: number
+          scanned_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_history_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "points_history_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "customer_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "points_history_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rewards: {
+        Row: {
+          business_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          points_required: number
+          title: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          points_required?: number
+          title: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          points_required?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rewards_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "super_admin" | "business_owner"
+      loyalty_level: "bronze" | "silver" | "gold"
+      notification_type:
+        | "proximity"
+        | "points_reminder"
+        | "special_offer"
+        | "win_back"
+        | "reward_earned"
+        | "custom"
+      subscription_plan: "starter" | "pro" | "enterprise"
+      subscription_status:
+        | "active"
+        | "inactive"
+        | "trialing"
+        | "past_due"
+        | "canceled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +634,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["super_admin", "business_owner"],
+      loyalty_level: ["bronze", "silver", "gold"],
+      notification_type: [
+        "proximity",
+        "points_reminder",
+        "special_offer",
+        "win_back",
+        "reward_earned",
+        "custom",
+      ],
+      subscription_plan: ["starter", "pro", "enterprise"],
+      subscription_status: [
+        "active",
+        "inactive",
+        "trialing",
+        "past_due",
+        "canceled",
+      ],
+    },
   },
 } as const

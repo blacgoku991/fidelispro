@@ -1,59 +1,60 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { MobileHeader } from "@/components/dashboard/MobileHeader";
+import { StatsCard } from "@/components/dashboard/StatsCard";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import {
-  CreditCard,
-  Users,
-  TrendingUp,
-  QrCode,
-  Bell,
-  LogOut,
-  BarChart3,
-  Settings,
-  Crown,
-  Flame,
+  CreditCard, Users, TrendingUp, QrCode, Bell,
+  BarChart3, Settings, Crown, Flame, Palette,
 } from "lucide-react";
-import { toast } from "sonner";
-import type { User } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
 
-const stats = [
-  { label: "Clients actifs", value: "0", icon: Users, change: "+0%" },
-  { label: "Taux de retour", value: "0%", icon: TrendingUp, change: "+0%" },
-  { label: "Scans aujourd'hui", value: "0", icon: QrCode, change: "+0%" },
-  { label: "Récompenses données", value: "0", icon: Crown, change: "+0%" },
+const sidebarItems = [
+  { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
+  { icon: CreditCard, label: "Cartes", path: "/dashboard/cards" },
+  { icon: Users, label: "Clients", path: "/dashboard/clients" },
+  { icon: QrCode, label: "Scanner", path: "/dashboard/scanner" },
+  { icon: Bell, label: "Notifications", path: "/dashboard/notifications" },
+  { icon: Palette, label: "Personnalisation", path: "/dashboard/customize" },
+  { icon: Settings, label: "Paramètres", path: "/dashboard/settings" },
 ];
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading, business, logout } = useAuth();
+  const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0 });
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (!session) {
-        navigate("/login");
-      } else {
-        setUser(session.user);
-      }
-      setLoading(false);
-    });
+    if (!business) return;
+    const fetchStats = async () => {
+      const { count: clientCount } = await supabase
+        .from("customers")
+        .select("*", { count: "exact", head: true })
+        .eq("business_id", business.id);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) navigate("/login");
-      else setUser(session.user);
-      setLoading(false);
-    });
+      const { count: rewardCount } = await supabase
+        .from("customer_cards")
+        .select("*", { count: "exact", head: true })
+        .eq("business_id", business.id)
+        .gt("rewards_earned", 0);
 
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+      const today = new Date().toISOString().split("T")[0];
+      const { count: scansCount } = await supabase
+        .from("points_history")
+        .select("*", { count: "exact", head: true })
+        .eq("business_id", business.id)
+        .gte("created_at", today);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success("Déconnexion réussie");
-    navigate("/");
-  };
+      setStats({
+        clients: clientCount || 0,
+        returnRate: clientCount ? Math.min(Math.round(((rewardCount || 0) / clientCount) * 100), 100) : 0,
+        scansToday: scansCount || 0,
+        rewardsGiven: rewardCount || 0,
+      });
+    };
+    fetchStats();
+  }, [business]);
 
   if (loading) {
     return (
@@ -63,66 +64,20 @@ const Dashboard = () => {
     );
   }
 
-  const businessName = user?.user_metadata?.business_name || "Mon Commerce";
+  const businessName = business?.name || user?.user_metadata?.business_name || "Mon Commerce";
+
+  const statCards = [
+    { label: "Clients actifs", value: stats.clients, icon: Users, change: "+0%" },
+    { label: "Taux de retour", value: `${stats.returnRate}%`, icon: TrendingUp, change: "+0%" },
+    { label: "Scans aujourd'hui", value: stats.scansToday, icon: QrCode, change: "+0%" },
+    { label: "Récompenses données", value: stats.rewardsGiven, icon: Crown, change: "+0%" },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-card border-r border-border/50 p-6 hidden lg:flex flex-col">
-        <div className="flex items-center gap-2.5 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-            <CreditCard className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-display font-bold">FidéliPro</span>
-        </div>
-
-        <nav className="flex-1 space-y-1">
-          {[
-            { icon: BarChart3, label: "Dashboard", active: true },
-            { icon: CreditCard, label: "Cartes", active: false },
-            { icon: Users, label: "Clients", active: false },
-            { icon: QrCode, label: "Scanner", active: false },
-            { icon: Bell, label: "Notifications", active: false },
-            { icon: Settings, label: "Paramètres", active: false },
-          ].map((item) => (
-            <button
-              key={item.label}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                item.active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <Button
-          variant="ghost"
-          onClick={handleLogout}
-          className="justify-start gap-3 text-muted-foreground hover:text-destructive"
-        >
-          <LogOut className="w-4 h-4" />
-          Déconnexion
-        </Button>
-      </aside>
-
-      {/* Main */}
+      <DashboardSidebar items={sidebarItems} onLogout={logout} />
       <main className="lg:ml-64 p-6 lg:p-8">
-        {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <CreditCard className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold">FidéliPro</span>
-          </div>
-          <Button variant="ghost" size="icon" onClick={handleLogout}>
-            <LogOut className="w-4 h-4" />
-          </Button>
-        </div>
+        <MobileHeader onLogout={logout} />
 
         <div className="mb-8">
           <h1 className="text-2xl font-display font-bold">
@@ -133,24 +88,12 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Stats */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="p-5 rounded-2xl bg-card border border-border/50 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <stat.icon className="w-5 h-5 text-muted-foreground" />
-                <span className="text-xs text-emerald-600 font-medium">{stat.change}</span>
-              </div>
-              <p className="text-2xl font-display font-bold">{stat.value}</p>
-              <p className="text-sm text-muted-foreground mt-0.5">{stat.label}</p>
-            </div>
+          {statCards.map((stat, i) => (
+            <StatsCard key={stat.label} {...stat} index={i} />
           ))}
         </div>
 
-        {/* Card preview + quick scan */}
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="p-6 rounded-2xl bg-card border border-border/50">
             <h2 className="text-lg font-display font-semibold mb-4">Votre carte de fidélité</h2>
@@ -162,7 +105,7 @@ const Dashboard = () => {
                 businessName={businessName}
                 customerName="Aperçu client"
                 points={5}
-                maxPoints={10}
+                maxPoints={business?.max_points_per_card || 10}
                 level="gold"
                 cardId={`business-${user?.id?.slice(0, 8) || "demo"}`}
               />
