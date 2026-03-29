@@ -9,17 +9,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  LayoutDashboard, Building2, Users, CreditCard, Bell, Settings,
-  TrendingUp, Crown,
-} from "lucide-react";
-
-const sidebarItems = [
-  { icon: LayoutDashboard, label: "Vue d'ensemble", path: "/admin" },
-  { icon: Building2, label: "Entreprises", path: "/admin/businesses" },
-  { icon: Users, label: "Utilisateurs", path: "/admin/users" },
-  { icon: Settings, label: "Configuration", path: "/admin/settings" },
-];
+import { adminSidebarItems } from "@/lib/sidebarItems";
+import { Building2, Users, TrendingUp, Crown } from "lucide-react";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -73,7 +64,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar items={sidebarItems} onLogout={logout} />
+      <DashboardSidebar items={adminSidebarItems} onLogout={logout} />
       <main className="lg:ml-64 p-6 lg:p-8">
         <MobileHeader onLogout={logout} />
 
