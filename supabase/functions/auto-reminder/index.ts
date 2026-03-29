@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       const rewardThreshold = biz.reward_alert_threshold || 2;
       const maxPoints = biz.max_points_per_card || 10;
       const unitLabel = biz.loyalty_type === "stamps" ? "tampons" : "points";
-
+      const projectUrl = Deno.env.get("SUPABASE_URL")!
       // Find inactive customers (last_visit_at older than X days)
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - reminderDays);
