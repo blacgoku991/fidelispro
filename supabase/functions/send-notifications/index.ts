@@ -11,11 +11,11 @@ const corsHeaders = {
 function b64urlDecode(s: string): Uint8Array {
   const p = "=".repeat((4 - (s.length % 4)) % 4);
   const std = s.replace(/-/g, "+").replace(/_/g, "/") + p;
-  return new Uint8Array(b64Decode(std));
+  return b64Decode(std);
 }
 
 function b64urlEncode(buf: Uint8Array): string {
-  return b64Encode(buf).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  return b64Encode(buf).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function concat(...a: Uint8Array[]): Uint8Array {
