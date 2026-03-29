@@ -1,0 +1,1 @@
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS geofence_message TEXT DEFAULT 'Passez nous voir, on vous attend ! 🎉';
