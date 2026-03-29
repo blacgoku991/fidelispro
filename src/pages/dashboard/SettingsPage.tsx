@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation } from "lucide-react";
+import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2 } from "lucide-react";
 import GeofenceMap from "@/components/dashboard/GeofenceMap";
 import { toast } from "sonner";
+import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
 
 const planLabels: Record<string, string> = {
   starter: "Starter — 29€/mois",
@@ -419,7 +420,7 @@ const SettingsPage = () => {
         </div>
 
         {/* Abonnement */}
-        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-3">
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
           <h2 className="font-display font-semibold text-sm flex items-center gap-2">
             <Crown className="w-4 h-4 text-accent" /> Abonnement
           </h2>
@@ -428,16 +429,101 @@ const SettingsPage = () => {
             <Badge variant="outline" className="text-xs">{business?.subscription_status || "trialing"}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">{planLabels[business?.subscription_plan || "starter"]}</p>
-          {business?.trial_ends_at && (
+          {business?.trial_ends_at && business?.subscription_status === "trialing" && (
             <p className="text-xs text-muted-foreground">
               Essai gratuit jusqu'au {new Date(business.trial_ends_at).toLocaleDateString("fr-FR")}
             </p>
           )}
-          <Button variant="outline" size="sm" className="rounded-xl">Gérer l'abonnement</Button>
+
+          {/* Plan cards */}
+          <div className="grid gap-3 pt-2">
+            {Object.entries(STRIPE_PLANS).map(([key, plan]) => {
+              const isCurrent = business?.subscription_plan === key;
+              return (
+                <div key={key} className={`p-4 rounded-xl border transition-all ${
+                  isCurrent ? "border-primary bg-primary/5" : "border-border/40 bg-secondary/20"
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm">{plan.name}</p>
+                        {isCurrent && <Badge className="bg-primary text-primary-foreground text-[10px]">Actuel</Badge>}
+                        {"popular" in plan && plan.popular && !isCurrent && (
+                          <Badge variant="outline" className="text-[10px]">Populaire</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{plan.features.slice(0, 3).join(" • ")}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display font-bold">{plan.price}€<span className="text-xs text-muted-foreground font-normal">/mois</span></p>
+                      {!isCurrent && (
+                        <SubscribeButton plan={key as PlanKey} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Manage existing subscription */}
+          {business?.stripe_subscription_id && (
+            <ManageSubscriptionButton />
+          )}
         </div>
       </div>
     </DashboardLayout>
   );
 };
+
+function SubscribeButton({ plan }: { plan: PlanKey }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { plan },
+      });
+      if (error) throw error;
+      if (data?.url) window.open(data.url, "_blank");
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors de la création du checkout");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" className="rounded-lg text-[11px] mt-1 gap-1" onClick={handleSubscribe} disabled={loading}>
+      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CreditCard className="w-3 h-3" />}
+      Souscrire
+    </Button>
+  );
+}
+
+function ManageSubscriptionButton() {
+  const [loading, setLoading] = useState(false);
+
+  const handleManage = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) window.open(data.url, "_blank");
+    } catch (err: any) {
+      toast.error(err.message || "Erreur");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button variant="outline" size="sm" className="rounded-xl gap-2 w-full" onClick={handleManage} disabled={loading}>
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+      Gérer mon abonnement Stripe
+    </Button>
+  );
+}
 
 export default SettingsPage;
