@@ -115,14 +115,18 @@ const CardViewPage = () => {
 
         {/* Apple Wallet button */}
         {isAppleDevice && (
-          <Button
+          <button
             onClick={handleAddToWallet}
             disabled={walletLoading}
-            className="w-full h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-semibold gap-2"
+            className="w-full flex justify-center"
           >
-            <Wallet className="w-5 h-5" />
-            {walletLoading ? "Génération..." : " Ajouter à Apple Wallet"}
-          </Button>
+            <img
+              src="https://developer.apple.com/wallet/add-to-apple-wallet-guidelines/images/add-to-apple-wallet-logo.svg"
+              alt="Add to Apple Wallet"
+              className="h-12 hover:opacity-80 transition-opacity"
+              style={{ filter: walletLoading ? "grayscale(1) opacity(0.5)" : "none" }}
+            />
+          </button>
         )}
 
         <p className="text-center text-xs text-muted-foreground">
