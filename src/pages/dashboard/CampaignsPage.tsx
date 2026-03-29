@@ -74,7 +74,7 @@ const CampaignsPage = () => {
     if (!business) return;
     const { data: customers } = await supabase
       .from("customers")
-      .select("id, last_visit_at, level, customer_cards(current_points, max_points)")
+      .select("id, last_visit_at, level, created_at, customer_cards(current_points, max_points)")
       .eq("business_id", business.id);
     if (!customers) return;
     const now = new Date();
@@ -90,8 +90,16 @@ const CampaignsPage = () => {
 
     setSegmentCounts({
       all: customers.length,
-      active: customers.filter(c => c.last_visit_at && new Date(c.last_visit_at) > sevenDaysAgo).length,
-      inactive: customers.filter(c => !c.last_visit_at || new Date(c.last_visit_at) < thirtyDaysAgo).length,
+      active: customers.filter(c => {
+        const lastVisit = c.last_visit_at ? new Date(c.last_visit_at) : null;
+        const created = new Date(c.created_at);
+        return (lastVisit && lastVisit > sevenDaysAgo) || created > sevenDaysAgo;
+      }).length,
+      inactive: customers.filter(c => {
+        const lastVisit = c.last_visit_at ? new Date(c.last_visit_at) : null;
+        const created = new Date(c.created_at);
+        return (!lastVisit && created < thirtyDaysAgo) || (lastVisit && lastVisit < thirtyDaysAgo);
+      }).length,
       vip: customers.filter(c => c.level === "gold").length,
       close_to_reward: customers.filter(c => {
         const card = c.customer_cards?.[0];
@@ -105,9 +113,23 @@ const CampaignsPage = () => {
     if (!business) return [];
     let query = supabase.from("customers").select("id").eq("business_id", business.id);
     const now = new Date();
-    if (segment === "active") query = query.gte("last_visit_at", new Date(now.getTime() - 7 * 86400000).toISOString());
-    else if (segment === "inactive") query = query.or(`last_visit_at.is.null,last_visit_at.lt.${new Date(now.getTime() - 30 * 86400000).toISOString()}`);
-    else if (segment === "vip") query = query.eq("level", "gold");
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
+
+    if (segment === "active") {
+      // Active = visited in last 7 days OR created in last 7 days
+      const { data: visited } = await supabase.from("customers").select("id").eq("business_id", business.id).gte("last_visit_at", sevenDaysAgo);
+      const { data: recent } = await supabase.from("customers").select("id").eq("business_id", business.id).is("last_visit_at", null).gte("created_at", sevenDaysAgo);
+      const ids = new Set([...(visited || []).map(c => c.id), ...(recent || []).map(c => c.id)]);
+      return Array.from(ids).map(id => ({ id }));
+    } else if (segment === "inactive") {
+      const { data } = await supabase.from("customers").select("id, last_visit_at, created_at").eq("business_id", business.id);
+      return (data || []).filter(c => {
+        const lastVisit = c.last_visit_at ? new Date(c.last_visit_at) : null;
+        const created = new Date(c.created_at);
+        return (!lastVisit && created < new Date(thirtyDaysAgo)) || (lastVisit && lastVisit < new Date(thirtyDaysAgo));
+      });
+    } else if (segment === "vip") query = query.eq("level", "gold");
     else if (segment === "nearby") {
       const { data: locations } = await supabase
         .from("customer_locations")
