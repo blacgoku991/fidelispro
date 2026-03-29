@@ -179,7 +179,8 @@ const ClientsPage = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
-                  className="border-b transition-colors hover:bg-muted/50"
+                  className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
+                  onClick={() => setSelected(customer)}
                 >
                   <TableCell>
                     <p className="font-medium text-sm">{customer.full_name || "Sans nom"}</p>
@@ -203,7 +204,7 @@ const ClientsPage = () => {
                   <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                     {customer.last_visit_at ? new Date(customer.last_visit_at).toLocaleDateString("fr-FR") : "Jamais"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
