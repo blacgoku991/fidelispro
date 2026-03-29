@@ -58,8 +58,8 @@ const ScannerPage = () => {
 
     // Wallet push
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
