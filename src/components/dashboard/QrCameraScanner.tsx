@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Camera, CameraOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,19 +6,21 @@ import { Button } from "@/components/ui/button";
 interface QrCameraScannerProps {
   onScan: (code: string) => void;
   disabled?: boolean;
+  /** When true, scanner is paused (won't fire scans) — used after a successful scan */
+  paused?: boolean;
 }
 
-export function QrCameraScanner({ onScan, disabled }: QrCameraScannerProps) {
+export function QrCameraScanner({ onScan, disabled, paused }: QrCameraScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const lastScannedRef = useRef<string>("");
-  const cooldownRef = useRef(false);
+  const processedRef = useRef(false);
 
   const startCamera = async () => {
     if (!containerRef.current) return;
     setError(null);
+    processedRef.current = false;
 
     try {
       const scanner = new Html5Qrcode("qr-reader");
@@ -27,20 +29,15 @@ export function QrCameraScanner({ onScan, disabled }: QrCameraScannerProps) {
       await scanner.start(
         { facingMode: "environment" },
         {
-          fps: 10,
-          qrbox: { width: 220, height: 220 },
+          fps: 5,
+          qrbox: { width: 250, height: 250 },
           aspectRatio: 1,
         },
         (decodedText) => {
-          if (cooldownRef.current || decodedText === lastScannedRef.current) return;
-          lastScannedRef.current = decodedText;
-          cooldownRef.current = true;
+          // Only fire once — parent must reset paused to allow next scan
+          if (processedRef.current) return;
+          processedRef.current = true;
           onScan(decodedText);
-          // Cooldown to avoid double scans
-          setTimeout(() => {
-            cooldownRef.current = false;
-            lastScannedRef.current = "";
-          }, 3000);
         },
         () => {} // ignore errors (no QR in frame)
       );
@@ -52,7 +49,14 @@ export function QrCameraScanner({ onScan, disabled }: QrCameraScannerProps) {
     }
   };
 
-  const stopCamera = async () => {
+  // When paused changes back to false, allow scanning again
+  useEffect(() => {
+    if (!paused) {
+      processedRef.current = false;
+    }
+  }, [paused]);
+
+  const stopCamera = useCallback(async () => {
     try {
       if (scannerRef.current?.isScanning) {
         await scannerRef.current.stop();
@@ -62,19 +66,19 @@ export function QrCameraScanner({ onScan, disabled }: QrCameraScannerProps) {
       // ignore
     }
     setActive(false);
-  };
+  }, []);
 
   useEffect(() => {
     return () => {
       stopCamera();
     };
-  }, []);
+  }, [stopCamera]);
 
   return (
     <div className="flex flex-col items-center gap-3 w-full">
-      {/* Camera viewport */}
-      <div className="relative w-full max-w-[280px] aspect-square rounded-2xl overflow-hidden bg-secondary/50">
-        <div id="qr-reader" ref={containerRef} className="w-full h-full" />
+      {/* Camera viewport — full width on mobile */}
+      <div className="relative w-full max-w-[340px] aspect-square rounded-2xl overflow-hidden bg-secondary/50">
+        <div id="qr-reader" ref={containerRef} className="w-full h-full [&_video]:!object-cover [&_video]:!rounded-2xl" />
 
         {!active && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
@@ -84,6 +88,13 @@ export function QrCameraScanner({ onScan, disabled }: QrCameraScannerProps) {
             <p className="text-xs text-muted-foreground text-center px-4">
               Activez la caméra pour scanner le QR code de la carte client
             </p>
+          </div>
+        )}
+
+        {/* Paused overlay */}
+        {active && paused && (
+          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center">
+            <p className="text-sm font-medium text-muted-foreground">En pause...</p>
           </div>
         )}
       </div>
@@ -96,7 +107,7 @@ export function QrCameraScanner({ onScan, disabled }: QrCameraScannerProps) {
         onClick={active ? stopCamera : startCamera}
         disabled={disabled}
         variant={active ? "outline" : "default"}
-        className={`rounded-xl gap-2 w-full max-w-[280px] ${!active ? "bg-gradient-primary text-primary-foreground" : ""}`}
+        className={`rounded-xl gap-2 w-full max-w-[340px] ${!active ? "bg-gradient-primary text-primary-foreground" : ""}`}
       >
         {active ? (
           <>
