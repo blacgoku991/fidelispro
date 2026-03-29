@@ -46,11 +46,17 @@ const ScannerPage = () => {
     const newPoints = card.current_points + 1;
     const rewardEarned = newPoints >= card.max_points;
 
+    const changeMsg = rewardEarned
+      ? `🎁 Récompense débloquée chez ${business.name} !`
+      : `+1 point chez ${business.name} ! Vous avez ${newPoints} points.`;
+
     await supabase
       .from("customer_cards")
       .update({
         current_points: rewardEarned ? 0 : newPoints,
         rewards_earned: rewardEarned ? card.rewards_earned + 1 : card.rewards_earned,
+        wallet_change_message: changeMsg,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", card.id);
 
@@ -79,6 +85,23 @@ const ScannerPage = () => {
       scanned_by: user.id,
     });
 
+    // Trigger Wallet push so iPhone updates in real-time
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_id: business.id,
+          customer_id: customer.id,
+          action_type: "points_increment",
+          change_message: changeMsg,
+        }),
+      });
+    } catch (walletErr) {
+      console.warn("Wallet push failed (non-blocking):", walletErr);
+    }
+
     setLastScan({
       customerName: customer.full_name,
       points: rewardEarned ? 0 : newPoints,
@@ -101,9 +124,11 @@ const ScannerPage = () => {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
