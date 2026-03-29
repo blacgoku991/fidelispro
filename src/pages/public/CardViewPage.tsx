@@ -30,8 +30,8 @@ const CardViewPage = () => {
     if (!cardCode) return;
     setWalletLoading(true);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const walletUrl = `https://${projectId}.supabase.co/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const walletUrl = `${supabaseUrl}/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
       window.location.assign(walletUrl);
     } catch (e: any) {
       console.error(e);
