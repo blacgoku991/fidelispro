@@ -282,12 +282,19 @@ const CustomizePage = () => {
                 <div className="flex justify-center">
                   <LoyaltyCard
                     businessName={form.name || "Mon Commerce"}
-                    customerName={form.show_customer_name ? "Client exemple" : ""}
-                    points={form.show_points ? 7 : 0}
+                    customerName="Client exemple"
+                    points={7}
                     maxPoints={form.max_points_per_card}
                     level="gold"
-                    cardId={form.show_qr_code ? `preview-${user?.id?.slice(0, 8) || "demo"}` : ""}
+                    cardId={`preview-${user?.id?.slice(0, 8) || "demo"}`}
+                    logoUrl={logoUrl || undefined}
                     accentColor={form.primary_color}
+                    secondaryColor={form.secondary_color}
+                    rewardDescription={form.reward_description}
+                    rewardsEarned={2}
+                    showQr={form.show_qr_code}
+                    showPoints={form.show_points}
+                    showCustomerName={form.show_customer_name}
                   />
                 </div>
                 <p className="text-center text-sm text-muted-foreground mt-4">
