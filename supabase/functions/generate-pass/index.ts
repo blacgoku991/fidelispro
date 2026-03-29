@@ -2,10 +2,18 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import forge from "npm:node-forge@1.3.1";
 import JSZip from "npm:jszip@3.10.1";
 
+const REQUIRED_PASS_TYPE_ID = "pass.app.lovable.fidelispro";
+
+const ICON_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAAgklEQVR4nGPkF9f6z0BnwERvCwfMUhZcEh9eXL1LqeECEtrK2MSx+pQaFuIzhxE9ISErxOVSUi1EN4eJWIWkAmT96D7GGryUWkjInJGTZUYtHbV01NJRS0ctHSSW0rrlgGIpvoqXEgvR61WM5go1LEQG2CryAWk5YPUprcHgSb20BgDttTV1QCPBRwAAAABJRU5ErkJggg==";
+
+const ICON_2X_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAADoAAAA6CAYAAADhu0ooAAAA7ElEQVR4nO2aOxLCMAxECUMPHenp4P5HoaSn5AZJReMJjj7Bclb7eo/1Zh2lkIbz9T4dEnCMLqAVFEWDomikET15Dn/ez9dWhUi4jI+b9exg+Y+2FiyxCKufbrSktQZxoj0ILiFNN00zEiVaS9PTIDR4a1gV/XVBK8ESaz2mpxsl6bm7KtprA1pirVZ1opFpempI03UpigZF0aAoGhRFg6JoUBQNiqJBUTQoigZF0aAoGhRFI80guCraw/hByl+maZGpWu/mIFhzUSTcYShQ7xn1kqz2k0kzCDZtjn2BX5HbI2maEUXRoCgaaURn7+ldg7yB9K8AAAAASUVORK5CYII=";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -14,12 +22,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { card_code } = await req.json();
-    if (!card_code) {
+    const cardCode = await extractCardCode(req);
+    if (!cardCode) {
       return new Response(JSON.stringify({ error: "card_code required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const teamId = requireEnv("APPLE_TEAM_ID").trim();
+    const p12Base64 = requireEnv("APPLE_P12_BASE64");
+    const p12Password = requireEnv("APPLE_P12_PASSWORD");
+    const configuredPassTypeId = Deno.env.get("APPLE_PASS_TYPE_ID")?.trim();
+
+    if (configuredPassTypeId && configuredPassTypeId !== REQUIRED_PASS_TYPE_ID) {
+      throw new Error(
+        `APPLE_PASS_TYPE_ID doit être exactement ${REQUIRED_PASS_TYPE_ID}`
+      );
+    }
+
+    if (!/^[A-Z0-9]{10}$/.test(teamId)) {
+      throw new Error("APPLE_TEAM_ID invalide");
     }
 
     const supabase = createClient(
@@ -31,7 +54,7 @@ Deno.serve(async (req) => {
     const { data: card, error: cardErr } = await supabase
       .from("customer_cards")
       .select("*, customers(*)")
-      .eq("card_code", card_code)
+      .eq("card_code", cardCode)
       .maybeSingle();
 
     if (cardErr || !card) {
@@ -55,15 +78,19 @@ Deno.serve(async (req) => {
     }
 
     const customer = card.customers;
-    const passTypeId = Deno.env.get("APPLE_PASS_TYPE_ID")!;
-    const teamId = Deno.env.get("APPLE_TEAM_ID")!;
-    const p12Base64 = Deno.env.get("APPLE_P12_BASE64")!;
-    const p12Password = Deno.env.get("APPLE_P12_PASSWORD")!;
+
+    const { signerCert, signerKey, certificateChain } = extractSigningMaterial(
+      p12Base64,
+      p12Password
+    );
+
+    const iconPng = decodeBase64ToBytes(ICON_PNG_BASE64);
+    const icon2xPng = decodeBase64ToBytes(ICON_2X_PNG_BASE64);
 
     // Build pass.json
     const passJson = {
       formatVersion: 1,
-      passTypeIdentifier: passTypeId,
+      passTypeIdentifier: REQUIRED_PASS_TYPE_ID,
       serialNumber: card.id,
       teamIdentifier: teamId,
       organizationName: business.name,
@@ -77,6 +104,13 @@ Deno.serve(async (req) => {
         format: "PKBarcodeFormatQR",
         messageEncoding: "iso-8859-1",
       },
+      barcodes: [
+        {
+          message: card.card_code,
+          format: "PKBarcodeFormatQR",
+          messageEncoding: "iso-8859-1",
+        },
+      ],
       storeCard: {
         headerFields: [
           {
@@ -117,56 +151,22 @@ Deno.serve(async (req) => {
     const passJsonStr = JSON.stringify(passJson);
     const passJsonBytes = new TextEncoder().encode(passJsonStr);
 
-    // Compute SHA-1 hash using forge
-    const passHash = forgeSha1(passJsonBytes);
-
     // Build manifest
     const manifest: Record<string, string> = {
-      "pass.json": passHash,
+      "pass.json": forgeSha1(passJsonBytes),
+      "icon.png": forgeSha1(iconPng),
+      "icon@2x.png": forgeSha1(icon2xPng),
     };
     const manifestStr = JSON.stringify(manifest);
     const manifestBytes = new TextEncoder().encode(manifestStr);
-
-    // Parse .p12 certificate
-    const p12Der = forge.util.decode64(p12Base64);
-    const p12Asn1 = forge.asn1.fromDer(p12Der);
-    const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, p12Password);
-
-    // Extract cert and key
-    let signerCert: any = null;
-    let signerKey: any = null;
-
-    for (const safeContents of p12.safeContents) {
-      for (const safeBag of safeContents.safeBags) {
-        if (safeBag.type === forge.pki.oids.certBag && safeBag.cert) {
-          signerCert = safeBag.cert;
-        }
-        if (safeBag.type === forge.pki.oids.pkcs8ShroudedKeyBag && safeBag.key) {
-          signerKey = safeBag.key;
-        }
-      }
-    }
-
-    if (!signerCert || !signerKey) {
-      console.error("Could not extract cert/key from p12. SafeContents count:", p12.safeContents.length);
-      for (const sc of p12.safeContents) {
-        for (const sb of sc.safeBags) {
-          console.error("Bag type:", sb.type);
-        }
-      }
-      return new Response(
-        JSON.stringify({ error: "Could not extract cert/key from p12" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
 
     // Create PKCS#7 signed data (detached signature of manifest)
     const p7 = forge.pkcs7.createSignedData();
     p7.content = forge.util.createBuffer(manifestStr, "utf8");
     p7.addCertificate(signerCert);
+    for (const cert of certificateChain) {
+      p7.addCertificate(cert);
+    }
     p7.addSigner({
       key: signerKey,
       certificate: signerCert,
@@ -199,6 +199,8 @@ Deno.serve(async (req) => {
     zip.file("pass.json", passJsonBytes);
     zip.file("manifest.json", manifestBytes);
     zip.file("signature", signatureBytes);
+    zip.file("icon.png", iconPng);
+    zip.file("icon@2x.png", icon2xPng);
 
     const pkpassBuffer = await zip.generateAsync({ type: "uint8array" });
 
@@ -206,7 +208,8 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/vnd.apple.pkpass",
-        "Content-Disposition": `attachment; filename="${card.card_code}.pkpass"`,
+        "Content-Disposition": 'attachment; filename="card.pkpass"',
+        "Cache-Control": "no-store",
       },
     });
   } catch (err: any) {
@@ -227,9 +230,95 @@ function forgeSha1(data: Uint8Array): string {
   return md.digest().toHex();
 }
 
+function requireEnv(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value) {
+    throw new Error(`Missing secret ${name}`);
+  }
+  return value;
+}
+
+async function extractCardCode(req: Request): Promise<string | null> {
+  const url = new URL(req.url);
+  const fromQuery = url.searchParams.get("card_code");
+  if (fromQuery) {
+    return fromQuery;
+  }
+
+  if (req.method !== "POST") {
+    return null;
+  }
+
+  const contentType = req.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    return null;
+  }
+
+  const body = await req.json().catch(() => ({}));
+  return typeof body?.card_code === "string" ? body.card_code : null;
+}
+
+function decodeBase64ToBytes(base64: string): Uint8Array {
+  const bytes = forge.util.decode64(base64);
+  const output = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) {
+    output[i] = bytes.charCodeAt(i);
+  }
+  return output;
+}
+
+function extractSigningMaterial(p12Base64: string, p12Password: string) {
+  const p12Der = forge.util.decode64(p12Base64);
+  const p12Asn1 = forge.asn1.fromDer(p12Der);
+  const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, p12Password);
+
+  let signerKey: any = null;
+  const certs: any[] = [];
+
+  for (const safeContents of p12.safeContents) {
+    for (const safeBag of safeContents.safeBags) {
+      if (safeBag.type === forge.pki.oids.certBag && safeBag.cert) {
+        certs.push(safeBag.cert);
+      }
+      if (
+        safeBag.type === forge.pki.oids.pkcs8ShroudedKeyBag &&
+        safeBag.key
+      ) {
+        signerKey = safeBag.key;
+      }
+    }
+  }
+
+  if (!signerKey || certs.length === 0) {
+    throw new Error("Impossible d'extraire la clé/certificat du fichier .p12");
+  }
+
+  const signerCert =
+    certs.find((cert) => certMatchesPrivateKey(cert, signerKey)) ||
+    certs.find((cert) => hasPassTypeCommonName(cert)) ||
+    certs[0];
+
+  const certificateChain = certs.filter((cert) => cert !== signerCert);
+
+  return { signerCert, signerKey, certificateChain };
+}
+
+function certMatchesPrivateKey(cert: any, key: any): boolean {
+  if (!cert?.publicKey?.n || !key?.n) {
+    return false;
+  }
+  return cert.publicKey.n.compareTo(key.n) === 0;
+}
+
+function hasPassTypeCommonName(cert: any): boolean {
+  const cn = cert?.subject?.getField?.("CN")?.value;
+  return typeof cn === "string" && cn.includes("Pass Type ID");
+}
+
 function hexToRgb(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const normalized = /^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : "#6B46C1";
+  const r = parseInt(normalized.slice(1, 3), 16);
+  const g = parseInt(normalized.slice(3, 5), 16);
+  const b = parseInt(normalized.slice(5, 7), 16);
   return `rgb(${r}, ${g}, ${b})`;
 }
