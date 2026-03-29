@@ -164,7 +164,8 @@ async function handleGetSerialNumbers(
   passTypeId: string,
   passesUpdatedSince: string | null
 ): Promise<Response> {
-  console.log(`[PassKit WS] Get serials device=${deviceId} since=${passesUpdatedSince}`);
+  const since = normalizePassesUpdatedSince(passesUpdatedSince);
+  console.log(`[PassKit WS] Get serials device=${deviceId} since=${since}`);
 
   const supabase = getSupabase();
 
@@ -174,8 +175,8 @@ async function handleGetSerialNumbers(
     .eq("device_library_id", deviceId)
     .eq("pass_type_id", passTypeId);
 
-  if (passesUpdatedSince) {
-    query = query.gt("updated_at", passesUpdatedSince);
+  if (since) {
+    query = query.gt("updated_at", since);
   }
 
   const { data, error } = await query;
@@ -199,6 +200,12 @@ async function handleGetSerialNumbers(
       headers: { "Content-Type": "application/json" },
     }
   );
+}
+
+function normalizePassesUpdatedSince(value: string | null): string | null {
+  if (!value) return null;
+  // URLSearchParams turns '+' into ' ' in timezone offsets
+  return value.replace(/\s(\d{2}:\d{2})$/, "+$1");
 }
 
 // ── Get latest pass ────────────────────────────────────────────────
