@@ -49,7 +49,7 @@ const CampaignsPage = () => {
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<CampaignTemplate | null>(null);
-  const [form, setForm] = useState({ message: "", segment: "all" as Segment });
+  const [form, setForm] = useState({ message: "", segment: "all" as Segment, channels: { webPush: true, appleWallet: true } });
 
   const businessName = business?.name || "Mon Commerce";
 
@@ -123,13 +123,13 @@ const CampaignsPage = () => {
   const openTemplate = (template: CampaignTemplate) => {
     const msg = template.defaultMessage.replace(/\{businessName\}/g, businessName);
     setSelectedTemplate(template);
-    setForm({ message: msg, segment: template.suggestedSegment });
+    setForm({ message: msg, segment: template.suggestedSegment, channels: { webPush: true, appleWallet: true } });
     setDialogOpen(true);
   };
 
   const openCustom = () => {
     setSelectedTemplate(null);
-    setForm({ message: "", segment: "all" });
+    setForm({ message: "", segment: "all", channels: { webPush: true, appleWallet: true } });
     setDialogOpen(true);
   };
 
@@ -152,7 +152,7 @@ const CampaignsPage = () => {
     const { error } = await supabase.from("notifications_log").insert(logs);
     if (error) { toast.error("Erreur d'envoi"); setSending(false); return; }
 
-    // Send via unified push function (Web Push + Apple Wallet)
+    // Send via unified push function with selected channels
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(`https://${projectId}.supabase.co/functions/v1/send-notifications`, {
@@ -163,22 +163,25 @@ const CampaignsPage = () => {
           title: business.name,
           message: form.message.trim(),
           segment: form.segment,
+          channels: {
+            web_push: form.channels.webPush,
+            apple_wallet: form.channels.appleWallet,
+          },
         }),
       });
       const result = await res.json();
       const webCount = result.web_push?.pushed || 0;
       const walletCount = result.wallet_push?.pushed || 0;
-      toast.success(
-        `✅ Envoyé à ${customers.length} client(s)` +
-        (webCount > 0 ? ` • ${webCount} push web` : "") +
-        (walletCount > 0 ? ` • ${walletCount} Wallet` : "")
-      );
+      const parts = [`✅ Envoyé à ${customers.length} client(s)`];
+      if (webCount > 0) parts.push(`${webCount} push web`);
+      if (walletCount > 0) parts.push(`${walletCount} Wallet`);
+      toast.success(parts.join(" • "));
     } catch {
       toast.success(`Campagne enregistrée pour ${customers.length} client(s)`);
     }
 
     setDialogOpen(false);
-    setForm({ message: "", segment: "all" });
+    setForm({ message: "", segment: "all", channels: { webPush: true, appleWallet: true } });
     fetchCampaigns();
     setSending(false);
   };
@@ -461,17 +464,32 @@ const CampaignsPage = () => {
               />
             </div>
 
-            {/* Channels info */}
-            <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
+            {/* Channel selector */}
+            <div className="rounded-xl bg-muted/40 p-3 space-y-2">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Canaux d'envoi</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="text-[10px] gap-1">
-                  🔔 Push Web (PWA)
-                </Badge>
-                <Badge variant="outline" className="text-[10px] gap-1">
-                  🍎 Apple Wallet
-                </Badge>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.channels.webPush}
+                    onChange={(e) => setForm({ ...form, channels: { ...form.channels, webPush: e.target.checked } })}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm">🔔 Push Web (PWA)</span>
+                </label>
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.channels.appleWallet}
+                    onChange={(e) => setForm({ ...form, channels: { ...form.channels, appleWallet: e.target.checked } })}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm">🍎 Apple Wallet</span>
+                </label>
               </div>
+              {!form.channels.webPush && !form.channels.appleWallet && (
+                <p className="text-[11px] text-destructive">Sélectionnez au moins un canal</p>
+              )}
             </div>
 
             {/* iPhone preview */}
@@ -500,7 +518,7 @@ const CampaignsPage = () => {
             {/* Send button */}
             <Button
               onClick={handleSend}
-              disabled={sending || !form.message.trim()}
+              disabled={sending || !form.message.trim() || (!form.channels.webPush && !form.channels.appleWallet)}
               className="w-full bg-gradient-primary text-primary-foreground rounded-xl gap-2 h-11"
             >
               <Send className="w-4 h-4" />

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
-import { motion } from "framer-motion";
-import { Flame, Star, Crown, Trophy, Wallet, Bell, BellOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Flame, Star, Crown, Trophy, Wallet, Bell, BellOff, Share, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { registerPushSubscription, isPushSubscribed } from "@/lib/webPush";
@@ -28,8 +28,10 @@ const CardViewPage = () => {
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
   const isAndroidDevice = /Android/.test(navigator.userAgent);
 
   const handleAddToWallet = async () => {
@@ -98,6 +100,14 @@ const CardViewPage = () => {
     isPushSubscribed().then(setPushSubscribed);
   }, []);
 
+  // Show install banner if not already installed as PWA
+  useEffect(() => {
+    if (!isStandalone) {
+      const dismissed = localStorage.getItem("pwa-install-dismissed");
+      if (!dismissed) setShowInstallBanner(true);
+    }
+  }, []);
+
   const handleSubscribePush = async () => {
     if (!business || !customer) return;
     setPushLoading(true);
@@ -129,13 +139,60 @@ const CardViewPage = () => {
   const progress = Math.min((card.current_points / card.max_points) * 100, 100);
   const pointsToReward = card.max_points - card.current_points;
 
+  const dismissInstallBanner = () => {
+    setShowInstallBanner(false);
+    localStorage.setItem("pwa-install-dismissed", "1");
+  };
+
   return (
     <div
-      className="min-h-screen flex flex-col items-center p-6 pt-12"
+      className="min-h-screen flex flex-col items-center p-6 pt-8 safe-area-top safe-area-bottom"
       style={{
         background: `linear-gradient(135deg, ${business.primary_color}10 0%, ${business.secondary_color}10 100%)`,
       }}
     >
+      {/* PWA Install Banner */}
+      <AnimatePresence>
+        {showInstallBanner && !isStandalone && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="w-full max-w-md mb-4 p-4 rounded-2xl bg-card border border-border/50 shadow-lg"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Download className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Installer l'application</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Pour recevoir les notifications et accéder rapidement à votre carte
+                  </p>
+                  {isAppleDevice ? (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        1. Appuyez sur <Share className="w-3.5 h-3.5 inline text-primary" />
+                      </span>
+                      <span>→</span>
+                      <span>2. « Sur l'écran d'accueil »</span>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Appuyez sur le menu ⋮ → « Ajouter à l'écran d'accueil »
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button onClick={dismissInstallBanner} className="shrink-0 p-1 rounded-lg hover:bg-muted transition-colors">
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
