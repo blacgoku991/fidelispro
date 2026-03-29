@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { business_id, campaign_id, change_message, card_ids, test_mode } = body;
+    const { business_id, campaign_id, change_message, card_ids, test_mode, action_type, customer_id } = body;
 
     if (!business_id) {
       return jsonResponse({ error: "business_id required" }, 400);
@@ -29,13 +29,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get registered wallet devices for this business
+    // ── Resolve target registrations ─────────────────────────────
     let query = supabase
       .from("wallet_registrations")
       .select("*")
       .eq("business_id", business_id);
 
-    if (card_ids && card_ids.length > 0) {
+    if (customer_id) {
+      query = query.eq("customer_id", customer_id);
+    } else if (card_ids && card_ids.length > 0) {
       query = query.in("card_id", card_ids);
     }
 
@@ -55,29 +57,61 @@ Deno.serve(async (req) => {
       }, 200);
     }
 
-    // Update wallet_pass_updates for all affected serial numbers
+    // ── Apply card updates based on action_type ──────────────────
+    const act = action_type || "test";
     const serialNumbers = [...new Set(registrations.map((r: any) => r.serial_number))];
     const now = new Date().toISOString();
+    const cardUpdateResults: any[] = [];
 
     for (const sn of serialNumbers) {
+      let cardUpdate: Record<string, any> = {};
+      let effectiveMessage = change_message || "🔔 Mise à jour Wallet";
+
+      if (act === "points_increment" || act === "full_test") {
+        // Actually increment points — the VALUE must change for visible notification
+        const { data: cardData } = await supabase
+          .from("customer_cards")
+          .select("current_points, max_points")
+          .eq("id", sn)
+          .single();
+
+        const oldPts = cardData?.current_points || 0;
+        const maxPts = cardData?.max_points || 10;
+        const newPts = Math.min(oldPts + 1, maxPts);
+
+        cardUpdate.current_points = newPts;
+        effectiveMessage = change_message || `☕ +1 point ajouté ! ${newPts}/${maxPts}`;
+
+        console.log(`[Wallet Push] Points ${oldPts} → ${newPts} for card ${sn}`);
+      }
+
+      // Always set a unique wallet_change_message so the field value changes
+      cardUpdate.wallet_change_message = effectiveMessage;
+
+      const { error: updateErr } = await supabase
+        .from("customer_cards")
+        .update(cardUpdate)
+        .eq("id", sn);
+
+      cardUpdateResults.push({
+        serial_number: sn,
+        action: act,
+        updated: !updateErr,
+        message: effectiveMessage,
+        ...(updateErr ? { error: updateErr.message } : {}),
+      });
+
+      // Mark pass as updated in wallet_pass_updates
       await supabase.from("wallet_pass_updates").upsert(
         {
           serial_number: sn,
           pass_type_id: PASS_TYPE_ID,
           last_updated: now,
-          change_message: change_message || null,
+          change_message: effectiveMessage,
           campaign_id: campaign_id || null,
         },
         { onConflict: "serial_number,pass_type_id" }
       );
-
-      // Set change message on the card
-      if (change_message) {
-        await supabase
-          .from("customer_cards")
-          .update({ wallet_change_message: change_message })
-          .eq("id", sn);
-      }
     }
 
     // ── REAL APNs Push via Token-Based Auth ──────────────────────────
@@ -165,12 +199,14 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       success: true,
+      action_type: act,
       total_registrations: registrations.length,
       unique_passes: serialNumbers.length,
       unique_devices: uniqueTokens.size,
       pushed: successCount,
       failed: failCount,
-      results: pushResults,
+      card_updates: cardUpdateResults,
+      apns_results: pushResults,
     }, 200);
   } catch (err: any) {
     console.error("[Wallet Push] Error:", err);
