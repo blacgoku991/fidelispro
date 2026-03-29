@@ -75,7 +75,8 @@ const SettingsPage = () => {
       const result = data[0];
       setLatitude(parseFloat(parseFloat(result.lat).toFixed(7)));
       setLongitude(parseFloat(parseFloat(result.lon).toFixed(7)));
-      toast.success(`📍 Position trouvée : ${result.display_name.split(",").slice(0, 3).join(",")}`);
+      setAddress(result.display_name || address);
+      toast.success(`📍 Position confirmée : ${result.display_name.split(",").slice(0, 4).join(",")}`);
     } catch {
       toast.error("Erreur de géocodage. Réessayez.");
     }

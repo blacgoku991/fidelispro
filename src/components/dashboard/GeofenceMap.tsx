@@ -6,66 +6,66 @@ interface GeofenceMapProps {
   radius: number;
 }
 
+const MAP_WIDTH = 640;
+const MAP_HEIGHT = 250;
+
 const GeofenceMap = ({ latitude, longitude, radius }: GeofenceMapProps) => {
-  const mapUrl = useMemo(() => {
-    const cosLat = Math.cos((latitude * Math.PI) / 180);
-    // Calculate zoom so the circle fits nicely
-    const desiredCircleFraction = 0.35;
-    const mapWidthPx = 600;
-    const desiredCirclePx = mapWidthPx * desiredCircleFraction;
-    const zoom = Math.min(18, Math.max(12, Math.round(
-      Math.log2((156543.03 * cosLat * desiredCirclePx) / (radius * 2))
-    )));
+  const { mapUrl, circleDiameterPx } = useMemo(() => {
+    const cosLat = Math.max(0.2, Math.cos((latitude * Math.PI) / 180));
 
-    const metersPerPx = (156543.03 * cosLat) / Math.pow(2, zoom);
-    const halfWidthDeg = (mapWidthPx / 2) * metersPerPx / 111320;
-    const halfHeightDeg = (250 / 2) * metersPerPx / 111320;
+    // Zoom calculé pour avoir un cercle lisible et fidèle au rayon réel
+    const targetDiameterPx = MAP_WIDTH * 0.5;
+    const rawZoom = Math.log2((156543.03392 * cosLat * targetDiameterPx) / (radius * 2));
+    const zoom = Math.min(19, Math.max(12, Math.round(rawZoom)));
 
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - halfWidthDeg},${latitude - halfHeightDeg},${longitude + halfWidthDeg},${latitude + halfHeightDeg}&layer=mapnik&marker=${latitude},${longitude}`;
+    const metersPerPixel = (156543.03392 * cosLat) / Math.pow(2, zoom);
+    const diameter = Math.max(12, Math.min((radius * 2) / metersPerPixel, MAP_WIDTH * 0.95));
+
+    const url = `https://staticmap.openstreetmap.de/staticmap.php?center=${latitude},${longitude}&zoom=${zoom}&size=${MAP_WIDTH}x${MAP_HEIGHT}&maptype=mapnik`;
+
+    return {
+      mapUrl: url,
+      circleDiameterPx: diameter,
+    };
   }, [latitude, longitude, radius]);
 
-  // Use a static image tile approach instead of iframe to prevent interaction
-  // Tile math: at zoom z, tile x = floor((lon+180)/360 * 2^z), tile y = floor((1 - ln(tan(lat_rad) + sec(lat_rad))/π) / 2 * 2^z)
-  
-  const cosLat = Math.cos((latitude * Math.PI) / 180);
-  const mapWidthPx = 600;
-  const desiredCircleFraction = 0.35;
-  const desiredCirclePx = mapWidthPx * desiredCircleFraction;
-  const zoom = Math.min(18, Math.max(12, Math.round(
-    Math.log2((156543.03 * cosLat * desiredCirclePx) / (radius * 2))
-  )));
-  const metersPerPx = (156543.03 * cosLat) / Math.pow(2, zoom);
-  const circleDiameterPx = (radius * 2) / metersPerPx;
-
   return (
-    <div className="rounded-xl overflow-hidden border border-border/50 relative h-[250px]">
-      {/* Map iframe - block all interaction */}
-      <div className="absolute inset-0" style={{ pointerEvents: "none" }}>
-        <iframe
-          title="Position de votre boutique"
-          width="100%"
-          height="100%"
-          style={{ border: 0 }}
-          loading="lazy"
-          src={mapUrl}
-        />
-      </div>
-      {/* Transparent overlay to block iframe interaction */}
-      <div className="absolute inset-0" style={{ zIndex: 10 }} />
-      {/* Geofence circle centered on marker */}
+    <div className="relative h-[250px] w-full overflow-hidden rounded-xl border border-border/50 select-none">
+      <img
+        src={mapUrl}
+        alt="Carte de localisation"
+        className="h-full w-full object-cover pointer-events-none"
+        draggable={false}
+        loading="lazy"
+      />
+
+      {/* Point exact du commerce (centre géographique) */}
       <div
-        className="absolute"
+        className="absolute pointer-events-none"
         style={{
-          zIndex: 11,
-          width: `${circleDiameterPx}px`,
-          height: `${circleDiameterPx}px`,
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          borderRadius: "50%",
-          border: "2.5px solid #eab308",
-          backgroundColor: "rgba(234, 179, 8, 0.14)",
-          pointerEvents: "none",
+          width: "12px",
+          height: "12px",
+          borderRadius: "9999px",
+          background: "hsl(var(--primary))",
+          boxShadow: "0 0 0 4px hsl(var(--background) / 0.85)",
+        }}
+      />
+
+      {/* Rayon réel en mètres */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: `${circleDiameterPx}px`,
+          height: `${circleDiameterPx}px`,
+          borderRadius: "9999px",
+          border: "2px solid hsl(48 96% 53%)",
+          background: "hsl(48 96% 53% / 0.2)",
         }}
       />
     </div>
