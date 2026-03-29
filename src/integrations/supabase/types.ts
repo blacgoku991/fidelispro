@@ -39,6 +39,7 @@ export type Database = {
           geofence_enabled: boolean | null
           geofence_message: string | null
           geofence_radius: number | null
+          geofence_satellite_points: Json | null
           geofence_time_end: string
           geofence_time_start: string
           id: string
@@ -109,6 +110,7 @@ export type Database = {
           geofence_enabled?: boolean | null
           geofence_message?: string | null
           geofence_radius?: number | null
+          geofence_satellite_points?: Json | null
           geofence_time_end?: string
           geofence_time_start?: string
           id?: string
@@ -179,6 +181,7 @@ export type Database = {
           geofence_enabled?: boolean | null
           geofence_message?: string | null
           geofence_radius?: number | null
+          geofence_satellite_points?: Json | null
           geofence_time_end?: string
           geofence_time_start?: string
           id?: string

@@ -1,0 +1,1 @@
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS geofence_satellite_points jsonb DEFAULT '[]'::jsonb;
