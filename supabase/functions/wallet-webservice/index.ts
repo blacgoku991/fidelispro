@@ -346,6 +346,18 @@ async function buildPkpassForUpdate(
     },
   };
 
+  // Apple Wallet native geofencing
+  if (business.geofence_enabled && business.latitude && business.longitude) {
+    passJson.locations = [
+      {
+        latitude: parseFloat(String(business.latitude)),
+        longitude: parseFloat(String(business.longitude)),
+        relevantText: business.geofence_message || `Passez nous voir chez ${business.name} !`,
+      },
+    ];
+    passJson.maxDistance = business.geofence_radius || 200;
+  }
+
   const passJsonStr = JSON.stringify(passJson);
   const passJsonBytes = new TextEncoder().encode(passJsonStr);
 
