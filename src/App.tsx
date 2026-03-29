@@ -17,6 +17,9 @@ import RewardsPage from "./pages/dashboard/RewardsPage";
 import CampaignsPage from "./pages/dashboard/CampaignsPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminBusinesses from "./pages/admin/AdminBusinesses";
+import AdminBusinessDetail from "./pages/admin/AdminBusinessDetail";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminSettings from "./pages/admin/AdminSettings";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
 
@@ -53,6 +56,9 @@ const App = () => (
             <Route path="/dashboard/notifications" element={<Navigate to="/dashboard/campaigns" replace />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/businesses" element={<AdminBusinesses />} />
+            <Route path="/admin/businesses/:businessId" element={<AdminBusinessDetail />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/b/:businessId" element={<BusinessPublicPage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />
             <Route path="*" element={<NotFound />} />
