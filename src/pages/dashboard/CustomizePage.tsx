@@ -34,8 +34,8 @@ const cardStyles = [
 
 const CustomizePage = () => {
   const { user, business } = useAuth();
-  const [form, setForm] = useState<BusinessConfig & { name: string; description: string; address: string; city: string; phone: string; website: string }>(
-    { ...defaultConfig, name: "", description: "", address: "", city: "", phone: "", website: "" }
+  const [form, setForm] = useState<BusinessConfig & { name: string; description: string; address: string; city: string; phone: string; website: string; latitude: number | null; longitude: number | null; geofence_message: string }>(
+    { ...defaultConfig, name: "", description: "", address: "", city: "", phone: "", website: "", latitude: null, longitude: null, geofence_message: "Passez nous voir, on vous attend ! 🎉" }
   );
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
