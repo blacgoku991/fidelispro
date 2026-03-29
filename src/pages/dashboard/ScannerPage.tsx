@@ -1,20 +1,16 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { MobileHeader } from "@/components/dashboard/MobileHeader";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { businessSidebarItems } from "@/lib/sidebarItems";
-import {
-  QrCode, CheckCircle, Sparkles,
-} from "lucide-react";
+import { QrCode, CheckCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ScannerPage = () => {
-  const { user, loading, business, logout } = useAuth();
+  const { user, business } = useAuth();
   const [cardCode, setCardCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -42,9 +38,9 @@ const ScannerPage = () => {
       return;
     }
 
-    // Add point
     const newPoints = card.current_points + 1;
     const rewardEarned = newPoints >= card.max_points;
+    const customer = card.customers;
 
     const changeMsg = rewardEarned
       ? `🎁 Récompense débloquée chez ${business.name} !`
@@ -60,32 +56,7 @@ const ScannerPage = () => {
       })
       .eq("id", card.id);
 
-    // Update customer stats
-    const customer = card.customers;
-    const newStreak = customer.current_streak + 1;
-    await supabase
-      .from("customers")
-      .update({
-        total_points: customer.total_points + 1,
-        total_visits: customer.total_visits + 1,
-        current_streak: newStreak,
-        longest_streak: Math.max(newStreak, customer.longest_streak),
-        last_visit_at: new Date().toISOString(),
-        level: customer.total_points + 1 >= 50 ? "gold" : customer.total_points + 1 >= 20 ? "silver" : "bronze",
-      })
-      .eq("id", customer.id);
-
-    // Log points
-    await supabase.from("points_history").insert({
-      customer_id: customer.id,
-      business_id: business.id,
-      card_id: card.id,
-      points_added: 1,
-      action: "scan",
-      scanned_by: user.id,
-    });
-
-    // Trigger Wallet push so iPhone updates in real-time
+    // Wallet push
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
@@ -101,6 +72,29 @@ const ScannerPage = () => {
     } catch (walletErr) {
       console.warn("Wallet push failed (non-blocking):", walletErr);
     }
+
+    // Update customer stats
+    const newStreak = customer.current_streak + 1;
+    await supabase
+      .from("customers")
+      .update({
+        total_points: customer.total_points + 1,
+        total_visits: customer.total_visits + 1,
+        current_streak: newStreak,
+        longest_streak: Math.max(newStreak, customer.longest_streak),
+        last_visit_at: new Date().toISOString(),
+        level: customer.total_points + 1 >= 50 ? "gold" : customer.total_points + 1 >= 20 ? "silver" : "bronze",
+      })
+      .eq("id", customer.id);
+
+    await supabase.from("points_history").insert({
+      customer_id: customer.id,
+      business_id: business.id,
+      card_id: card.id,
+      points_added: 1,
+      action: "scan",
+      scanned_by: user.id,
+    });
 
     setLastScan({
       customerName: customer.full_name,
@@ -123,109 +117,79 @@ const ScannerPage = () => {
     setTimeout(() => setSuccess(false), 3000);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardSidebar items={businessSidebarItems} onLogout={logout} />
-      <main className="lg:ml-64 p-6 lg:p-8">
-        <MobileHeader onLogout={logout} items={businessSidebarItems} />
-
-        <h1 className="text-2xl font-display font-bold mb-2">Scanner</h1>
-        <p className="text-muted-foreground text-sm mb-8">Scannez ou entrez le code d'une carte client</p>
-
-        <div className="grid lg:grid-cols-2 gap-8">
-          <div className="p-8 rounded-2xl bg-card border border-border/50 flex flex-col items-center">
-            <div className="w-64 h-64 rounded-2xl bg-secondary flex items-center justify-center mb-6 relative overflow-hidden">
-              <AnimatePresence>
-                {success ? (
-                  <motion.div
-                    key="success"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="flex flex-col items-center gap-2"
-                  >
-                    <CheckCircle className="w-16 h-16 text-emerald-500" />
-                    <p className="font-display font-bold text-emerald-600">Point ajouté !</p>
-                  </motion.div>
-                ) : (
-                  <motion.div key="scanner" className="flex flex-col items-center gap-3">
-                    <QrCode className="w-16 h-16 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">Zone de scan</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <div className="w-full max-w-sm space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  value={cardCode}
-                  onChange={(e) => setCardCode(e.target.value)}
-                  placeholder="Code de la carte..."
-                  className="rounded-xl"
-                  onKeyDown={(e) => e.key === "Enter" && handleScan()}
-                />
-                <Button
-                  onClick={handleScan}
-                  disabled={scanning}
-                  className="bg-gradient-primary text-primary-foreground rounded-xl px-6"
-                >
-                  {scanning ? "..." : "Valider"}
-                </Button>
-              </div>
-              <p className="text-xs text-center text-muted-foreground">
-                Entrez le code affiché sur la carte du client
-              </p>
-            </div>
+    <DashboardLayout title="Scanner" subtitle="Scannez ou entrez le code d'une carte client">
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="p-6 rounded-2xl bg-card border border-border/50 flex flex-col items-center">
+          <div className="w-56 h-56 rounded-2xl bg-secondary flex items-center justify-center mb-5 relative overflow-hidden">
+            <AnimatePresence>
+              {success ? (
+                <motion.div key="success" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="flex flex-col items-center gap-2">
+                  <CheckCircle className="w-14 h-14 text-emerald-500" />
+                  <p className="font-display font-bold text-emerald-600 text-sm">Point ajouté !</p>
+                </motion.div>
+              ) : (
+                <motion.div key="scanner" className="flex flex-col items-center gap-2">
+                  <QrCode className="w-14 h-14 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground">Zone de scan</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          <div className="space-y-6">
-            <StatsCard label="Scans aujourd'hui" value={todayScans} icon={QrCode} />
-
-            {lastScan && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-6 rounded-2xl bg-card border border-border/50"
-              >
-                <h3 className="font-display font-semibold mb-3 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-accent" /> Dernier scan
-                </h3>
-                <p className="font-medium">{lastScan.customerName}</p>
-                <div className="mt-3 w-full h-2 rounded-full bg-secondary overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-primary"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(lastScan.points / lastScan.maxPoints) * 100}%` }}
-                    transition={{ duration: 0.8 }}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {lastScan.points}/{lastScan.maxPoints} points
-                </p>
-                {lastScan.rewardEarned && (
-                  <motion.p
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="mt-2 text-sm font-semibold text-accent flex items-center gap-1"
-                  >
-                    🎉 Récompense gagnée !
-                  </motion.p>
-                )}
-              </motion.div>
-            )}
+          <div className="w-full max-w-xs space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={cardCode}
+                onChange={(e) => setCardCode(e.target.value)}
+                placeholder="Code de la carte..."
+                className="rounded-xl"
+                onKeyDown={(e) => e.key === "Enter" && handleScan()}
+              />
+              <Button onClick={handleScan} disabled={scanning} className="bg-gradient-primary text-primary-foreground rounded-xl px-5">
+                {scanning ? "..." : "OK"}
+              </Button>
+            </div>
+            <p className="text-[11px] text-center text-muted-foreground">
+              Entrez le code affiché sur la carte du client
+            </p>
           </div>
         </div>
-      </main>
-    </div>
+
+        <div className="space-y-4">
+          <StatsCard label="Scans aujourd'hui" value={todayScans} icon={QrCode} />
+
+          {lastScan && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-5 rounded-2xl bg-card border border-border/50"
+            >
+              <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-accent" /> Dernier scan
+              </h3>
+              <p className="font-display font-semibold">{lastScan.customerName}</p>
+              <div className="mt-3 w-full h-1.5 rounded-full bg-secondary overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full bg-gradient-primary"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(lastScan.points / lastScan.maxPoints) * 100}%` }}
+                  transition={{ duration: 0.8 }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {lastScan.points}/{lastScan.maxPoints} points
+              </p>
+              {lastScan.rewardEarned && (
+                <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} className="mt-2 text-sm font-semibold text-accent">
+                  🎉 Récompense gagnée !
+                </motion.p>
+              )}
+            </motion.div>
+          )}
+        </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

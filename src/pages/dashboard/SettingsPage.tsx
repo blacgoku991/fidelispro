@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { MobileHeader } from "@/components/dashboard/MobileHeader";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { businessSidebarItems } from "@/lib/sidebarItems";
 import { Shield, Crown } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,7 +16,7 @@ const planLabels: Record<string, string> = {
 };
 
 const SettingsPage = () => {
-  const { user, loading, business, logout } = useAuth();
+  const { user, business } = useAuth();
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -27,72 +25,48 @@ const SettingsPage = () => {
   }, [user]);
 
   const handleUpdatePassword = async () => {
-    if (newPassword.length < 8) {
-      toast.error("Le mot de passe doit contenir au moins 8 caractères");
-      return;
-    }
+    if (newPassword.length < 8) { toast.error("Min. 8 caractères"); return; }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) toast.error(error.message);
-    else {
-      toast.success("Mot de passe mis à jour");
-      setNewPassword("");
-    }
+    else { toast.success("Mot de passe mis à jour"); setNewPassword(""); }
   };
 
-  if (loading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>;
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardSidebar items={businessSidebarItems} onLogout={logout} />
-      <main className="lg:ml-64 p-6 lg:p-8">
-        <MobileHeader onLogout={logout} items={businessSidebarItems} />
-
-        <h1 className="text-2xl font-display font-bold mb-2">Paramètres</h1>
-        <p className="text-muted-foreground text-sm mb-8">Gérez votre compte et votre abonnement</p>
-
-        <div className="space-y-6 max-w-2xl">
-          <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-4">
-            <h2 className="font-display font-semibold flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" /> Compte
-            </h2>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input value={email} disabled className="rounded-xl bg-secondary" />
-            </div>
-            <div className="space-y-2">
-              <Label>Nouveau mot de passe</Label>
-              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 caractères" className="rounded-xl" />
-            </div>
-            <Button onClick={handleUpdatePassword} className="rounded-xl">Mettre à jour le mot de passe</Button>
+    <DashboardLayout title="Paramètres" subtitle="Gérez votre compte et votre abonnement">
+      <div className="space-y-4 max-w-xl">
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+          <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+            <Shield className="w-4 h-4 text-primary" /> Compte
+          </h2>
+          <div className="space-y-2">
+            <Label className="text-xs">Email</Label>
+            <Input value={email} disabled className="rounded-xl bg-secondary text-sm" />
           </div>
-
-          <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-4">
-            <h2 className="font-display font-semibold flex items-center gap-2">
-              <Crown className="w-5 h-5 text-accent" /> Abonnement
-            </h2>
-            <div className="flex items-center gap-3">
-              <Badge className="bg-primary/10 text-primary">{business?.subscription_plan || "starter"}</Badge>
-              <Badge variant="outline">{business?.subscription_status || "trialing"}</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {planLabels[business?.subscription_plan || "starter"]}
-            </p>
-            {business?.trial_ends_at && (
-              <p className="text-xs text-muted-foreground">
-                Essai gratuit jusqu'au {new Date(business.trial_ends_at).toLocaleDateString("fr-FR")}
-              </p>
-            )}
-            <Button variant="outline" className="rounded-xl">
-              Gérer l'abonnement
-            </Button>
+          <div className="space-y-2">
+            <Label className="text-xs">Nouveau mot de passe</Label>
+            <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 caractères" className="rounded-xl text-sm" />
           </div>
+          <Button onClick={handleUpdatePassword} size="sm" className="rounded-xl">Mettre à jour</Button>
         </div>
-      </main>
-    </div>
+
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-3">
+          <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+            <Crown className="w-4 h-4 text-accent" /> Abonnement
+          </h2>
+          <div className="flex items-center gap-2">
+            <Badge className="bg-primary/10 text-primary text-xs">{business?.subscription_plan || "starter"}</Badge>
+            <Badge variant="outline" className="text-xs">{business?.subscription_status || "trialing"}</Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">{planLabels[business?.subscription_plan || "starter"]}</p>
+          {business?.trial_ends_at && (
+            <p className="text-xs text-muted-foreground">
+              Essai gratuit jusqu'au {new Date(business.trial_ends_at).toLocaleDateString("fr-FR")}
+            </p>
+          )}
+          <Button variant="outline" size="sm" className="rounded-xl">Gérer l'abonnement</Button>
+        </div>
+      </div>
+    </DashboardLayout>
   );
 };
 
