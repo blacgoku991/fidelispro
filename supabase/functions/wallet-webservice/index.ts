@@ -248,6 +248,7 @@ async function handleGetLatestPass(
       headers: {
         "Content-Type": "application/vnd.apple.pkpass",
         "Last-Modified": new Date().toUTCString(),
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     });
   } catch (err: any) {
@@ -277,6 +278,7 @@ async function buildPkpassForUpdate(
   const pointsCurrent = card.current_points || 0;
   const pointsMax = card.max_points || 10;
   const pointsToReward = pointsMax - pointsCurrent;
+  const latestOffer = card.wallet_change_message || "";
   const levelEmoji = level === "gold" ? "⭐" : level === "silver" ? "🥈" : "🥉";
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -301,31 +303,30 @@ async function buildPkpassForUpdate(
         {
           key: "points",
           label: "POINTS",
-          value: `${pointsCurrent}/${pointsMax}`,
+          value: pointsCurrent,
           textAlignment: "PKTextAlignmentRight",
-          ...(card.wallet_change_message ? { changeMessage: card.wallet_change_message } : {}),
+          changeMessage: "Vous avez gagné %@ points !",
         },
       ],
       primaryFields: [{ key: "name", label: "CLIENT", value: customer?.full_name || "Client" }],
       secondaryFields: [
         { key: "level", label: "STATUT", value: `${levelEmoji} ${level.toUpperCase()}` },
         { key: "progress", label: "PROGRESSION", value: `${pointsCurrent} / ${pointsMax}`, textAlignment: "PKTextAlignmentRight" },
+        {
+          key: "offer",
+          label: "OFFRE DU JOUR",
+          value: latestOffer,
+          changeMessage: "%@",
+        },
       ],
       auxiliaryFields: [
         { key: "rewards", label: "RÉCOMPENSES", value: `${card.rewards_earned || 0} obtenues` },
-        ...(card.wallet_change_message
-          ? [{
-              key: "offer",
-              label: "OFFRE",
-              value: card.wallet_change_message,
-              changeMessage: card.wallet_change_message,
-            }]
-          : [{
-              key: "next_reward",
-              label: "PROCHAINE",
-              value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !",
-              textAlignment: "PKTextAlignmentRight",
-            }]),
+        {
+          key: "next_reward",
+          label: "PROCHAINE",
+          value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !",
+          textAlignment: "PKTextAlignmentRight",
+        },
       ],
       backFields: [
         { key: "reward_info", label: "🎁 Récompense", value: business.reward_description || "Récompense offerte !" },

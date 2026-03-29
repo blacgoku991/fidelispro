@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Smartphone, Send, CheckCircle, XCircle, RefreshCw,
-  Plus, Megaphone, Zap, Clock,
+  Plus, Megaphone, Zap, Clock, BellRing,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -97,9 +97,14 @@ export const WalletDebugPanel = ({ businessId }: WalletDebugPanelProps) => {
       setLastResult(result);
 
       if (result.success) {
-        toast.success(
-          `✅ ${actionType}: ${result.pushed} push réussi(s), ${result.failed} échoué(s) sur ${result.unique_devices} appareil(s)`
-        );
+        if (actionType === "send_test_notification" && result.test_notification_log) {
+          const t = result.test_notification_log;
+          toast.success(`✅ Test notif: DB ${t.db_update_status}, APNs ${t.apns_http_status}, token …${t.device_token_last8}`);
+        } else {
+          toast.success(
+            `✅ ${actionType}: ${result.pushed} push réussi(s), ${result.failed} échoué(s) sur ${result.unique_devices} appareil(s)`
+          );
+        }
       } else {
         toast.error(result.error || "Échec de l'envoi");
       }
@@ -177,6 +182,15 @@ export const WalletDebugPanel = ({ businessId }: WalletDebugPanelProps) => {
       {/* Test buttons */}
       <div className="grid grid-cols-2 gap-2">
         <Button
+          onClick={() => callWalletPush("send_test_notification", "🎁 1 offre ajoutée aujourd'hui")}
+          disabled={!!activeAction || noDevices}
+          variant="outline"
+          className="rounded-xl gap-2 text-xs h-10"
+        >
+          <BellRing className="w-3.5 h-3.5" />
+          {activeAction === "send_test_notification" ? "Envoi..." : "Send test notification"}
+        </Button>
+        <Button
           onClick={() => callWalletPush("test", "🧪 Test Wallet push")}
           disabled={!!activeAction || noDevices}
           variant="outline"
@@ -237,6 +251,21 @@ export const WalletDebugPanel = ({ businessId }: WalletDebugPanelProps) => {
             <span className="text-muted-foreground">Passes uniques</span>
             <span className="font-mono">{lastResult.unique_passes}</span>
           </div>
+          {lastResult.test_notification_log && (
+            <div className="mt-2 p-2 rounded bg-muted/40 space-y-1">
+              <p className="font-medium">Test notification log</p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                <span className="text-muted-foreground">DB update</span>
+                <span className="font-mono">{lastResult.test_notification_log.db_update_status}</span>
+                <span className="text-muted-foreground">APNs HTTP</span>
+                <span className="font-mono">{lastResult.test_notification_log.apns_http_status ?? "—"}</span>
+                <span className="text-muted-foreground">Token (last 8)</span>
+                <span className="font-mono">{lastResult.test_notification_log.device_token_last8 ?? "—"}</span>
+                <span className="text-muted-foreground">Timestamp</span>
+                <span className="font-mono">{new Date(lastResult.test_notification_log.timestamp).toLocaleString("fr-FR")}</span>
+              </div>
+            </div>
+          )}
           {lastResult.card_updates?.map((cu: any, i: number) => (
             <div key={i} className="mt-1 p-2 rounded bg-muted/40">
               <p className="font-mono truncate">{cu.serial_number?.slice(0, 8)}...</p>

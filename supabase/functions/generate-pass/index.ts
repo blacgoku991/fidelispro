@@ -118,6 +118,7 @@ export async function buildPkpass(
   const pointsCurrent = card.current_points || 0;
   const pointsMax = card.max_points || 10;
   const pointsToReward = pointsMax - pointsCurrent;
+  const latestOffer = card.wallet_change_message || "";
   const levelEmoji = level === "gold" ? "⭐" : level === "silver" ? "🥈" : "🥉";
   const levelLabel = level.toUpperCase();
 
@@ -156,9 +157,9 @@ export async function buildPkpass(
         {
           key: "points",
           label: "POINTS",
-          value: `${pointsCurrent}/${pointsMax}`,
+          value: pointsCurrent,
           textAlignment: "PKTextAlignmentRight",
-          ...(card.wallet_change_message ? { changeMessage: card.wallet_change_message } : {}),
+          changeMessage: "Vous avez gagné %@ points !",
         },
       ],
       primaryFields: [
@@ -179,6 +180,12 @@ export async function buildPkpass(
           label: "PROGRESSION",
           value: `${pointsCurrent} / ${pointsMax}`,
           textAlignment: "PKTextAlignmentRight",
+        },
+        {
+          key: "offer",
+          label: "OFFRE DU JOUR",
+          value: latestOffer,
+          changeMessage: "%@",
         },
       ],
       auxiliaryFields: [
