@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Star, Crown, Trophy, Wallet, Bell, BellOff, Share, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { registerPushSubscription, isPushSubscribed } from "@/lib/webPush";
+import { useWebPush } from "@/hooks/useWebPush";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
 const badgeIcons: Record<string, string> = {
@@ -26,8 +26,7 @@ const CardViewPage = () => {
   const [loading, setLoading] = useState(true);
   const [walletLoading, setWalletLoading] = useState(false);
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
-  const [pushSubscribed, setPushSubscribed] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
