@@ -98,6 +98,23 @@ const Dashboard = () => {
     if (data) setCustomers(data);
   };
 
+  const fetchClientHistory = async (customerId: string) => {
+    if (clientHistory[customerId]) return;
+    const { data } = await supabase
+      .from("points_history")
+      .select("*")
+      .eq("customer_id", customerId)
+      .eq("business_id", business!.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (data) setClientHistory(prev => ({ ...prev, [customerId]: data }));
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copié !`);
+  };
+
   // ── Scanner logic ─────────────────────────────────────────
   const processCardCode = async (code: string) => {
     if (!code.trim() || !business || !user) return;
