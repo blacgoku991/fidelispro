@@ -161,27 +161,32 @@ const SettingsPage = () => {
                 <Label className="text-xs flex items-center gap-1.5">
                   <MapPin className="w-3 h-3" /> Adresse de votre établissement
                 </Label>
-                <div className="flex gap-2">
+                <div className="relative" ref={suggestionsRef}>
                   <Input
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Ex: 12 rue de la Paix, 75002 Paris"
-                    className="rounded-xl text-sm flex-1"
-                    onKeyDown={(e) => e.key === "Enter" && geocodeAddress()}
+                    onChange={(e) => handleAddressInput(e.target.value)}
+                    placeholder="Ex: Wok N Thai Colombes, 12 rue..."
+                    className="rounded-xl text-sm"
+                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl gap-1.5 text-xs shrink-0"
-                    disabled={geocoding}
-                    onClick={geocodeAddress}
-                  >
-                    {geocoding ? "..." : "📍 Localiser"}
-                  </Button>
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div
+                      className="absolute top-full left-0 right-0 bg-card border border-border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
+                    >
+                      {suggestions.map((s: any, i: number) => (
+                        <div
+                          key={i}
+                          onClick={() => selectSuggestion(s)}
+                          className="px-3.5 py-2.5 cursor-pointer text-[13px] text-foreground leading-snug border-b border-border/30 last:border-0 hover:bg-muted/60 transition-colors"
+                        >
+                          {s.display_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  Tapez l'adresse puis cliquez "Localiser" pour obtenir les coordonnées GPS
+                  Tapez un nom de commerce, une adresse ou une ville — les suggestions apparaissent automatiquement
                 </p>
               </div>
 
