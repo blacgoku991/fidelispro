@@ -94,7 +94,9 @@ serve(async (req) => {
   }
 
   try {
-    const { business_id, title, message, segment, campaign_id } = await req.json();
+    const { business_id, title, message, segment, campaign_id, channels } = await req.json();
+    const sendWebPushChannel = channels?.web_push !== false;
+    const sendWalletChannel = channels?.apple_wallet !== false;
     if (!business_id || !message) {
       return new Response(JSON.stringify({ error: "business_id and message required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -107,45 +109,48 @@ serve(async (req) => {
     const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get web push subscriptions for this business
-    const { data: subscriptions } = await supabase
-      .from("web_push_subscriptions")
-      .select("*")
-      .eq("business_id", business_id);
-
-    const subs = subscriptions || [];
     let pushed = 0;
     let failed = 0;
 
-    const payload = JSON.stringify({ title: title || "FidéliPro", body: message, tag: campaign_id || "notification" });
+    if (sendWebPushChannel) {
+      // Get web push subscriptions for this business
+      const { data: subscriptions } = await supabase
+        .from("web_push_subscriptions")
+        .select("*")
+        .eq("business_id", business_id);
 
-    for (const sub of subs) {
-      const result = await sendWebPush(
-        { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-        payload,
-        vapidPublicKey,
-        vapidPrivateKey
-      );
-      if (result.success) pushed++;
-      else {
-        failed++;
-        // Remove invalid subscriptions (410 Gone or 404)
-        if (result.status === 410 || result.status === 404) {
-          await supabase.from("web_push_subscriptions").delete().eq("id", sub.id);
+      const subs = subscriptions || [];
+      const payload = JSON.stringify({ title: title || "FidéliPro", body: message, tag: campaign_id || "notification" });
+
+      for (const sub of subs) {
+        const result = await sendWebPush(
+          { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          payload,
+          vapidPublicKey,
+          vapidPrivateKey
+        );
+        if (result.success) pushed++;
+        else {
+          failed++;
+          if (result.status === 410 || result.status === 404) {
+            await supabase.from("web_push_subscriptions").delete().eq("id", sub.id);
+          }
         }
       }
     }
 
     // Also trigger Apple Wallet push if available
     let walletResult = { pushed: 0, failed: 0 };
-    try {
-      const walletRes = await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
-        body: JSON.stringify({ business_id, action_type: "campaign", change_message: message }),
-      });
-      walletResult = await walletRes.json();
-    } catch {}
+    if (sendWalletChannel) {
+      try {
+        const walletRes = await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
+          body: JSON.stringify({ business_id, action_type: "campaign", change_message: message }),
+        });
+        walletResult = await walletRes.json();
+      } catch {}
+    }
 
     return new Response(JSON.stringify({
       success: true,
