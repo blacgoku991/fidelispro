@@ -327,7 +327,19 @@ async function buildPkpassForUpdate(
       ],
       auxiliaryFields: [
         { key: "rewards", label: "RÉCOMPENSES", value: `${card.rewards_earned || 0} obtenues` },
-        { key: "next_reward", label: "PROCHAINE", value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !", textAlignment: "PKTextAlignmentRight" },
+        ...(card.wallet_change_message
+          ? [{
+              key: "offer",
+              label: "OFFRE",
+              value: card.wallet_change_message,
+              changeMessage: card.wallet_change_message,
+            }]
+          : [{
+              key: "next_reward",
+              label: "PROCHAINE",
+              value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !",
+              textAlignment: "PKTextAlignmentRight",
+            }]),
       ],
       backFields: [
         { key: "reward_info", label: "🎁 Récompense", value: business.reward_description || "Récompense offerte !" },
