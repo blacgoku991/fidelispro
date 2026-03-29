@@ -3,9 +3,10 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { motion } from "framer-motion";
-import { Flame, Star, Crown, Trophy, Wallet } from "lucide-react";
+import { Flame, Star, Crown, Trophy, Wallet, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { registerPushSubscription, isPushSubscribed } from "@/lib/webPush";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
 const badgeIcons: Record<string, string> = {
@@ -25,6 +26,8 @@ const CardViewPage = () => {
   const [loading, setLoading] = useState(true);
   const [walletLoading, setWalletLoading] = useState(false);
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   const isAndroidDevice = /Android/.test(navigator.userAgent);
@@ -89,6 +92,20 @@ const CardViewPage = () => {
     };
     fetch();
   }, [cardCode]);
+
+  // Check push subscription status
+  useEffect(() => {
+    isPushSubscribed().then(setPushSubscribed);
+  }, []);
+
+  const handleSubscribePush = async () => {
+    if (!business || !customer) return;
+    setPushLoading(true);
+    const success = await registerPushSubscription(business.id, customer.id);
+    setPushSubscribed(success);
+    if (success) toast.success("Notifications activées ! 🔔");
+    setPushLoading(false);
+  };
 
   if (loading) {
     return (
@@ -178,6 +195,25 @@ const CardViewPage = () => {
               </div>
             </div>
           </button>
+        )}
+
+        {/* Push notification subscribe button */}
+        {!pushSubscribed && "Notification" in window && Notification.permission !== "denied" && (
+          <Button
+            onClick={handleSubscribePush}
+            disabled={pushLoading}
+            variant="outline"
+            className="w-full rounded-xl gap-2 h-12"
+          >
+            <Bell className="w-4 h-4" />
+            {pushLoading ? "Activation..." : "🔔 Activer les notifications"}
+          </Button>
+        )}
+        {pushSubscribed && (
+          <div className="flex items-center justify-center gap-2 text-xs text-primary">
+            <Bell className="w-3.5 h-3.5" />
+            Notifications activées
+          </div>
         )}
 
         <p className="text-center text-xs text-muted-foreground">
