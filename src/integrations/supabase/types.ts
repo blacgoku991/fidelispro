@@ -941,32 +941,32 @@ export type Database = {
         Row: {
           auth: string
           business_id: string
-          created_at: string
-          customer_id: string | null
+          card_id: string | null
+          created_at: string | null
           endpoint: string
           id: string
           p256dh: string
-          updated_at: string
+          user_agent: string | null
         }
         Insert: {
           auth: string
           business_id: string
-          created_at?: string
-          customer_id?: string | null
+          card_id?: string | null
+          created_at?: string | null
           endpoint: string
           id?: string
           p256dh: string
-          updated_at?: string
+          user_agent?: string | null
         }
         Update: {
           auth?: string
           business_id?: string
-          created_at?: string
-          customer_id?: string | null
+          card_id?: string | null
+          created_at?: string | null
           endpoint?: string
           id?: string
           p256dh?: string
-          updated_at?: string
+          user_agent?: string | null
         }
         Relationships: [
           {
@@ -977,10 +977,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "web_push_subscriptions_customer_id_fkey"
-            columns: ["customer_id"]
+            foreignKeyName: "web_push_subscriptions_card_id_fkey"
+            columns: ["card_id"]
             isOneToOne: false
-            referencedRelation: "customers"
+            referencedRelation: "customer_cards"
             referencedColumns: ["id"]
           },
         ]

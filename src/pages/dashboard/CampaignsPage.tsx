@@ -42,6 +42,7 @@ const CampaignsPage = () => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [sending, setSending] = useState(false);
   const [segmentCounts, setSegmentCounts] = useState<Record<string, number>>({});
+  const [channelCounts, setChannelCounts] = useState({ wallet: 0, webpush: 0 });
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [selectedLog, setSelectedLog] = useState<any>(null);
@@ -57,7 +58,17 @@ const CampaignsPage = () => {
     if (!business) return;
     fetchCampaigns();
     fetchSegmentCounts();
+    fetchChannelCounts();
   }, [business]);
+
+  const fetchChannelCounts = async () => {
+    if (!business) return;
+    const [wallet, webpush] = await Promise.all([
+      supabase.from("wallet_registrations").select("id", { count: "exact", head: true }).eq("business_id", business.id),
+      supabase.from("web_push_subscriptions" as any).select("id", { count: "exact", head: true }).eq("business_id", business.id),
+    ]);
+    setChannelCounts({ wallet: wallet.count || 0, webpush: webpush.count || 0 });
+  };
 
   const fetchCampaigns = async () => {
     if (!business) return;
@@ -192,12 +203,9 @@ const CampaignsPage = () => {
         }),
       });
       const result = await res.json();
-      const webCount = result.web_push?.pushed || 0;
-      const walletCount = result.wallet_push?.pushed || 0;
-      const parts = [`✅ Envoyé à ${customers.length} client(s)`];
-      if (webCount > 0) parts.push(`${webCount} push web`);
-      if (walletCount > 0) parts.push(`${walletCount} Wallet`);
-      toast.success(parts.join(" • "));
+      const webCount = result.webpush?.sent || result.web_push?.pushed || 0;
+      const walletCount = result.wallet?.sent || result.wallet_push?.pushed || 0;
+      toast.success(`Envoyé — ${walletCount} Wallet + ${webCount} Web Push`);
     } catch {
       toast.success(`Campagne enregistrée pour ${customers.length} client(s)`);
     }
@@ -498,6 +506,7 @@ const CampaignsPage = () => {
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
                   <span className="text-sm">🔔 Push Web (PWA)</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">({channelCounts.webpush} abonné{channelCounts.webpush > 1 ? 's' : ''})</span>
                 </label>
                 <label className="flex items-center gap-2.5 cursor-pointer">
                   <input
@@ -507,6 +516,7 @@ const CampaignsPage = () => {
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
                   <span className="text-sm">🍎 Apple Wallet</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">({channelCounts.wallet} appareil{channelCounts.wallet > 1 ? 's' : ''})</span>
                 </label>
               </div>
               {!form.channels.webPush && !form.channels.appleWallet && (
