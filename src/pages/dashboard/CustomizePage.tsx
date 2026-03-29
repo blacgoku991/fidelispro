@@ -80,6 +80,9 @@ const CustomizePage = () => {
       feature_analytics: business.feature_analytics ?? true,
       category: business.category || "general",
       business_template: business.business_template || "custom",
+      latitude: business.latitude || null,
+      longitude: business.longitude || null,
+      geofence_message: business.geofence_message || "Passez nous voir, on vous attend ! 🎉",
     });
     setLogoUrl(business.logo_url || null);
   }, [business]);
