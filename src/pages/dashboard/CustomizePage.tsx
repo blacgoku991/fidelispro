@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { MobileHeader } from "@/components/dashboard/MobileHeader";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { LogoUpload } from "@/components/dashboard/LogoUpload";
 import { TemplatePicker } from "@/components/dashboard/TemplatePicker";
 import { FeatureToggles } from "@/components/dashboard/FeatureToggles";
-import { businessSidebarItems } from "@/lib/sidebarItems";
 import { defaultConfig, type BusinessConfig, type BusinessTemplate } from "@/lib/businessTemplates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { QRCodeSVG } from "qrcode.react";
 import {
-  Save, Palette, CreditCard, Bell, Zap, Shield, Layout, Users,
+  Save, Palette, CreditCard, Bell, Zap, Shield, Layout, Users, Download, Copy, Printer, ExternalLink, Link,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,7 +32,7 @@ const cardStyles = [
 ];
 
 const CustomizePage = () => {
-  const { user, loading, business, logout } = useAuth();
+  const { user, business } = useAuth();
   const [form, setForm] = useState<BusinessConfig & { name: string; description: string; address: string; city: string; phone: string; website: string }>(
     { ...defaultConfig, name: "", description: "", address: "", city: "", phone: "", website: "" }
   );
@@ -105,418 +104,427 @@ const CustomizePage = () => {
     setForm(prev => ({ ...prev, [key]: value }));
   };
 
-  if (loading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>;
-  }
+  // QR code helpers
+  const publicUrl = `${window.location.origin}/b/${business?.id}`;
+  const copyLink = () => { navigator.clipboard.writeText(publicUrl); toast.success("Lien copié !"); };
+  const downloadQR = () => {
+    const svg = document.getElementById("business-qr-svg");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024; canvas.height = 1024;
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => { ctx?.drawImage(img, 0, 0, 1024, 1024); const a = document.createElement("a"); a.download = `qr-${business?.name || "fidelipro"}.png`; a.href = canvas.toDataURL("image/png"); a.click(); };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardSidebar items={businessSidebarItems} onLogout={logout} />
-      <main className="lg:ml-64 p-6 lg:p-8">
-        <MobileHeader onLogout={logout} items={businessSidebarItems} />
+    <DashboardLayout
+      title="Personnalisation"
+      subtitle="Configurez entièrement votre programme de fidélité"
+      headerAction={
+        <Button onClick={handleSave} disabled={saving} className="bg-gradient-primary text-primary-foreground rounded-xl gap-2">
+          <Save className="w-4 h-4" /> {saving ? "..." : "Sauvegarder"}
+        </Button>
+      }
+    >
+      <Tabs defaultValue="branding" className="space-y-5">
+        <TabsList className="bg-secondary/50 rounded-xl p-1 h-auto flex-wrap">
+          <TabsTrigger value="branding" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card"><Palette className="w-3.5 h-3.5" />Marque</TabsTrigger>
+          <TabsTrigger value="card" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card"><CreditCard className="w-3.5 h-3.5" />Carte</TabsTrigger>
+          <TabsTrigger value="loyalty" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card"><Zap className="w-3.5 h-3.5" />Fidélité</TabsTrigger>
+          <TabsTrigger value="notifications" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card"><Bell className="w-3.5 h-3.5" />Notifications</TabsTrigger>
+          <TabsTrigger value="qrcode" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card"><Link className="w-3.5 h-3.5" />QR Vitrine</TabsTrigger>
+          <TabsTrigger value="template" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card"><Layout className="w-3.5 h-3.5" />Template</TabsTrigger>
+          <TabsTrigger value="features" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card"><Shield className="w-3.5 h-3.5" />Modules</TabsTrigger>
+        </TabsList>
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-display font-bold">Configuration</h1>
-            <p className="text-sm text-muted-foreground">Personnalisez entièrement votre programme de fidélité</p>
+        {/* === BRANDING === */}
+        <TabsContent value="branding">
+          <div className="grid lg:grid-cols-2 gap-5">
+            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+              <h2 className="font-display font-semibold text-sm">Identité</h2>
+              <div>
+                <Label className="mb-2 block text-xs">Logo</Label>
+                {business && <LogoUpload currentUrl={logoUrl} businessId={business.id} onUploaded={(url) => setLogoUrl(url)} />}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nom du commerce</Label>
+                <Input value={form.name} onChange={(e) => update("name", e.target.value)} className="rounded-xl text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Description</Label>
+                <Textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="rounded-xl text-sm" placeholder="Décrivez votre commerce..." rows={2} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Catégorie</Label>
+                  <Select value={form.category} onValueChange={(v) => update("category", v)}>
+                    <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">Général</SelectItem>
+                      <SelectItem value="boucherie">Boucherie</SelectItem>
+                      <SelectItem value="boulangerie">Boulangerie</SelectItem>
+                      <SelectItem value="restaurant">Restaurant</SelectItem>
+                      <SelectItem value="cafe">Café</SelectItem>
+                      <SelectItem value="coiffeur">Coiffeur</SelectItem>
+                      <SelectItem value="barbier">Barbier</SelectItem>
+                      <SelectItem value="fleuriste">Fleuriste</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Téléphone</Label>
+                  <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} className="rounded-xl text-sm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Adresse</Label>
+                  <Input value={form.address} onChange={(e) => update("address", e.target.value)} className="rounded-xl text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Ville</Label>
+                  <Input value={form.city} onChange={(e) => update("city", e.target.value)} className="rounded-xl text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+              <h2 className="font-display font-semibold text-sm">Couleurs</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Principale</Label>
+                  <div className="flex gap-2 items-center">
+                    <input type="color" value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
+                    <Input value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="rounded-xl text-sm" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Secondaire</Label>
+                  <div className="flex gap-2 items-center">
+                    <input type="color" value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
+                    <Input value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="rounded-xl text-sm" />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Website</Label>
+                <Input value={form.website} onChange={(e) => update("website", e.target.value)} className="rounded-xl text-sm" placeholder="https://..." />
+              </div>
+            </div>
           </div>
-          <Button onClick={handleSave} disabled={saving} className="bg-gradient-primary text-primary-foreground rounded-xl gap-2">
-            <Save className="w-4 h-4" /> {saving ? "Sauvegarde..." : "Sauvegarder"}
-          </Button>
-        </div>
+        </TabsContent>
 
-        <Tabs defaultValue="template" className="space-y-6">
-          <TabsList className="bg-secondary/50 rounded-xl p-1 h-auto flex-wrap">
-            <TabsTrigger value="template" className="rounded-lg gap-1.5 data-[state=active]:bg-card"><Layout className="w-3.5 h-3.5" />Template</TabsTrigger>
-            <TabsTrigger value="branding" className="rounded-lg gap-1.5 data-[state=active]:bg-card"><Palette className="w-3.5 h-3.5" />Branding</TabsTrigger>
-            <TabsTrigger value="card" className="rounded-lg gap-1.5 data-[state=active]:bg-card"><CreditCard className="w-3.5 h-3.5" />Carte</TabsTrigger>
-            <TabsTrigger value="loyalty" className="rounded-lg gap-1.5 data-[state=active]:bg-card"><Zap className="w-3.5 h-3.5" />Fidélité</TabsTrigger>
-            <TabsTrigger value="notifications" className="rounded-lg gap-1.5 data-[state=active]:bg-card"><Bell className="w-3.5 h-3.5" />Notifications</TabsTrigger>
-            <TabsTrigger value="customers" className="rounded-lg gap-1.5 data-[state=active]:bg-card"><Users className="w-3.5 h-3.5" />Clients</TabsTrigger>
-            <TabsTrigger value="features" className="rounded-lg gap-1.5 data-[state=active]:bg-card"><Shield className="w-3.5 h-3.5" />Fonctionnalités</TabsTrigger>
-          </TabsList>
-
-          {/* === TEMPLATE === */}
-          <TabsContent value="template">
-            <div className="p-6 rounded-2xl bg-card border border-border/50">
-              <h2 className="font-display font-semibold mb-2">Choisir un template métier</h2>
-              <p className="text-sm text-muted-foreground mb-6">Sélectionnez un template pour pré-configurer votre programme selon votre activité. Vous pourrez tout modifier ensuite.</p>
-              <TemplatePicker currentTemplate={form.business_template} onSelect={handleTemplateSelect} />
-            </div>
-          </TabsContent>
-
-          {/* === BRANDING === */}
-          <TabsContent value="branding">
-            <div className="grid lg:grid-cols-2 gap-6">
-              <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-5">
-                <h2 className="font-display font-semibold">Identité de marque</h2>
-                <div>
-                  <Label className="mb-2 block">Logo</Label>
-                  {business && (
-                    <LogoUpload
-                      currentUrl={logoUrl}
-                      businessId={business.id}
-                      onUploaded={(url) => setLogoUrl(url)}
-                    />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>Nom du commerce</Label>
-                  <Input value={form.name} onChange={(e) => update("name", e.target.value)} className="rounded-xl" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="rounded-xl" placeholder="Décrivez votre commerce..." />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Catégorie</Label>
-                    <Select value={form.category} onValueChange={(v) => update("category", v)}>
-                      <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="general">Général</SelectItem>
-                        <SelectItem value="boucherie">Boucherie</SelectItem>
-                        <SelectItem value="boulangerie">Boulangerie</SelectItem>
-                        <SelectItem value="restaurant">Restaurant</SelectItem>
-                        <SelectItem value="cafe">Café</SelectItem>
-                        <SelectItem value="coiffeur">Coiffeur</SelectItem>
-                        <SelectItem value="barbier">Barbier</SelectItem>
-                        <SelectItem value="fleuriste">Fleuriste</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Téléphone</Label>
-                    <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} className="rounded-xl" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Adresse</Label>
-                    <Input value={form.address} onChange={(e) => update("address", e.target.value)} className="rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Ville</Label>
-                    <Input value={form.city} onChange={(e) => update("city", e.target.value)} className="rounded-xl" />
-                  </div>
-                </div>
+        {/* === CARD === */}
+        <TabsContent value="card">
+          <div className="grid lg:grid-cols-2 gap-5">
+            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+              <h2 className="font-display font-semibold text-sm">Design de la carte</h2>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Style</Label>
+                <Select value={form.card_style} onValueChange={(v) => update("card_style", v)}>
+                  <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {cardStyles.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-5">
-                <h2 className="font-display font-semibold">Couleurs</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Couleur principale</Label>
-                    <div className="flex gap-2 items-center">
-                      <input type="color" value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="w-10 h-10 rounded-lg border cursor-pointer" />
-                      <Input value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="rounded-xl" />
-                    </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Type de fond</Label>
+                <Select value={form.card_bg_type} onValueChange={(v) => update("card_bg_type", v as "solid" | "gradient" | "image")}>
+                  <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="solid">Couleur unie</SelectItem>
+                    <SelectItem value="gradient">Dégradé</SelectItem>
+                    <SelectItem value="image">Image</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-medium text-muted-foreground">Éléments visibles</h3>
+                {[
+                  { key: "show_customer_name" as const, label: "Nom du client" },
+                  { key: "show_qr_code" as const, label: "QR Code" },
+                  { key: "show_points" as const, label: "Points / Progression" },
+                  { key: "show_expiration" as const, label: "Date d'expiration" },
+                  { key: "show_rewards_preview" as const, label: "Aperçu récompense" },
+                ].map((item) => (
+                  <div key={item.key} className="flex items-center justify-between py-0.5">
+                    <span className="text-sm">{item.label}</span>
+                    <Switch checked={form[item.key]} onCheckedChange={(v) => update(item.key, v)} />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Couleur secondaire</Label>
-                    <div className="flex gap-2 items-center">
-                      <input type="color" value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="w-10 h-10 rounded-lg border cursor-pointer" />
-                      <Input value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="rounded-xl" />
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Website</Label>
-                  <Input value={form.website} onChange={(e) => update("website", e.target.value)} className="rounded-xl" placeholder="https://..." />
-                </div>
+                ))}
               </div>
             </div>
-          </TabsContent>
 
-          {/* === CARD DESIGN === */}
-          <TabsContent value="card">
-            <div className="grid lg:grid-cols-2 gap-6">
-              <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-5">
-                <h2 className="font-display font-semibold">Design de la carte</h2>
-                <div className="space-y-2">
-                  <Label>Style de carte</Label>
-                  <Select value={form.card_style} onValueChange={(v) => update("card_style", v)}>
-                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {cardStyles.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Type de fond</Label>
-                  <Select value={form.card_bg_type} onValueChange={(v) => update("card_bg_type", v as "solid" | "gradient" | "image")}>
-                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="solid">Couleur unie</SelectItem>
-                      <SelectItem value="gradient">Dégradé</SelectItem>
-                      <SelectItem value="image">Image</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="font-medium text-sm">Éléments visibles</h3>
-                  <div className="space-y-2.5">
-                    {[
-                      { key: "show_customer_name" as const, label: "Nom du client" },
-                      { key: "show_qr_code" as const, label: "QR Code" },
-                      { key: "show_points" as const, label: "Points / Progression" },
-                      { key: "show_expiration" as const, label: "Date d'expiration" },
-                      { key: "show_rewards_preview" as const, label: "Aperçu récompense" },
-                    ].map((item) => (
-                      <div key={item.key} className="flex items-center justify-between py-1">
-                        <span className="text-sm">{item.label}</span>
-                        <Switch checked={form[item.key]} onCheckedChange={(v) => update(item.key, v)} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 rounded-2xl bg-card border border-border/50">
-                <h2 className="font-display font-semibold mb-6">Aperçu en direct</h2>
-                <div className="flex justify-center">
-                  <LoyaltyCard
-                    businessName={form.name || "Mon Commerce"}
-                    customerName="Client exemple"
-                    points={7}
-                    maxPoints={form.max_points_per_card}
-                    level="gold"
-                    cardId={`preview-${user?.id?.slice(0, 8) || "demo"}`}
-                    logoUrl={logoUrl || undefined}
-                    accentColor={form.primary_color}
-                    secondaryColor={form.secondary_color}
-                    rewardDescription={form.reward_description}
-                    rewardsEarned={2}
-                    showQr={form.show_qr_code}
-                    showPoints={form.show_points}
-                    showCustomerName={form.show_customer_name}
-                  />
-                </div>
-                <p className="text-center text-sm text-muted-foreground mt-4">
-                  {form.show_rewards_preview ? `Récompense : ${form.reward_description}` : ""}
-                </p>
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* === LOYALTY === */}
-          <TabsContent value="loyalty">
-            <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-5 max-w-2xl">
-              <h2 className="font-display font-semibold">Système de fidélité</h2>
-
-              <div className="space-y-2">
-                <Label>Type de programme</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { val: "points", emoji: "⭐", label: "Points", desc: "Points cumulés par visite" },
-                    { val: "stamps", emoji: "🎯", label: "Tampons", desc: "Tampons à chaque visite" },
-                    { val: "cashback", emoji: "💰", label: "Cashback", desc: "% de retour sur achats" },
-                  ].map((type) => (
-                    <button
-                      key={type.val}
-                      onClick={() => update("loyalty_type", type.val as "points" | "stamps" | "cashback")}
-                      className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                        form.loyalty_type === type.val
-                          ? "border-primary bg-primary/5"
-                          : "border-border/50 hover:border-primary/30"
-                      }`}
-                    >
-                      <span className="text-xl">{type.emoji}</span>
-                      <p className="font-semibold text-sm mt-1">{type.label}</p>
-                      <p className="text-xs text-muted-foreground">{type.desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{form.loyalty_type === "stamps" ? "Tampons pour récompense" : "Points max par carte"}</Label>
-                  <Input type="number" value={form.max_points_per_card} onChange={(e) => update("max_points_per_card", parseInt(e.target.value) || 10)} className="rounded-xl" />
-                </div>
-                <div className="space-y-2">
-                  <Label>{form.loyalty_type === "cashback" ? "Points par euro dépensé" : "Points par visite"}</Label>
-                  <Input
-                    type="number"
-                    value={form.loyalty_type === "cashback" ? form.points_per_euro : form.points_per_visit}
-                    onChange={(e) => update(
-                      form.loyalty_type === "cashback" ? "points_per_euro" : "points_per_visit",
-                      parseInt(e.target.value) || 1
-                    )}
-                    className="rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Description de la récompense</Label>
-                <Input value={form.reward_description} onChange={(e) => update("reward_description", e.target.value)} className="rounded-xl" placeholder="Ex: Café offert !" />
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* === NOTIFICATIONS === */}
-          <TabsContent value="notifications">
-            <div className="space-y-6 max-w-2xl">
-              <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-5">
-                <h2 className="font-display font-semibold">Fréquence & horaires</h2>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">Notifications activées</p>
-                    <p className="text-xs text-muted-foreground">Envoyer des notifications aux clients</p>
-                  </div>
-                  <Switch checked={form.auto_notifications} onCheckedChange={(v) => update("auto_notifications", v)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Fréquence maximale</Label>
-                  <Select value={form.notif_frequency} onValueChange={(v) => update("notif_frequency", v as BusinessConfig["notif_frequency"])}>
-                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unlimited">Illimité</SelectItem>
-                      <SelectItem value="daily">1 par jour max</SelectItem>
-                      <SelectItem value="weekly">1 par semaine max</SelectItem>
-                      <SelectItem value="custom">Intervalle personnalisé</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {form.notif_frequency === "custom" && (
-                  <div className="space-y-2">
-                    <Label>Intervalle minimum (heures)</Label>
-                    <Input type="number" value={form.notif_custom_interval_hours} onChange={(e) => update("notif_custom_interval_hours", parseInt(e.target.value) || 24)} className="rounded-xl" />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Heure de début</Label>
-                    <Input type="time" value={form.notif_time_start} onChange={(e) => update("notif_time_start", e.target.value)} className="rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Heure de fin</Label>
-                    <Input type="time" value={form.notif_time_end} onChange={(e) => update("notif_time_end", e.target.value)} className="rounded-xl" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-5">
-                <h2 className="font-display font-semibold">Géofencing</h2>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">Notifications par proximité</p>
-                    <p className="text-xs text-muted-foreground">Alerter les clients quand ils passent à proximité</p>
-                  </div>
-                  <Switch checked={form.geofence_enabled} onCheckedChange={(v) => update("geofence_enabled", v)} />
-                </div>
-                {form.geofence_enabled && (
-                  <div className="space-y-2">
-                    <Label>Rayon de détection</Label>
-                    <Select value={String(form.geofence_radius)} onValueChange={(v) => update("geofence_radius", parseInt(v))}>
-                      <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="100">100m</SelectItem>
-                        <SelectItem value="200">200m</SelectItem>
-                        <SelectItem value="500">500m</SelectItem>
-                        <SelectItem value="1000">1 km</SelectItem>
-                        <SelectItem value="2000">2 km</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-5">
-                <h2 className="font-display font-semibold">Automatisations</h2>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">Relance automatique des inactifs</p>
-                    <p className="text-xs text-muted-foreground">Envoyer un rappel après X jours d'inactivité</p>
-                  </div>
-                  <Switch checked={form.auto_reminder_enabled} onCheckedChange={(v) => update("auto_reminder_enabled", v)} />
-                </div>
-                {form.auto_reminder_enabled && (
-                  <div className="space-y-2">
-                    <Label>Jours d'inactivité avant relance</Label>
-                    <Input type="number" value={form.auto_reminder_days} onChange={(e) => update("auto_reminder_days", parseInt(e.target.value) || 7)} className="rounded-xl" />
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label>Seuil d'alerte récompense (points restants)</Label>
-                  <Input type="number" value={form.reward_alert_threshold} onChange={(e) => update("reward_alert_threshold", parseInt(e.target.value) || 2)} className="rounded-xl" />
-                  <p className="text-xs text-muted-foreground">Le client reçoit un rappel quand il est à {form.reward_alert_threshold} points de sa récompense</p>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* === CUSTOMERS === */}
-          <TabsContent value="customers">
-            <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-5 max-w-2xl">
-              <h2 className="font-display font-semibold">Expérience client</h2>
-
-              <div className="space-y-2">
-                <Label>Mode d'inscription</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { val: "instant", emoji: "⚡", label: "Instantané", desc: "Aucune donnée requise" },
-                    { val: "email", emoji: "📧", label: "Email requis", desc: "Email obligatoire" },
-                    { val: "phone", emoji: "📱", label: "Téléphone requis", desc: "N° de téléphone obligatoire" },
-                  ].map((mode) => (
-                    <button
-                      key={mode.val}
-                      onClick={() => update("onboarding_mode", mode.val as "instant" | "email" | "phone")}
-                      className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                        form.onboarding_mode === mode.val
-                          ? "border-primary bg-primary/5"
-                          : "border-border/50 hover:border-primary/30"
-                      }`}
-                    >
-                      <span className="text-xl">{mode.emoji}</span>
-                      <p className="font-semibold text-sm mt-1">{mode.label}</p>
-                      <p className="text-xs text-muted-foreground">{mode.desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-secondary/50">
-                <p className="text-sm font-medium">💡 Conseil</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Le mode "Instantané" génère le plus d'inscriptions. Les modes avec données permettent un meilleur suivi et les campagnes ciblées.
-                </p>
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* === FEATURES === */}
-          <TabsContent value="features">
-            <div className="max-w-2xl">
-              <div className="p-6 rounded-2xl bg-card border border-border/50">
-                <h2 className="font-display font-semibold mb-4">Activer / Désactiver</h2>
-                <p className="text-sm text-muted-foreground mb-6">Choisissez les fonctionnalités que vous souhaitez utiliser</p>
-                <FeatureToggles
-                  config={{
-                    feature_gamification: form.feature_gamification,
-                    feature_notifications: form.feature_notifications,
-                    feature_wallet: form.feature_wallet,
-                    feature_analytics: form.feature_analytics,
-                  }}
-                  onChange={(key, value) => update(key as keyof typeof form, value as any)}
-                  plan={business?.subscription_plan || "starter"}
+            <div className="p-5 rounded-2xl bg-card border border-border/50">
+              <h2 className="font-display font-semibold text-sm mb-4">Aperçu</h2>
+              <div className="flex justify-center">
+                <LoyaltyCard
+                  businessName={form.name || "Mon Commerce"}
+                  customerName="Client exemple"
+                  points={7}
+                  maxPoints={form.max_points_per_card}
+                  level="gold"
+                  cardId={`preview-${user?.id?.slice(0, 8) || "demo"}`}
+                  logoUrl={logoUrl || undefined}
+                  accentColor={form.primary_color}
+                  secondaryColor={form.secondary_color}
+                  rewardDescription={form.reward_description}
+                  rewardsEarned={2}
+                  showQr={form.show_qr_code}
+                  showPoints={form.show_points}
+                  showCustomerName={form.show_customer_name}
                 />
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+          </div>
+        </TabsContent>
+
+        {/* === LOYALTY === */}
+        <TabsContent value="loyalty">
+          <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4 max-w-2xl">
+            <h2 className="font-display font-semibold text-sm">Programme de fidélité</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { val: "points", emoji: "⭐", label: "Points", desc: "Par visite" },
+                { val: "stamps", emoji: "🎯", label: "Tampons", desc: "Par visite" },
+                { val: "cashback", emoji: "💰", label: "Cashback", desc: "% sur achats" },
+              ].map((type) => (
+                <button
+                  key={type.val}
+                  onClick={() => update("loyalty_type", type.val as "points" | "stamps" | "cashback")}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                    form.loyalty_type === type.val ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/30"
+                  }`}
+                >
+                  <span className="text-lg">{type.emoji}</span>
+                  <p className="font-semibold text-xs mt-1">{type.label}</p>
+                  <p className="text-[11px] text-muted-foreground">{type.desc}</p>
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{form.loyalty_type === "stamps" ? "Tampons pour récompense" : "Points max par carte"}</Label>
+                <Input type="number" value={form.max_points_per_card} onChange={(e) => update("max_points_per_card", parseInt(e.target.value) || 10)} className="rounded-xl text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{form.loyalty_type === "cashback" ? "Points par euro" : "Points par visite"}</Label>
+                <Input
+                  type="number"
+                  value={form.loyalty_type === "cashback" ? form.points_per_euro : form.points_per_visit}
+                  onChange={(e) => update(form.loyalty_type === "cashback" ? "points_per_euro" : "points_per_visit", parseInt(e.target.value) || 1)}
+                  className="rounded-xl text-sm"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Récompense</Label>
+              <Input value={form.reward_description} onChange={(e) => update("reward_description", e.target.value)} className="rounded-xl text-sm" placeholder="Café offert !" />
+            </div>
+
+            {/* Onboarding mode */}
+            <div className="pt-3 border-t border-border/50 space-y-3">
+              <Label className="text-xs">Mode d'inscription client</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { val: "instant", emoji: "⚡", label: "Instantané" },
+                  { val: "email", emoji: "📧", label: "Email requis" },
+                  { val: "phone", emoji: "📱", label: "Tél. requis" },
+                ].map((mode) => (
+                  <button
+                    key={mode.val}
+                    onClick={() => update("onboarding_mode", mode.val as "instant" | "email" | "phone")}
+                    className={`p-2.5 rounded-xl border-2 text-center transition-all text-xs ${
+                      form.onboarding_mode === mode.val ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/30"
+                    }`}
+                  >
+                    <span className="text-lg block">{mode.emoji}</span>
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* === NOTIFICATIONS === */}
+        <TabsContent value="notifications">
+          <div className="space-y-4 max-w-2xl">
+            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+              <h2 className="font-display font-semibold text-sm">Fréquence & horaires</h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm">Notifications activées</p>
+                  <p className="text-xs text-muted-foreground">Envoyer des notifications aux clients</p>
+                </div>
+                <Switch checked={form.auto_notifications} onCheckedChange={(v) => update("auto_notifications", v)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fréquence max</Label>
+                <Select value={form.notif_frequency} onValueChange={(v) => update("notif_frequency", v as BusinessConfig["notif_frequency"])}>
+                  <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unlimited">Illimité</SelectItem>
+                    <SelectItem value="daily">1/jour</SelectItem>
+                    <SelectItem value="weekly">1/semaine</SelectItem>
+                    <SelectItem value="custom">Personnalisé</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.notif_frequency === "custom" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Intervalle min (heures)</Label>
+                  <Input type="number" value={form.notif_custom_interval_hours} onChange={(e) => update("notif_custom_interval_hours", parseInt(e.target.value) || 24)} className="rounded-xl text-sm" />
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Début</Label>
+                  <Input type="time" value={form.notif_time_start} onChange={(e) => update("notif_time_start", e.target.value)} className="rounded-xl text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Fin</Label>
+                  <Input type="time" value={form.notif_time_end} onChange={(e) => update("notif_time_end", e.target.value)} className="rounded-xl text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+              <h2 className="font-display font-semibold text-sm">Géofencing</h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm">Notifications par proximité</p>
+                  <p className="text-xs text-muted-foreground">Alerter quand les clients passent à proximité</p>
+                </div>
+                <Switch checked={form.geofence_enabled} onCheckedChange={(v) => update("geofence_enabled", v)} />
+              </div>
+              {form.geofence_enabled && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Rayon</Label>
+                  <Select value={String(form.geofence_radius)} onValueChange={(v) => update("geofence_radius", parseInt(v))}>
+                    <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="100">100m</SelectItem>
+                      <SelectItem value="200">200m</SelectItem>
+                      <SelectItem value="500">500m</SelectItem>
+                      <SelectItem value="1000">1 km</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+              <h2 className="font-display font-semibold text-sm">Relance auto</h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm">Relance des inactifs</p>
+                  <p className="text-xs text-muted-foreground">Rappel après X jours d'inactivité</p>
+                </div>
+                <Switch checked={form.auto_reminder_enabled} onCheckedChange={(v) => update("auto_reminder_enabled", v)} />
+              </div>
+              {form.auto_reminder_enabled && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Jours d'inactivité</Label>
+                  <Input type="number" value={form.auto_reminder_days} onChange={(e) => update("auto_reminder_days", parseInt(e.target.value) || 7)} className="rounded-xl text-sm" />
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Seuil d'alerte récompense</Label>
+                <Input type="number" value={form.reward_alert_threshold} onChange={(e) => update("reward_alert_threshold", parseInt(e.target.value) || 2)} className="rounded-xl text-sm" />
+                <p className="text-[11px] text-muted-foreground">Rappel quand le client est à {form.reward_alert_threshold} points de sa récompense</p>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* === QR CODE === */}
+        <TabsContent value="qrcode">
+          <div className="grid lg:grid-cols-2 gap-5">
+            <div className="p-6 rounded-2xl bg-card border border-border/50 flex flex-col items-center">
+              <div className="p-5 bg-background rounded-2xl">
+                <QRCodeSVG
+                  id="business-qr-svg"
+                  value={publicUrl}
+                  size={240}
+                  level="H"
+                  includeMargin
+                  fgColor={business?.primary_color || "#6B46C1"}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                Scannez pour obtenir la carte de fidélité de <strong>{business?.name}</strong>
+              </p>
+              <div className="flex gap-2 mt-4">
+                <Button onClick={downloadQR} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs">
+                  <Download className="w-3.5 h-3.5" /> PNG
+                </Button>
+                <Button onClick={copyLink} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs">
+                  <Copy className="w-3.5 h-3.5" /> Lien
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+              <h2 className="font-display font-semibold text-sm">Comment ça marche</h2>
+              {[
+                { step: "1", title: "Affichez le QR code", desc: "Vitrine, comptoir ou site web" },
+                { step: "2", title: "Le client scanne", desc: "Avec l'appareil photo de son téléphone" },
+                { step: "3", title: "Inscription instantanée", desc: "Carte de fidélité en 10 secondes" },
+              ].map((s) => (
+                <div key={s.step} className="flex gap-3">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">{s.step}</div>
+                  <div>
+                    <p className="text-sm font-medium">{s.title}</p>
+                    <p className="text-xs text-muted-foreground">{s.desc}</p>
+                  </div>
+                </div>
+              ))}
+
+              <div className="pt-3 border-t border-border/50">
+                <Label className="text-xs text-muted-foreground">Lien direct</Label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <code className="text-[11px] bg-secondary px-2.5 py-1.5 rounded-lg flex-1 overflow-hidden text-ellipsis">{publicUrl}</code>
+                  <Button size="icon" variant="outline" className="rounded-xl h-8 w-8 shrink-0" onClick={() => window.open(publicUrl, "_blank")}>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* === TEMPLATE === */}
+        <TabsContent value="template">
+          <div className="p-5 rounded-2xl bg-card border border-border/50">
+            <h2 className="font-display font-semibold text-sm mb-1">Template métier</h2>
+            <p className="text-xs text-muted-foreground mb-5">Pré-configurez votre programme selon votre activité</p>
+            <TemplatePicker currentTemplate={form.business_template} onSelect={handleTemplateSelect} />
+          </div>
+        </TabsContent>
+
+        {/* === FEATURES === */}
+        <TabsContent value="features">
+          <div className="p-5 rounded-2xl bg-card border border-border/50 max-w-2xl">
+            <h2 className="font-display font-semibold text-sm mb-4">Modules</h2>
+            <FeatureToggles
+              config={{
+                feature_gamification: form.feature_gamification,
+                feature_notifications: form.feature_notifications,
+                feature_wallet: form.feature_wallet,
+                feature_analytics: form.feature_analytics,
+              }}
+              onChange={(key, value) => update(key as keyof typeof form, value as any)}
+              plan={business?.subscription_plan || "starter"}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
+    </DashboardLayout>
   );
 };
 
