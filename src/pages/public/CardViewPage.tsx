@@ -197,6 +197,25 @@ const CardViewPage = () => {
           </button>
         )}
 
+        {/* Push notification subscribe button */}
+        {!pushSubscribed && "Notification" in window && Notification.permission !== "denied" && (
+          <Button
+            onClick={handleSubscribePush}
+            disabled={pushLoading}
+            variant="outline"
+            className="w-full rounded-xl gap-2 h-12"
+          >
+            <Bell className="w-4 h-4" />
+            {pushLoading ? "Activation..." : "🔔 Activer les notifications"}
+          </Button>
+        )}
+        {pushSubscribed && (
+          <div className="flex items-center justify-center gap-2 text-xs text-primary">
+            <Bell className="w-3.5 h-3.5" />
+            Notifications activées
+          </div>
+        )}
+
         <p className="text-center text-xs text-muted-foreground">
           Code : <span className="font-mono">{card.card_code}</span>
         </p>
