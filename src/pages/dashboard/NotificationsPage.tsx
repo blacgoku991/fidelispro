@@ -92,13 +92,13 @@ const NotificationsPage = () => {
     }
     await supabase.from("notification_templates").insert({
       business_id: business.id,
-      type: form.type,
+      type: form.type as any,
       title: form.title,
       message: form.message,
       trigger_distance: form.type === "proximity" ? form.trigger_distance : null,
       trigger_days_inactive: form.type === "win_back" ? form.trigger_days_inactive : null,
       trigger_points_remaining: form.type === "points_reminder" ? form.trigger_points_remaining : null,
-    });
+    } as any);
     toast.success("Template créé !");
     setAddOpen(false);
     setForm({ type: "proximity", title: "", message: "", trigger_distance: 200, trigger_days_inactive: 10, trigger_points_remaining: 2 });
