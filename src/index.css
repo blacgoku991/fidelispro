@@ -203,3 +203,13 @@
     animation: point-earned 0.5s ease-out;
   }
 }
+
+/* PWA safe area for iOS standalone mode */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
