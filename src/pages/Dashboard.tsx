@@ -10,30 +10,31 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Users, TrendingUp, QrCode, Crown, CheckCircle, Sparkles, Search, Star, Download, Copy, ExternalLink, Printer,
+  Users, TrendingUp, QrCode, Crown, Sparkles, Search,
+  Download, Copy, ExternalLink, Printer, Flame, Gift, Eye,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
-const levelColors: Record<string, string> = {
-  bronze: "bg-amber-100 text-amber-800",
-  silver: "bg-slate-100 text-slate-700",
-  gold: "bg-yellow-100 text-yellow-800",
+const levelConfig: Record<string, { bg: string; text: string; label: string; emoji: string }> = {
+  bronze: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", label: "Bronze", emoji: "🥉" },
+  silver: { bg: "bg-slate-500/10", text: "text-slate-600 dark:text-slate-300", label: "Silver", emoji: "🥈" },
+  gold: { bg: "bg-yellow-500/10", text: "text-yellow-700 dark:text-yellow-400", label: "Gold", emoji: "⭐" },
 };
 
 const Dashboard = () => {
   const { user, business } = useAuth();
   const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0 });
 
-  // Scanner state
+  // Scanner
   const [cardCode, setCardCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scannerPaused, setScannerPaused] = useState(false);
   const [lastScan, setLastScan] = useState<any>(null);
   const [todayScans, setTodayScans] = useState(0);
 
-  // Popup state
+  // Popup
   const [popup, setPopup] = useState<{
     open: boolean;
     type: "success" | "reward" | "error";
@@ -42,7 +43,7 @@ const Dashboard = () => {
     details?: string;
   }>({ open: false, type: "success", title: "", message: "" });
 
-  // Clients state
+  // Clients
   const [customers, setCustomers] = useState<any[]>([]);
   const [clientSearch, setClientSearch] = useState("");
 
@@ -58,20 +59,17 @@ const Dashboard = () => {
       .from("customers")
       .select("*", { count: "exact", head: true })
       .eq("business_id", business.id);
-
     const { count: rewardCount } = await supabase
       .from("customer_cards")
       .select("*", { count: "exact", head: true })
       .eq("business_id", business.id)
       .gt("rewards_earned", 0);
-
     const today = new Date().toISOString().split("T")[0];
     const { count: scansCount } = await supabase
       .from("points_history")
       .select("*", { count: "exact", head: true })
       .eq("business_id", business.id)
       .gte("created_at", today);
-
     setStats({
       clients: clientCount || 0,
       returnRate: clientCount ? Math.min(Math.round(((rewardCount || 0) / clientCount) * 100), 100) : 0,
@@ -92,7 +90,6 @@ const Dashboard = () => {
   };
 
   // ── Scanner logic ─────────────────────────────────────────
-
   const processCardCode = async (code: string) => {
     if (!code.trim() || !business || !user) return;
     setScanning(true);
@@ -107,12 +104,7 @@ const Dashboard = () => {
       .maybeSingle();
 
     if (!card || cardError) {
-      setPopup({
-        open: true,
-        type: "error",
-        title: "Carte introuvable",
-        message: "Ce code ne correspond à aucune carte active.",
-      });
+      setPopup({ open: true, type: "error", title: "Carte introuvable", message: "Ce code ne correspond à aucune carte active." });
       setScanning(false);
       return;
     }
@@ -120,103 +112,56 @@ const Dashboard = () => {
     const newPoints = (card.current_points || 0) + 1;
     const rewardEarned = newPoints >= (card.max_points || 10);
     const customer = card.customers;
-
     const changeMsg = rewardEarned
       ? `🎁 Récompense débloquée chez ${business.name} !`
       : `+1 point chez ${business.name} ! Vous avez ${newPoints} points.`;
 
-    await supabase
-      .from("customer_cards")
-      .update({
-        current_points: rewardEarned ? 0 : newPoints,
-        rewards_earned: rewardEarned ? (card.rewards_earned || 0) + 1 : card.rewards_earned,
-        wallet_change_message: changeMsg,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", card.id);
+    await supabase.from("customer_cards").update({
+      current_points: rewardEarned ? 0 : newPoints,
+      rewards_earned: rewardEarned ? (card.rewards_earned || 0) + 1 : card.rewards_earned,
+      wallet_change_message: changeMsg,
+      updated_at: new Date().toISOString(),
+    }).eq("id", card.id);
 
-    // Wallet push
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          business_id: business.id,
-          customer_id: customer.id,
-          action_type: "points_increment",
-          change_message: changeMsg,
-        }),
+        body: JSON.stringify({ business_id: business.id, customer_id: customer.id, action_type: "points_increment", change_message: changeMsg }),
       });
-    } catch (walletErr) {
-      console.warn("Wallet push failed (non-blocking):", walletErr);
-    }
+    } catch { /* non-blocking */ }
 
-    // Update customer stats
     const newStreak = (customer.current_streak || 0) + 1;
-    await supabase
-      .from("customers")
-      .update({
-        total_points: (customer.total_points || 0) + 1,
-        total_visits: (customer.total_visits || 0) + 1,
-        current_streak: newStreak,
-        longest_streak: Math.max(newStreak, customer.longest_streak || 0),
-        last_visit_at: new Date().toISOString(),
-        level: (customer.total_points || 0) + 1 >= 50 ? "gold" : (customer.total_points || 0) + 1 >= 20 ? "silver" : "bronze",
-      })
-      .eq("id", customer.id);
+    await supabase.from("customers").update({
+      total_points: (customer.total_points || 0) + 1,
+      total_visits: (customer.total_visits || 0) + 1,
+      current_streak: newStreak,
+      longest_streak: Math.max(newStreak, customer.longest_streak || 0),
+      last_visit_at: new Date().toISOString(),
+      level: (customer.total_points || 0) + 1 >= 50 ? "gold" : (customer.total_points || 0) + 1 >= 20 ? "silver" : "bronze",
+    }).eq("id", customer.id);
 
     await supabase.from("points_history").insert({
-      customer_id: customer.id,
-      business_id: business.id,
-      card_id: card.id,
-      points_added: 1,
-      action: "scan",
-      scanned_by: user.id,
+      customer_id: customer.id, business_id: business.id, card_id: card.id,
+      points_added: 1, action: "scan", scanned_by: user.id,
     });
 
-    setLastScan({
-      customerName: customer.full_name,
-      points: rewardEarned ? 0 : newPoints,
-      maxPoints: card.max_points || 10,
-      rewardEarned,
-    });
-
+    setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: card.max_points || 10, rewardEarned });
     setTodayScans((p) => p + 1);
     setCardCode("");
     setScanning(false);
     fetchStats();
 
     if (rewardEarned) {
-      setPopup({
-        open: true,
-        type: "reward",
-        title: "🎉 Récompense débloquée !",
-        message: `${customer.full_name} a gagné sa récompense !`,
-        details: "Le compteur de points a été remis à zéro.",
-      });
+      setPopup({ open: true, type: "reward", title: "🎉 Récompense débloquée !", message: `${customer.full_name} a gagné sa récompense !`, details: "Le compteur de points a été remis à zéro." });
     } else {
-      setPopup({
-        open: true,
-        type: "success",
-        title: `+1 point ajouté !`,
-        message: `${customer.full_name} — ${newPoints}/${card.max_points || 10} points`,
-      });
+      setPopup({ open: true, type: "success", title: "+1 point ajouté !", message: `${customer.full_name} — ${newPoints}/${card.max_points || 10} points` });
     }
   };
 
-  const handleManualScan = () => {
-    processCardCode(cardCode);
-  };
-
-  const handleCameraScan = (code: string) => {
-    processCardCode(code);
-  };
-
   // ── Render ────────────────────────────────────────────────
-
   const businessName = business?.name || user?.user_metadata?.business_name || "Mon Commerce";
-
   const filteredCustomers = customers.filter((c) =>
     !clientSearch || (c.full_name || "").toLowerCase().includes(clientSearch.toLowerCase()) ||
     (c.email || "").toLowerCase().includes(clientSearch.toLowerCase()) ||
@@ -224,186 +169,232 @@ const Dashboard = () => {
   );
 
   const statCards = [
-    { label: "Clients actifs", value: stats.clients, icon: Users, color: "from-primary/10 to-primary/5 text-primary" },
-    { label: "Taux de retour", value: `${stats.returnRate}%`, icon: TrendingUp, color: "from-emerald-500/10 to-emerald-500/5 text-emerald-600" },
-    { label: "Scans aujourd'hui", value: stats.scansToday + todayScans, icon: QrCode, color: "from-accent/10 to-accent/5 text-accent" },
-    { label: "Récompenses", value: stats.rewardsGiven, icon: Crown, color: "from-amber-500/10 to-amber-500/5 text-amber-600" },
+    { label: "Clients", value: stats.clients, icon: Users, gradient: "from-primary to-primary/70" },
+    { label: "Retour", value: `${stats.returnRate}%`, icon: TrendingUp, gradient: "from-emerald-500 to-emerald-400" },
+    { label: "Scans", value: stats.scansToday + todayScans, icon: QrCode, gradient: "from-accent to-amber-400" },
+    { label: "Récompenses", value: stats.rewardsGiven, icon: Gift, gradient: "from-rose-500 to-pink-400" },
   ];
 
   return (
-    <DashboardLayout
-      title={`Bonjour, ${businessName} 👋`}
-      subtitle="Voici un aperçu de votre activité"
-    >
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <DashboardLayout title={`Bonjour, ${businessName} 👋`} subtitle="Voici un aperçu de votre activité">
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {statCards.map((stat, i) => {
           const Icon = stat.icon;
           return (
             <motion.div
               key={stat.label}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              className="p-4 rounded-2xl bg-card border border-border/50"
+              transition={{ delay: i * 0.07 }}
+              className="group relative overflow-hidden rounded-2xl bg-card border border-border/40 p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
             >
-              <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-3`}>
-                <Icon className="w-4 h-4" />
+              <div className={`absolute -top-6 -right-6 w-20 h-20 rounded-full bg-gradient-to-br ${stat.gradient} opacity-[0.08] group-hover:opacity-[0.15] transition-opacity`} />
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-4 shadow-sm`}>
+                <Icon className="w-5 h-5 text-white" />
               </div>
-              <p className="text-2xl font-display font-bold tracking-tight">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+              <p className="text-3xl font-display font-bold tracking-tight">{stat.value}</p>
+              <p className="text-xs text-muted-foreground mt-1 font-medium">{stat.label}</p>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Tabs: Scanner / Clients / Campagne */}
-      <Tabs defaultValue="scanner" className="space-y-4">
-        <TabsList className="bg-secondary/50 rounded-xl p-1 h-auto">
-          <TabsTrigger value="scanner" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <QrCode className="w-3.5 h-3.5" /> Scanner
+      {/* ── Tabs ── */}
+      <Tabs defaultValue="scanner" className="space-y-6">
+        <TabsList className="bg-card border border-border/40 rounded-2xl p-1.5 h-auto shadow-sm w-full sm:w-auto">
+          <TabsTrigger value="scanner" className="rounded-xl gap-2 px-4 py-2.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
+            <QrCode className="w-4 h-4" /> Scanner
           </TabsTrigger>
-          <TabsTrigger value="clients" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card">
-            <Users className="w-3.5 h-3.5" /> Clients
+          <TabsTrigger value="clients" className="rounded-xl gap-2 px-4 py-2.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
+            <Users className="w-4 h-4" /> Clients
           </TabsTrigger>
-          <TabsTrigger value="stats" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card">
-            <TrendingUp className="w-3.5 h-3.5" /> Statistiques
+          <TabsTrigger value="stats" className="rounded-xl gap-2 px-4 py-2.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
+            <TrendingUp className="w-4 h-4" /> Stats
           </TabsTrigger>
-          <TabsTrigger value="qrcode" className="rounded-lg gap-1.5 text-xs data-[state=active]:bg-card">
-            <QrCode className="w-3.5 h-3.5" /> QR Vitrine
+          <TabsTrigger value="qrcode" className="rounded-xl gap-2 px-4 py-2.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
+            <Eye className="w-4 h-4" /> Vitrine
           </TabsTrigger>
         </TabsList>
 
-        {/* ── SCANNER TAB ── */}
+        {/* ═══════════════ SCANNER ═══════════════ */}
         <TabsContent value="scanner">
-          <div className="grid lg:grid-cols-2 gap-5">
-            {/* Camera + manual input */}
-            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
-              <div className="text-center">
-                <h2 className="font-display font-semibold text-sm">Scanner une carte</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Utilisez la caméra ou entrez le code manuellement
-                </p>
+          <div className="grid lg:grid-cols-5 gap-6">
+            {/* Camera — takes 3 cols */}
+            <div className="lg:col-span-3 rounded-3xl bg-card border border-border/40 p-6 lg:p-8 space-y-6 shadow-sm">
+              <div>
+                <h2 className="font-display font-bold text-lg tracking-tight">Scanner une carte</h2>
+                <p className="text-sm text-muted-foreground mt-1">Pointez la caméra vers le QR code du client</p>
               </div>
 
-              {/* Camera scanner */}
-              <QrCameraScanner onScan={handleCameraScan} disabled={scanning} paused={scannerPaused} />
+              <QrCameraScanner onScan={(code) => processCardCode(code)} disabled={scanning} paused={scannerPaused} />
 
-              {/* Divider */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-[11px] text-muted-foreground">ou entrez le code</span>
+                <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">ou code manuel</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
 
-              {/* Manual input */}
-              <div className="flex gap-2 max-w-[280px] mx-auto">
+              <div className="flex gap-3 max-w-sm mx-auto">
                 <Input
                   value={cardCode}
                   onChange={(e) => setCardCode(e.target.value)}
-                  placeholder="Code carte..."
-                  className="rounded-xl text-sm"
-                  onKeyDown={(e) => e.key === "Enter" && handleManualScan()}
+                  placeholder="Entrez le code carte..."
+                  className="rounded-xl h-11 text-sm bg-secondary/50 border-border/40"
+                  onKeyDown={(e) => e.key === "Enter" && processCardCode(cardCode)}
                 />
                 <Button
-                  onClick={handleManualScan}
+                  onClick={() => processCardCode(cardCode)}
                   disabled={scanning || !cardCode.trim()}
-                  className="bg-gradient-primary text-primary-foreground rounded-xl px-4 shrink-0"
+                  className="bg-gradient-primary text-primary-foreground rounded-xl h-11 px-6 font-semibold shrink-0 shadow-md hover:shadow-lg transition-shadow"
                 >
-                  {scanning ? "..." : "OK"}
+                  Valider
                 </Button>
               </div>
             </div>
 
-            {/* Results panel */}
-            <div className="space-y-4">
-              {/* Last scan info */}
-              {lastScan && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-5 rounded-2xl bg-card border border-border/50"
-                >
-                  <h3 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-accent" /> Dernier scan
-                  </h3>
-                  <p className="font-display font-semibold text-base">{lastScan.customerName}</p>
-                  <div className="mt-3 w-full h-2 rounded-full bg-secondary overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-primary"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(lastScan.points / lastScan.maxPoints) * 100}%` }}
-                      transition={{ duration: 0.8 }}
-                    />
+            {/* Side panel — 2 cols */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Today stats mini */}
+              <div className="rounded-2xl bg-card border border-border/40 p-5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-md">
+                    <QrCode className="w-6 h-6 text-white" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    {lastScan.points}/{lastScan.maxPoints} points
-                  </p>
-                  {lastScan.rewardEarned && (
-                    <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} className="mt-2 text-sm font-bold text-accent">
-                      🎉 Récompense gagnée !
-                    </motion.p>
-                  )}
-                </motion.div>
-              )}
+                  <div>
+                    <p className="text-3xl font-display font-bold tracking-tight">{stats.scansToday + todayScans}</p>
+                    <p className="text-xs text-muted-foreground font-medium">Scans aujourd'hui</p>
+                  </div>
+                </div>
+              </div>
 
-              {/* Today's scans count */}
-              <div className="p-4 rounded-2xl bg-card border border-border/50 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <QrCode className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-display font-bold">{stats.scansToday + todayScans}</p>
-                  <p className="text-xs text-muted-foreground">Scans aujourd'hui</p>
-                </div>
+              {/* Last scan */}
+              <AnimatePresence mode="wait">
+                {lastScan ? (
+                  <motion.div
+                    key={`scan-${lastScan.customerName}-${lastScan.points}`}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    className="rounded-2xl bg-card border border-border/40 p-5 shadow-sm space-y-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-accent" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dernier scan</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                        {(lastScan.customerName || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-display font-semibold text-sm truncate">{lastScan.customerName}</p>
+                        <p className="text-xs text-muted-foreground">{lastScan.points}/{lastScan.maxPoints} points</p>
+                      </div>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min((lastScan.points / lastScan.maxPoints) * 100, 100)}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                      />
+                    </div>
+                    {lastScan.rewardEarned && (
+                      <div className="flex items-center gap-2 p-3 rounded-xl bg-accent/10 border border-accent/20">
+                        <Gift className="w-4 h-4 text-accent" />
+                        <p className="text-xs font-semibold text-accent">Récompense débloquée !</p>
+                      </div>
+                    )}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="empty-scan"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="rounded-2xl border border-dashed border-border/60 p-8 text-center"
+                  >
+                    <QrCode className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">Aucun scan pour le moment</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Scannez une carte pour commencer</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Quick tips */}
+              <div className="rounded-2xl bg-secondary/30 border border-border/30 p-4 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Astuce</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  La caméra détecte automatiquement le QR code. Gardez la carte bien éclairée et stable pour un scan rapide.
+                </p>
               </div>
             </div>
           </div>
         </TabsContent>
 
-        {/* ── CLIENTS TAB ── */}
+        {/* ═══════════════ CLIENTS ═══════════════ */}
         <TabsContent value="clients">
-          <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 max-w-sm">
+          <div className="rounded-3xl bg-card border border-border/40 shadow-sm overflow-hidden">
+            {/* Header */}
+            <div className="p-5 lg:p-6 border-b border-border/40 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex-1">
+                <h2 className="font-display font-bold text-lg tracking-tight">Vos clients</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{filteredCustomers.length} client{filteredCustomers.length > 1 ? "s" : ""} enregistré{filteredCustomers.length > 1 ? "s" : ""}</p>
+              </div>
+              <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
-                  placeholder="Rechercher un client..."
-                  className="pl-9 rounded-xl text-sm"
+                  placeholder="Rechercher..."
+                  className="pl-10 rounded-xl h-10 text-sm bg-secondary/50 border-border/40"
                 />
               </div>
-              <span className="text-xs text-muted-foreground">{filteredCustomers.length} client(s)</span>
             </div>
 
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {/* Client list */}
+            <div className="divide-y divide-border/30 max-h-[500px] overflow-y-auto">
               {filteredCustomers.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Aucun client trouvé</p>
+                <div className="py-16 text-center">
+                  <Users className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">Aucun client trouvé</p>
+                </div>
               ) : (
-                filteredCustomers.map((c) => {
+                filteredCustomers.map((c, i) => {
                   const card = c.customer_cards?.[0];
-                  const level = c.level || "bronze";
+                  const lv = levelConfig[c.level || "bronze"] || levelConfig.bronze;
+                  const points = card?.current_points || 0;
+                  const maxPts = card?.max_points || 10;
+                  const progress = Math.min((points / maxPts) * 100, 100);
+
                   return (
-                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/50 transition-colors">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.02 }}
+                      className="flex items-center gap-4 px-5 lg:px-6 py-4 hover:bg-secondary/30 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold text-sm shrink-0">
                         {(c.full_name || "?").charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{c.full_name || "Sans nom"}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">
-                          {c.email || c.phone || "Pas de contact"}
-                        </p>
+                        <p className="text-sm font-semibold truncate">{c.full_name || "Sans nom"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{c.email || c.phone || "—"}</p>
                       </div>
-                      <Badge variant="secondary" className={`text-[10px] ${levelColors[level]}`}>
-                        {level}
-                      </Badge>
+                      {/* Level badge */}
+                      <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${lv.bg} ${lv.text}`}>
+                        {lv.emoji} {lv.label}
+                      </div>
+                      {/* Points progress */}
                       {card && (
-                        <span className="text-xs font-mono text-muted-foreground">
-                          {card.current_points || 0}/{card.max_points || 10}
-                        </span>
+                        <div className="hidden sm:flex items-center gap-2 w-32">
+                          <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                            <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent" style={{ width: `${progress}%` }} />
+                          </div>
+                          <span className="text-[11px] font-mono text-muted-foreground w-12 text-right">{points}/{maxPts}</span>
+                        </div>
                       )}
-                    </div>
+                    </motion.div>
                   );
                 })
               )}
@@ -411,23 +402,62 @@ const Dashboard = () => {
           </div>
         </TabsContent>
 
-        {/* ── STATS TAB ── */}
+        {/* ═══════════════ STATS ═══════════════ */}
         <TabsContent value="stats">
           {business && (
-            <div className="grid lg:grid-cols-2 gap-4">
-              <div className="p-5 rounded-2xl bg-card border border-border/50">
-                <h2 className="text-sm font-medium text-muted-foreground mb-4">Scans — 14 derniers jours</h2>
-                <AnalyticsChart businessId={business.id} type="scans" />
+            <div className="space-y-6">
+              <div className="grid lg:grid-cols-2 gap-6">
+                <div className="rounded-3xl bg-card border border-border/40 p-6 shadow-sm">
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <QrCode className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-display font-semibold">Scans</h2>
+                      <p className="text-[11px] text-muted-foreground">14 derniers jours</p>
+                    </div>
+                  </div>
+                  <AnalyticsChart businessId={business.id} type="scans" />
+                </div>
+                <div className="rounded-3xl bg-card border border-border/40 p-6 shadow-sm">
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <Users className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-display font-semibold">Nouveaux clients</h2>
+                      <p className="text-[11px] text-muted-foreground">14 derniers jours</p>
+                    </div>
+                  </div>
+                  <AnalyticsChart businessId={business.id} type="customers" />
+                </div>
               </div>
-              <div className="p-5 rounded-2xl bg-card border border-border/50">
-                <h2 className="text-sm font-medium text-muted-foreground mb-4">Nouveaux clients — 14 derniers jours</h2>
-                <AnalyticsChart businessId={business.id} type="customers" />
+
+              {/* Summary row */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: "Total clients", value: stats.clients, icon: Users },
+                  { label: "Taux de retour", value: `${stats.returnRate}%`, icon: TrendingUp },
+                  { label: "Scans totaux", value: stats.scansToday + todayScans, icon: QrCode },
+                  { label: "Récompenses", value: stats.rewardsGiven, icon: Gift },
+                ].map((s) => {
+                  const SIcon = s.icon;
+                  return (
+                    <div key={s.label} className="rounded-2xl bg-card border border-border/40 p-4 shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <SIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-[11px] text-muted-foreground font-medium">{s.label}</span>
+                      </div>
+                      <p className="text-xl font-display font-bold">{s.value}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
         </TabsContent>
 
-        {/* ── QR VITRINE TAB ── */}
+        {/* ═══════════════ QR VITRINE ═══════════════ */}
         <TabsContent value="qrcode">
           {business && <QrVitrineSection business={business} />}
         </TabsContent>
@@ -480,71 +510,77 @@ function QrVitrineSection({ business }: { business: any }) {
   };
 
   return (
-    <div className="grid lg:grid-cols-2 gap-5">
-      <div className="p-6 rounded-2xl bg-card border border-border/50 flex flex-col items-center space-y-5">
-        <h2 className="font-display font-semibold text-sm self-start">Votre QR Code vitrine</h2>
+    <div className="grid lg:grid-cols-5 gap-6">
+      {/* QR Preview — 3 cols */}
+      <div className="lg:col-span-3 rounded-3xl bg-card border border-border/40 p-6 lg:p-8 shadow-sm flex flex-col items-center space-y-6">
+        <div className="self-start">
+          <h2 className="font-display font-bold text-lg tracking-tight">QR Code vitrine</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Imprimez-le ou affichez-le en magasin</p>
+        </div>
+
         <div
           id="qr-printable"
-          className="relative p-8 rounded-3xl flex flex-col items-center gap-4"
+          className="relative p-10 rounded-3xl flex flex-col items-center gap-5 w-full max-w-sm"
           style={{
-            background: `linear-gradient(145deg, ${business.primary_color}12 0%, ${business.secondary_color || business.primary_color}08 100%)`,
-            border: `2px solid ${business.primary_color}20`,
+            background: `linear-gradient(145deg, ${business.primary_color}10 0%, ${business.secondary_color || business.primary_color}06 100%)`,
+            border: `1.5px solid ${business.primary_color}15`,
           }}
         >
           {business.logo_url && (
-            <img src={business.logo_url} alt={business.name} className="w-12 h-12 rounded-xl object-cover" />
+            <img src={business.logo_url} alt={business.name} className="w-14 h-14 rounded-2xl object-cover shadow-sm" />
           )}
-          <div className="p-4 bg-background rounded-2xl shadow-sm">
+          <div className="p-5 bg-background rounded-2xl shadow-md">
             <QRCodeSVG
               id="vitrine-qr-svg"
               value={publicUrl}
-              size={200}
+              size={220}
               level="H"
               includeMargin={false}
               fgColor={business.primary_color || "#6B46C1"}
             />
           </div>
           <div className="text-center">
-            <p className="font-display font-bold text-sm">{business.name}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Scannez pour votre carte de fidélité</p>
+            <p className="font-display font-bold text-base">{business.name}</p>
+            <p className="text-xs text-muted-foreground mt-1">Scannez pour votre carte de fidélité</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 justify-center">
-          <Button onClick={downloadQR} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs">
-            <Download className="w-3.5 h-3.5" /> Télécharger PNG
+        <div className="flex flex-wrap gap-3 justify-center">
+          <Button onClick={downloadQR} variant="outline" size="sm" className="rounded-xl gap-2 text-xs h-10 px-4">
+            <Download className="w-4 h-4" /> Télécharger
           </Button>
-          <Button onClick={copyLink} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs">
-            <Copy className="w-3.5 h-3.5" /> Copier le lien
+          <Button onClick={copyLink} variant="outline" size="sm" className="rounded-xl gap-2 text-xs h-10 px-4">
+            <Copy className="w-4 h-4" /> Copier le lien
           </Button>
           <Button
             onClick={() => {
-              const printContent = document.getElementById("qr-printable");
-              if (!printContent) return;
+              const el = document.getElementById("qr-printable");
+              if (!el) return;
               const w = window.open("", "_blank");
               if (!w) return;
-              w.document.write(`<!DOCTYPE html><html><head><title>QR Code - ${business.name}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui,sans-serif;}</style></head><body>${printContent.outerHTML}</body></html>`);
-              w.document.close();
-              w.focus();
-              w.print();
+              w.document.write(`<!DOCTYPE html><html><head><title>QR - ${business.name}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui,sans-serif;}</style></head><body>${el.outerHTML}</body></html>`);
+              w.document.close(); w.focus(); w.print();
             }}
-            variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs"
+            variant="outline" size="sm" className="rounded-xl gap-2 text-xs h-10 px-4"
           >
-            <Printer className="w-3.5 h-3.5" /> Imprimer
+            <Printer className="w-4 h-4" /> Imprimer
           </Button>
         </div>
       </div>
 
-      <div className="space-y-5">
-        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+      {/* Instructions — 2 cols */}
+      <div className="lg:col-span-2 space-y-5">
+        <div className="rounded-2xl bg-card border border-border/40 p-5 shadow-sm space-y-5">
           <h2 className="font-display font-semibold text-sm">Comment ça marche</h2>
           {[
-            { emoji: "🖨️", title: "Imprimez ou affichez le QR", desc: "Vitrine, comptoir, menu, flyer..." },
-            { emoji: "📱", title: "Le client scanne", desc: "Appareil photo ou application QR" },
-            { emoji: "🎉", title: "Carte créée en 10 sec", desc: "Inscription instantanée et gratuite" },
-          ].map((s, i) => (
-            <div key={i} className="flex gap-3 items-start">
-              <span className="text-xl">{s.emoji}</span>
+            { step: "1", emoji: "🖨️", title: "Imprimez ou affichez", desc: "Vitrine, comptoir, menu, flyer..." },
+            { step: "2", emoji: "📱", title: "Le client scanne", desc: "Avec son appareil photo" },
+            { step: "3", emoji: "🎉", title: "Carte créée", desc: "Inscription en 10 secondes" },
+          ].map((s) => (
+            <div key={s.step} className="flex gap-4 items-center">
+              <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-lg shrink-0">
+                {s.emoji}
+              </div>
               <div>
                 <p className="text-sm font-medium">{s.title}</p>
                 <p className="text-xs text-muted-foreground">{s.desc}</p>
@@ -553,11 +589,11 @@ function QrVitrineSection({ business }: { business: any }) {
           ))}
         </div>
 
-        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-3">
+        <div className="rounded-2xl bg-card border border-border/40 p-5 shadow-sm space-y-3">
           <h2 className="font-display font-semibold text-sm">Lien direct</h2>
-          <p className="text-xs text-muted-foreground">Partagez ce lien sur vos réseaux sociaux ou votre site web.</p>
+          <p className="text-xs text-muted-foreground">Partagez sur vos réseaux sociaux ou votre site.</p>
           <div className="flex items-center gap-2">
-            <code className="text-[11px] bg-secondary px-3 py-2 rounded-xl flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{publicUrl}</code>
+            <code className="text-[11px] bg-secondary/60 px-3 py-2.5 rounded-xl flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{publicUrl}</code>
             <Button size="icon" variant="outline" className="rounded-xl h-9 w-9 shrink-0" onClick={copyLink}>
               <Copy className="w-3.5 h-3.5" />
             </Button>
