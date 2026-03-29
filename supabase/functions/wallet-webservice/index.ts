@@ -397,7 +397,29 @@ async function buildPkpassForUpdate(
   return zip.generateAsync({ type: "uint8array" });
 }
 
-// ── Logo helpers ──────────────────────────────────────────────────
+// ── Icon helpers (square, for notification icon) ─────────────────
+
+async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Array; icon2xPng: Uint8Array; icon3xPng: Uint8Array }> {
+  if (business.logo_url) {
+    try {
+      const logoUrl = business.logo_url.split("?")[0];
+      const response = await fetch(logoUrl);
+      if (response.ok) {
+        const imageBytes = new Uint8Array(await response.arrayBuffer());
+        return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+      }
+    } catch (err) {
+      console.error("[Pass] Failed to fetch logo for icons, using fallback:", err);
+    }
+  }
+
+  const iconPng = generateSolidColorPng(29, 29, business.primary_color || "#6B46C1");
+  const icon2xPng = generateSolidColorPng(58, 58, business.primary_color || "#6B46C1");
+  const icon3xPng = generateSolidColorPng(87, 87, business.primary_color || "#6B46C1");
+  return { iconPng, icon2xPng, icon3xPng };
+}
+
+// ── Logo helpers (rectangular, shown on card front) ──────────────
 
 async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array; logo2xPng: Uint8Array }> {
   if (business.logo_url) {
