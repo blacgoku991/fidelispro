@@ -340,7 +340,7 @@ const SettingsPage = () => {
               </div>
 
               {/* Info: proximity vs push */}
-              <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 space-y-1">
+              <div className="rounded-xl bg-accent/10 border border-accent/20 p-3 space-y-1">
                 <p className="text-[11px] font-semibold text-accent flex items-center gap-1.5">
                   ⚠️ Notification discrète (écran verrouillé uniquement)
                 </p>
