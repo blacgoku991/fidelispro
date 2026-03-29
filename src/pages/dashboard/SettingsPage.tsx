@@ -376,17 +376,6 @@ const SettingsPage = () => {
                 </div>
               </div>
 
-              {/* Info: proximity vs push */}
-              <div className="rounded-xl bg-accent/10 border border-accent/20 p-3 space-y-1">
-                <p className="text-[11px] font-semibold text-accent flex items-center gap-1.5">
-                  ⚠️ Notification discrète (écran verrouillé uniquement)
-                </p>
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                </p>
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  Ce message s'affiche <strong>uniquement sur l'écran verrouillé</strong> de l'iPhone — pas de bannière, pas de son. Pour une alerte visible avec bannière, utilisez les <strong>Campagnes push</strong>.
-                </p>
-              </div>
 
               {/* Preview */}
               <div className="rounded-2xl bg-muted/60 p-3.5 border border-border/30">
