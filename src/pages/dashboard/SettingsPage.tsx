@@ -147,8 +147,44 @@ const SettingsPage = () => {
       geofence_satellite_points: satellitePoints,
     } as any).eq("id", business.id);
 
-    if (error) toast.error("Erreur de sauvegarde");
-    else toast.success("Paramètres de géolocalisation sauvegardés !");
+    if (error) {
+      toast.error("Erreur de sauvegarde");
+    } else {
+      toast.success("Paramètres sauvegardés ! Mise à jour des cartes en cours...");
+
+      // Force all existing wallet cards to re-fetch the updated pass
+      try {
+        const { data: registrations } = await supabase
+          .from("wallet_registrations")
+          .select("serial_number")
+          .eq("business_id", business.id);
+
+        if (registrations && registrations.length > 0) {
+          // Update all cards' updated_at to trigger re-fetch
+          const serialNumbers = registrations.map((r) => r.serial_number);
+          for (const sn of serialNumbers) {
+            await supabase.from("wallet_pass_updates").upsert({
+              serial_number: sn,
+              pass_type_id: "pass.app.lovable.fidelispro",
+              change_message: "📍 Zone de proximité mise à jour",
+              last_updated: new Date().toISOString(),
+            }, { onConflict: "serial_number" });
+          }
+
+          // Send APNs push to all devices
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+            body: JSON.stringify({ business_id: business.id, change_message: "📍 Zone mise à jour" }),
+          });
+
+          toast.success(`${registrations.length} carte(s) mise(s) à jour !`);
+        }
+      } catch (pushErr) {
+        console.error("Push error:", pushErr);
+      }
+    }
     setSavingGeo(false);
   };
 
