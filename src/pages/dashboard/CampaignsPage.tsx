@@ -74,7 +74,7 @@ const CampaignsPage = () => {
     if (!business) return;
     const { data: customers } = await supabase
       .from("customers")
-      .select("id, last_visit_at, level, customer_cards(current_points, max_points)")
+      .select("id, last_visit_at, level, created_at, customer_cards(current_points, max_points)")
       .eq("business_id", business.id);
     if (!customers) return;
     const now = new Date();
