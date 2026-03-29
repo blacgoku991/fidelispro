@@ -24,8 +24,10 @@ const CardViewPage = () => {
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+  const isAndroidDevice = /Android/.test(navigator.userAgent);
 
   const handleAddToWallet = async () => {
     if (!cardCode) return;
@@ -39,6 +41,28 @@ const CardViewPage = () => {
       toast.error(e.message || "Impossible de générer la carte Wallet");
     } finally {
       setWalletLoading(false);
+    }
+  };
+
+  const handleAddToGoogleWallet = async () => {
+    if (!cardCode) return;
+    setGoogleWalletLoading(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/generate-google-pass?card_code=${encodeURIComponent(cardCode)}`
+      );
+      const data = await res.json();
+      if (data.saveUrl) {
+        window.open(data.saveUrl, "_blank");
+      } else {
+        toast.error(data.error || "Impossible de générer la carte Google Wallet");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Erreur Google Wallet");
+    } finally {
+      setGoogleWalletLoading(false);
     }
   };
 
@@ -127,6 +151,32 @@ const CardViewPage = () => {
               className="h-14 hover:opacity-80 transition-opacity"
               style={{ filter: walletLoading ? "grayscale(1) opacity(0.5)" : "none" }}
             />
+          </button>
+        )}
+
+        {/* Google Wallet button */}
+        {!isAppleDevice && (
+          <button
+            onClick={handleAddToGoogleWallet}
+            disabled={googleWalletLoading}
+            className="w-full flex justify-center"
+          >
+            <div
+              className="h-14 px-6 rounded-lg flex items-center gap-3 hover:opacity-80 transition-opacity"
+              style={{
+                backgroundColor: "#1f1f1f",
+                filter: googleWalletLoading ? "grayscale(1) opacity(0.5)" : "none",
+              }}
+            >
+              <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
+                <path d="M21.4 11.3l-1-1.6-2.1 1.2.1-2.4h-1.9l.1 2.4-2.1-1.2-1 1.6 2.1 1.2-2.1 1.2 1 1.6 2.1-1.2-.1 2.4h1.9l-.1-2.4 2.1 1.2 1-1.6-2.1-1.2 2.1-1.2z" fill="#FBBC04"/>
+                <path d="M7.5 20C4.5 20 2 17.5 2 14.5S4.5 9 7.5 9c1.7 0 3 .6 4 1.7l-1.6 1.5c-.6-.6-1.4-.9-2.4-.9-2 0-3.6 1.6-3.6 3.6s1.6 3.6 3.6 3.6c1.5 0 2.3-.6 2.8-1.1.4-.4.7-1 .8-1.8H7.5v-2.1h5.8c.1.3.1.7.1 1.1 0 1.3-.4 3-1.5 4.1-1.1 1.2-2.5 1.8-4.4 1.8z" fill="#4285F4"/>
+              </svg>
+              <div className="text-left">
+                <p className="text-[10px] text-gray-400 leading-none">Ajouter à</p>
+                <p className="text-white font-medium text-base leading-tight">Google Wallet</p>
+              </div>
+            </div>
           </button>
         )}
 
