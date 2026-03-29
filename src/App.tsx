@@ -20,7 +20,14 @@ import AdminBusinesses from "./pages/admin/AdminBusinesses";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
