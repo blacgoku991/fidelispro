@@ -66,7 +66,7 @@ const QRCodePage = () => {
     <div className="min-h-screen bg-background">
       <DashboardSidebar items={businessSidebarItems} onLogout={logout} />
       <main className="lg:ml-64 p-6 lg:p-8">
-        <MobileHeader onLogout={logout} />
+        <MobileHeader onLogout={logout} items={businessSidebarItems} />
 
         <h1 className="text-2xl font-display font-bold mb-2">QR Code Vitrine</h1>
         <p className="text-muted-foreground text-sm mb-8">
