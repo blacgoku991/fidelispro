@@ -247,6 +247,140 @@ const ClientsPage = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Detail Sheet */}
+      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <SheetContent className="overflow-y-auto">
+          {selected && (() => {
+            const card = selected.customer_cards?.[0];
+            const copyField = (val: string, label: string) => {
+              navigator.clipboard.writeText(val);
+              toast.success(`${label} copié`);
+            };
+            return (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="text-lg">{selected.full_name || "Client"}</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-5">
+                  {/* Contact info */}
+                  <div className="space-y-3">
+                    {selected.email && (
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
+                        <div className="flex items-center gap-2 text-sm min-w-0">
+                          <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span className="truncate">{selected.email}</span>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copyField(selected.email, "Email")}>
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                    {selected.phone && (
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
+                        <div className="flex items-center gap-2 text-sm min-w-0">
+                          <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span className="truncate">{selected.phone}</span>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copyField(selected.phone, "Téléphone")}>
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-secondary/50 text-center">
+                      <p className="text-xl font-display font-bold">{selected.total_points || 0}</p>
+                      <p className="text-[11px] text-muted-foreground">Points</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-secondary/50 text-center">
+                      <p className="text-xl font-display font-bold">{selected.total_visits || 0}</p>
+                      <p className="text-[11px] text-muted-foreground">Visites</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-secondary/50 text-center">
+                      <p className="text-xl font-display font-bold flex items-center justify-center gap-1">
+                        {selected.current_streak || 0} <Flame className="w-4 h-4 text-accent" />
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">Streak</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-secondary/50 text-center">
+                      <p className="text-xl font-display font-bold capitalize">{selected.level || "bronze"}</p>
+                      <p className="text-[11px] text-muted-foreground">Niveau</p>
+                    </div>
+                  </div>
+
+                  {/* Card info */}
+                  {card && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Carte de fidélité</p>
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
+                        <div className="text-sm font-mono">{card.card_code || "—"}</div>
+                        {card.card_code && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copyField(card.card_code, "Code carte")}>
+                            <Copy className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Award className="w-3 h-3" />
+                        {card.current_points}/{card.max_points} points • {card.rewards_earned || 0} récompense(s)
+                      </div>
+                      <Badge variant={card.is_active ? "default" : "destructive"} className="text-[10px]">
+                        {card.is_active ? "Active" : "Désactivée"}
+                      </Badge>
+                    </div>
+                  )}
+
+                  {/* Dates */}
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-3 h-3" />
+                      Inscrit le {new Date(selected.created_at).toLocaleDateString("fr-FR")}
+                    </div>
+                    {selected.last_visit_at && (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-3 h-3" />
+                        Dernière visite : {new Date(selected.last_visit_at).toLocaleDateString("fr-FR")}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Delete */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-full rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10 gap-2">
+                        <Trash2 className="w-4 h-4" /> Supprimer ce client
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer {selected.full_name} ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action est irréversible. La carte sera désactivée définitivement.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl">Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            handleDeleteCustomer(selected.id, selected.full_name || "Client");
+                            setSelected(null);
+                          }}
+                          className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 };
