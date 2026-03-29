@@ -558,7 +558,13 @@ function extractAuthToken(req: Request): string | null {
 
 function sha1Hex(data: Uint8Array): string {
   const md = forge.md.sha1.create();
-  md.update(forge.util.binary.raw.encode(data));
+  const CHUNK = 8192;
+  for (let i = 0; i < data.length; i += CHUNK) {
+    const end = Math.min(i + CHUNK, data.length);
+    let str = "";
+    for (let j = i; j < end; j++) str += String.fromCharCode(data[j]);
+    md.update(str);
+  }
   return md.digest().toHex();
 }
 
