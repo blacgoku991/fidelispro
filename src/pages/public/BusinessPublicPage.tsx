@@ -298,6 +298,18 @@ const BusinessPublicPage = () => {
               accentColor={business.primary_color}
             />
 
+            {/* Wallet buttons */}
+            {isAppleDevice && card.card_code && (
+              <Button
+                onClick={() => handleAddToWallet(card.card_code)}
+                disabled={walletLoading}
+                className="w-full h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-semibold gap-2"
+              >
+                <Wallet className="w-5 h-5" />
+                {walletLoading ? "Génération..." : " Ajouter à Apple Wallet"}
+              </Button>
+            )}
+
             <div className="p-4 rounded-2xl bg-card border border-border/50">
               <p className="text-sm text-muted-foreground">Votre code carte</p>
               <p className="text-2xl font-mono font-bold tracking-wider mt-1">{card.card_code}</p>
