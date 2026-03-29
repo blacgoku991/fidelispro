@@ -306,6 +306,10 @@ const CustomizePage = () => {
                   showQr={form.show_qr_code}
                   showPoints={form.show_points}
                   showCustomerName={form.show_customer_name}
+                  showExpiration={form.show_expiration}
+                  showRewardsPreview={form.show_rewards_preview}
+                  cardStyle={form.card_style}
+                  cardBgType={form.card_bg_type}
                 />
               </div>
             </div>
