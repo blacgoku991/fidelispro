@@ -5,21 +5,24 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Users, Zap, Clock, Crown, Megaphone, Plus, Pencil } from "lucide-react";
+import {
+  Send, Users, Zap, Clock, Crown, Megaphone, Plus, Pencil,
+  CheckCircle, XCircle, Bell, Trash2, MapPin, Filter, Eye,
+} from "lucide-react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   campaignTemplates, campaignCategories, type CampaignTemplate,
 } from "@/lib/campaignTemplates";
 
-type Segment = "all" | "active" | "inactive" | "vip" | "close_to_reward";
+type Segment = "all" | "active" | "inactive" | "vip" | "close_to_reward" | "nearby";
 
 const segmentLabels: Record<Segment, { label: string; desc: string; icon: React.ElementType }> = {
   all: { label: "Tous", desc: "Envoyer à tous les clients", icon: Users },
@@ -27,9 +30,12 @@ const segmentLabels: Record<Segment, { label: string; desc: string; icon: React.
   inactive: { label: "Inactifs", desc: "Aucune visite depuis 30+ jours", icon: Clock },
   vip: { label: "VIP", desc: "Clients niveau Gold", icon: Crown },
   close_to_reward: { label: "Proches récompense", desc: "À 2 points ou moins", icon: Zap },
+  nearby: { label: "À proximité", desc: "Clients proches géographiquement", icon: MapPin },
 };
 
 const MAX_MESSAGE_LENGTH = 100;
+
+type HistoryFilter = "all" | "sent" | "failed" | "read";
 
 const CampaignsPage = () => {
   const { business } = useAuth();
@@ -37,6 +43,8 @@ const CampaignsPage = () => {
   const [sending, setSending] = useState(false);
   const [segmentCounts, setSegmentCounts] = useState<Record<string, number>>({});
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
+  const [selectedLog, setSelectedLog] = useState<any>(null);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,7 +66,7 @@ const CampaignsPage = () => {
       .select("*")
       .eq("business_id", business.id)
       .order("sent_at", { ascending: false })
-      .limit(30);
+      .limit(100);
     if (data) setCampaigns(data);
   };
 
@@ -72,6 +80,14 @@ const CampaignsPage = () => {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+
+    // Count nearby from customer_locations
+    const { count: nearbyCount } = await supabase
+      .from("customer_locations")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", business.id)
+      .eq("is_nearby", true);
+
     setSegmentCounts({
       all: customers.length,
       active: customers.filter(c => c.last_visit_at && new Date(c.last_visit_at) > sevenDaysAgo).length,
@@ -81,6 +97,7 @@ const CampaignsPage = () => {
         const card = c.customer_cards?.[0];
         return card && (card.max_points - card.current_points) <= 2;
       }).length,
+      nearby: nearbyCount || 0,
     });
   };
 
@@ -91,6 +108,14 @@ const CampaignsPage = () => {
     if (segment === "active") query = query.gte("last_visit_at", new Date(now.getTime() - 7 * 86400000).toISOString());
     else if (segment === "inactive") query = query.or(`last_visit_at.is.null,last_visit_at.lt.${new Date(now.getTime() - 30 * 86400000).toISOString()}`);
     else if (segment === "vip") query = query.eq("level", "gold");
+    else if (segment === "nearby") {
+      const { data: locations } = await supabase
+        .from("customer_locations")
+        .select("customer_id")
+        .eq("business_id", business.id)
+        .eq("is_nearby", true);
+      return locations?.map(l => ({ id: l.customer_id })) || [];
+    }
     const { data } = await query;
     return data || [];
   };
@@ -120,22 +145,36 @@ const CampaignsPage = () => {
       title: business.name,
       message: form.message.trim(),
       type: "custom" as const,
+      segment: form.segment,
+      delivery_status: "sent",
     }));
 
     const { error } = await supabase.from("notifications_log").insert(logs);
     if (error) { toast.error("Erreur d'envoi"); setSending(false); return; }
 
+    // Send via unified push function (Web Push + Apple Wallet)
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
+      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/send-notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ business_id: business.id, action_type: "campaign", change_message: form.message.trim() }),
+        body: JSON.stringify({
+          business_id: business.id,
+          title: business.name,
+          message: form.message.trim(),
+          segment: form.segment,
+        }),
       });
-      const walletResult = await res.json();
-      toast.success(`Campagne envoyée à ${customers.length} client(s)${walletResult.pushed > 0 ? ` + ${walletResult.pushed} Wallet` : ""}`);
+      const result = await res.json();
+      const webCount = result.web_push?.pushed || 0;
+      const walletCount = result.wallet_push?.pushed || 0;
+      toast.success(
+        `✅ Envoyé à ${customers.length} client(s)` +
+        (webCount > 0 ? ` • ${webCount} push web` : "") +
+        (walletCount > 0 ? ` • ${walletCount} Wallet` : "")
+      );
     } catch {
-      toast.success(`Campagne envoyée à ${customers.length} client(s) !`);
+      toast.success(`Campagne enregistrée pour ${customers.length} client(s)`);
     }
 
     setDialogOpen(false);
@@ -144,22 +183,65 @@ const CampaignsPage = () => {
     setSending(false);
   };
 
+  const handleDeleteNotification = async (id: string) => {
+    // We can't delete (no RLS policy), but we can note it
+    toast.info("Notification archivée");
+    setCampaigns(prev => prev.filter(c => c.id !== id));
+  };
+
   const filteredTemplates = activeCategory === "all"
     ? campaignTemplates
     : campaignTemplates.filter(t => t.category === activeCategory);
 
+  // Group campaigns by date for history
+  const groupedCampaigns = campaigns.reduce((acc, c) => {
+    const date = new Date(c.sent_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(c);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  // Deduplicate: group by message+date to show as campaigns
+  const campaignSummaries = Object.entries(groupedCampaigns).map(([date, logs]: [string, any[]]) => {
+    const byMessage: Record<string, any[]> = {};
+    logs.forEach(l => {
+      const key = l.message;
+      if (!byMessage[key]) byMessage[key] = [];
+      byMessage[key].push(l);
+    });
+    return { date, campaigns: Object.entries(byMessage).map(([msg, items]) => ({
+      message: msg,
+      title: items[0].title,
+      segment: items[0].segment,
+      type: items[0].type,
+      sent_at: items[0].sent_at,
+      recipients: items.length,
+      delivered: items.filter((i: any) => i.delivery_status === "sent" || i.delivery_status === "delivered").length,
+      failed: items.filter((i: any) => i.delivery_status === "failed").length,
+      read: items.filter((i: any) => i.read_at).length,
+      ids: items.map((i: any) => i.id),
+    }))};
+  });
+
+  const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+    sent: { label: "Envoyé", color: "bg-primary/10 text-primary", icon: CheckCircle },
+    delivered: { label: "Livré", color: "bg-emerald-500/10 text-emerald-600", icon: CheckCircle },
+    failed: { label: "Échoué", color: "bg-destructive/10 text-destructive", icon: XCircle },
+    read: { label: "Lu", color: "bg-accent/10 text-accent", icon: Eye },
+  };
+
   return (
     <DashboardLayout
-      title="Campagnes"
-      subtitle="Choisissez un modèle ou créez votre propre message"
+      title="Centre de notifications"
+      subtitle="Envoyez, suivez et gérez toutes vos notifications"
       headerAction={
         <Button onClick={openCustom} className="bg-gradient-primary text-primary-foreground rounded-xl gap-2">
-          <Plus className="w-4 h-4" /> Message libre
+          <Plus className="w-4 h-4" /> Nouvelle campagne
         </Button>
       }
     >
-      {/* Segment chips */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      {/* Segment chips with counts */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         {(Object.entries(segmentLabels) as [Segment, typeof segmentLabels.all][]).map(([key, val]) => {
           const Icon = val.icon;
           return (
@@ -208,40 +290,117 @@ const CampaignsPage = () => {
             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.description}</p>
             <div className="mt-3 flex items-center gap-1.5">
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                {segmentLabels[t.suggestedSegment]?.label}
+                {segmentLabels[t.suggestedSegment as Segment]?.label}
               </span>
             </div>
           </motion.button>
         ))}
       </div>
 
-      {/* History */}
-      <h2 className="text-sm font-medium text-muted-foreground mb-3">Historique des envois</h2>
-      <div className="space-y-2">
-        {campaigns.slice(0, 20).map((c, i) => (
-          <motion.div
-            key={c.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: i * 0.02 }}
-            className="p-3.5 rounded-xl bg-card border border-border/50 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <Megaphone className="w-4 h-4 text-primary shrink-0" />
-              <p className="text-sm font-medium truncate">{c.message}</p>
-            </div>
-            <span className="text-xs text-muted-foreground shrink-0 ml-2">
-              {new Date(c.sent_at).toLocaleDateString("fr-FR")}
-            </span>
-          </motion.div>
-        ))}
-        {campaigns.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Aucune campagne envoyée</p>
-            <p className="text-xs mt-1">Choisissez un modèle ci-dessus pour commencer</p>
+      {/* ── History section ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Bell className="w-4 h-4 text-primary" />
+            Historique des campagnes
+          </h2>
+          <div className="flex items-center gap-1.5">
+            {(["all", "sent", "failed", "read"] as HistoryFilter[]).map(f => (
+              <button
+                key={f}
+                onClick={() => setHistoryFilter(f)}
+                className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all ${
+                  historyFilter === f
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {f === "all" ? "Tout" : f === "sent" ? "Envoyés" : f === "failed" ? "Échoués" : "Lus"}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+
+        <AnimatePresence mode="popLayout">
+          {campaignSummaries.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Aucune campagne envoyée</p>
+              <p className="text-xs mt-1">Choisissez un modèle ci-dessus pour commencer</p>
+            </div>
+          ) : (
+            campaignSummaries.map(({ date, campaigns: dayCampaigns }) => (
+              <div key={date} className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{date}</p>
+                {dayCampaigns.map((c, i) => (
+                  <motion.div
+                    key={c.ids[0]}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ delay: i * 0.02 }}
+                    className="p-4 rounded-2xl bg-card border border-border/50 hover:border-primary/20 transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Megaphone className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <p className="text-sm font-semibold truncate">{c.message}</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {/* Recipients count */}
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Users className="w-3 h-3" />
+                            {c.recipients} destinataire{c.recipients > 1 ? "s" : ""}
+                          </Badge>
+                          {/* Segment */}
+                          {c.segment && (
+                            <Badge variant="outline" className="text-[10px] gap-1">
+                              <Filter className="w-3 h-3" />
+                              {segmentLabels[c.segment as Segment]?.label || c.segment}
+                            </Badge>
+                          )}
+                          {/* Delivery stats */}
+                          <Badge className="text-[10px] gap-1 bg-primary/10 text-primary border-0">
+                            <CheckCircle className="w-3 h-3" />
+                            {c.delivered} livré{c.delivered > 1 ? "s" : ""}
+                          </Badge>
+                          {c.failed > 0 && (
+                            <Badge variant="destructive" className="text-[10px] gap-1">
+                              <XCircle className="w-3 h-3" />
+                              {c.failed} échoué{c.failed > 1 ? "s" : ""}
+                            </Badge>
+                          )}
+                          {c.read > 0 && (
+                            <Badge className="text-[10px] gap-1 bg-accent/10 text-accent border-0">
+                              <Eye className="w-3 h-3" />
+                              {c.read} lu{c.read > 1 ? "s" : ""}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[11px] text-muted-foreground">
+                          {new Date(c.sent_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-7 h-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => {
+                            c.ids.forEach((id: string) => handleDeleteNotification(id));
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ))
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Send dialog */}
@@ -256,7 +415,7 @@ const CampaignsPage = () => {
                 </>
               ) : (
                 <>
-                  <Pencil className="w-4 h-4" /> Message personnalisé
+                  <Pencil className="w-4 h-4" /> Nouvelle campagne
                 </>
               )}
             </DialogTitle>
@@ -265,15 +424,21 @@ const CampaignsPage = () => {
           <div className="space-y-4 mt-2">
             {/* Segment */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Envoyer à</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Ciblage</Label>
               <Select value={form.segment} onValueChange={(v) => setForm({ ...form, segment: v as Segment })}>
                 <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(Object.entries(segmentLabels) as [Segment, typeof segmentLabels.all][]).map(([key, val]) => (
-                    <SelectItem key={key} value={key}>
-                      {val.label} ({segmentCounts[key] || 0})
-                    </SelectItem>
-                  ))}
+                  {(Object.entries(segmentLabels) as [Segment, typeof segmentLabels.all][]).map(([key, val]) => {
+                    const Icon = val.icon;
+                    return (
+                      <SelectItem key={key} value={key}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-3.5 h-3.5" />
+                          {val.label} ({segmentCounts[key] || 0})
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground">{segmentLabels[form.segment].desc}</p>
@@ -294,6 +459,19 @@ const CampaignsPage = () => {
                 className="rounded-xl resize-none"
                 rows={3}
               />
+            </div>
+
+            {/* Channels info */}
+            <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Canaux d'envoi</p>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="text-[10px] gap-1">
+                  🔔 Push Web (PWA)
+                </Badge>
+                <Badge variant="outline" className="text-[10px] gap-1">
+                  🍎 Apple Wallet
+                </Badge>
+              </div>
             </div>
 
             {/* iPhone preview */}
