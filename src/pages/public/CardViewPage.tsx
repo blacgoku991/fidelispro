@@ -3,9 +3,10 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { motion } from "framer-motion";
-import { Flame, Star, Crown, Trophy, Wallet } from "lucide-react";
+import { Flame, Star, Crown, Trophy, Wallet, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { registerPushSubscription, isPushSubscribed } from "@/lib/webPush";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
 const badgeIcons: Record<string, string> = {
