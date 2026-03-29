@@ -218,12 +218,15 @@ async function sendWebPush(
   vapidPriv: string,
 ): Promise<{ ok: boolean; status?: number; error?: string }> {
   try {
+    console.log(`[WebPush] p256dh=${sub.p256dh.slice(0,10)}... auth=${sub.auth.slice(0,10)}... vapidPub=${vapidPub.slice(0,10)}... (len=${vapidPub.length})`);
     const clientPub = b64urlDecode(sub.p256dh);
     const authSecret = b64urlDecode(sub.auth);
+    console.log(`[WebPush] clientPub bytes=${clientPub.length}, authSecret bytes=${authSecret.length}`);
     const data = new TextEncoder().encode(payload);
 
     const { body, serverPubBytes, salt } = await encryptPayload(clientPub, authSecret, data);
     const jwt = await createVapidJwt(sub.endpoint, vapidPub, vapidPriv);
+    console.log(`[WebPush] JWT created, sending to ${sub.endpoint.slice(0,60)}...`);
 
     const res = await fetch(sub.endpoint, {
       method: "POST",
