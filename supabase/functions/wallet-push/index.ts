@@ -1,8 +1,7 @@
-// Edge function to trigger Wallet pass updates via APNs
-// Called by the campaign system when a business sends a campaign to wallet holders
+// Edge function: Real APNs push for Apple Wallet pass updates
+// Uses token-based (P8/JWT) authentication — works with Deno's HTTP/2 fetch
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import forge from "npm:node-forge@1.3.1";
 
 const PASS_TYPE_ID = "pass.app.lovable.fidelispro";
 
@@ -48,16 +47,16 @@ Deno.serve(async (req) => {
     }
 
     if (!registrations || registrations.length === 0) {
-      return jsonResponse({ 
-        success: true, 
+      return jsonResponse({
+        success: true,
         message: "No wallet registrations found",
         pushed: 0,
-        total_registrations: 0 
+        total_registrations: 0,
       }, 200);
     }
 
     // Update wallet_pass_updates for all affected serial numbers
-    const serialNumbers = [...new Set(registrations.map((r) => r.serial_number))];
+    const serialNumbers = [...new Set(registrations.map((r: any) => r.serial_number))];
     const now = new Date().toISOString();
 
     for (const sn of serialNumbers) {
@@ -81,47 +80,72 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send APNs push to each device
-    const p12Base64 = Deno.env.get("APPLE_P12_BASE64")!;
-    const p12Password = Deno.env.get("APPLE_P12_PASSWORD")!;
+    // ── REAL APNs Push via Token-Based Auth ──────────────────────────
+    const p8Key = Deno.env.get("APPLE_P8_KEY")!;
+    const keyId = Deno.env.get("APPLE_KEY_ID")!;
     const teamId = Deno.env.get("APPLE_TEAM_ID")!.trim();
 
-    let pushResults: any[] = [];
+    if (!p8Key || !keyId) {
+      console.error("[Wallet Push] Missing APPLE_P8_KEY or APPLE_KEY_ID");
+      return jsonResponse({
+        success: false,
+        error: "APNs credentials not configured (P8 key / Key ID missing)",
+        total_registrations: registrations.length,
+      }, 500);
+    }
+
+    // Generate JWT for APNs
+    const jwt = await createApnsJwt(teamId, keyId, p8Key);
+
+    const apnsHost = test_mode
+      ? "api.sandbox.push.apple.com"
+      : "api.push.apple.com";
+
     let successCount = 0;
     let failCount = 0;
+    const pushResults: any[] = [];
 
-    // Extract key + cert for APNs TLS
-    const { pemCert, pemKey } = extractPemFromP12(p12Base64, p12Password);
-
+    // Deduplicate by push_token to avoid sending duplicates
+    const uniqueTokens = new Map<string, any>();
     for (const reg of registrations) {
+      if (!uniqueTokens.has(reg.push_token)) {
+        uniqueTokens.set(reg.push_token, reg);
+      }
+    }
+
+    for (const [pushToken, reg] of uniqueTokens) {
       const logEntry: any = {
         business_id,
         serial_number: reg.serial_number,
-        push_token: reg.push_token,
+        push_token: pushToken,
         campaign_id: campaign_id || null,
         status: "pending",
       };
 
       try {
-        // Apple Wallet push: send empty payload to push token
-        // Topic must be passTypeIdentifier
-        const apnsResult = await sendApnsPush(
-          reg.push_token,
-          PASS_TYPE_ID,
-          pemCert,
-          pemKey,
-          test_mode
-        );
+        const result = await sendApnsPush(pushToken, PASS_TYPE_ID, jwt, apnsHost);
 
-        logEntry.status = apnsResult.success ? "sent" : "failed";
-        logEntry.apns_response = JSON.stringify(apnsResult);
-        if (apnsResult.success) successCount++;
-        else failCount++;
+        logEntry.status = result.success ? "sent" : "failed";
+        logEntry.apns_response = JSON.stringify(result);
+
+        if (result.success) {
+          successCount++;
+        } else {
+          failCount++;
+          // If token is invalid, mark registration
+          if (result.status === 410 || result.reason === "Unregistered") {
+            logEntry.error_message = "Token invalid/unregistered";
+            await supabase
+              .from("wallet_registrations")
+              .delete()
+              .eq("push_token", pushToken);
+          }
+        }
 
         pushResults.push({
           serial_number: reg.serial_number,
           device: reg.device_library_id,
-          ...apnsResult,
+          ...result,
         });
       } catch (err: any) {
         logEntry.status = "error";
@@ -143,6 +167,7 @@ Deno.serve(async (req) => {
       success: true,
       total_registrations: registrations.length,
       unique_passes: serialNumbers.length,
+      unique_devices: uniqueTokens.size,
       pushed: successCount,
       failed: failCount,
       results: pushResults,
@@ -153,73 +178,103 @@ Deno.serve(async (req) => {
   }
 });
 
-// ── APNs Push ──────────────────────────────────────────────────────
+// ── APNs JWT Token-Based Auth ─────────────────────────────────────
+
+async function createApnsJwt(
+  teamId: string,
+  keyId: string,
+  p8Key: string
+): Promise<string> {
+  // Clean the P8 key
+  const pemContent = p8Key
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "");
+
+  const keyData = Uint8Array.from(atob(pemContent), (c) => c.charCodeAt(0));
+
+  // Import as ECDSA P-256 key
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    keyData,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"]
+  );
+
+  // JWT header + payload
+  const header = { alg: "ES256", kid: keyId };
+  const payload = { iss: teamId, iat: Math.floor(Date.now() / 1000) };
+
+  const headerB64 = base64urlEncode(JSON.stringify(header));
+  const payloadB64 = base64urlEncode(JSON.stringify(payload));
+  const signingInput = `${headerB64}.${payloadB64}`;
+
+  // Sign with ECDSA SHA-256
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    cryptoKey,
+    new TextEncoder().encode(signingInput)
+  );
+
+  // crypto.subtle returns IEEE P1363 format (r || s), which is what JWT ES256 expects
+  const sigB64 = base64urlEncode(
+    String.fromCharCode(...new Uint8Array(signature))
+  );
+
+  return `${headerB64}.${payloadB64}.${sigB64}`;
+}
+
+// ── APNs Push ─────────────────────────────────────────────────────
 
 async function sendApnsPush(
   pushToken: string,
   topic: string,
-  pemCert: string,
-  pemKey: string,
-  testMode?: boolean
+  jwt: string,
+  apnsHost: string
 ): Promise<{ success: boolean; status?: number; reason?: string }> {
-  // Apple Wallet passes use certificate-based APNs auth
-  // For Wallet pass updates, send an empty JSON payload
-  // The push tells iOS to check webServiceURL for updated passes
-
-  const apnsHost = testMode
-    ? "api.sandbox.push.apple.com"
-    : "api.push.apple.com";
-
   const apnsUrl = `https://${apnsHost}/3/device/${pushToken}`;
 
-  console.log(`[APNs] Sending to ${apnsUrl} topic=${topic}`);
+  console.log(`[APNs] POST ${apnsUrl} topic=${topic}`);
 
-  try {
-    // Note: Deno's fetch doesn't support client certificates natively
-    // For production, you'd use a proper APNs library or HTTP/2 with certs
-    // Here we use token-based auth as a workaround via the p8 key
-    // But since we only have a .p12, we'll log the attempt and mark as "pending"
-    // The actual push requires HTTP/2 with TLS client cert which Deno doesn't fully support
-    
-    // For now, we log the push attempt and update pass data so that
-    // when the device next checks (via periodic check), it gets the update
-    console.log(`[APNs] Push queued for token=${pushToken.slice(0, 8)}...`);
-    
-    return {
-      success: true,
-      status: 200,
-      reason: "queued_for_next_sync",
-    };
-  } catch (err: any) {
-    console.error(`[APNs] Error:`, err);
-    return {
-      success: false,
-      reason: String(err),
-    };
+  // Apple Wallet pass update: send empty JSON payload
+  // The push tells iOS to contact webServiceURL for updated passes
+  const response = await fetch(apnsUrl, {
+    method: "POST",
+    headers: {
+      authorization: `bearer ${jwt}`,
+      "apns-topic": topic,
+      "apns-push-type": "background",
+      "apns-priority": "5",
+    },
+    body: JSON.stringify({}),
+  });
+
+  const status = response.status;
+  let reason = "";
+
+  if (status !== 200) {
+    try {
+      const body = await response.json();
+      reason = body?.reason || "";
+    } catch {
+      reason = await response.text().catch(() => "unknown");
+    }
+    console.error(`[APNs] Failed: status=${status} reason=${reason}`);
+    return { success: false, status, reason };
   }
+
+  // Consume response body
+  await response.text().catch(() => {});
+
+  console.log(`[APNs] Success: status=${status} token=${pushToken.slice(0, 8)}...`);
+  return { success: true, status };
 }
 
-// ── Helpers ────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────
 
-function extractPemFromP12(p12Base64: string, password: string): { pemCert: string; pemKey: string } {
-  const p12Der = forge.util.decode64(p12Base64);
-  const p12Asn1 = forge.asn1.fromDer(p12Der);
-  const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password);
-
-  let key: any = null;
-  let cert: any = null;
-
-  for (const sc of p12.safeContents) {
-    for (const sb of sc.safeBags) {
-      if (sb.type === forge.pki.oids.certBag && sb.cert && !cert) cert = sb.cert;
-      if (sb.type === forge.pki.oids.pkcs8ShroudedKeyBag && sb.key && !key) key = sb.key;
-    }
-  }
-
-  return {
-    pemCert: cert ? forge.pki.certificateToPem(cert) : "",
-    pemKey: key ? forge.pki.privateKeyToPem(key) : "",
-  };
+function base64urlEncode(str: string): string {
+  return btoa(str).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 function jsonResponse(data: any, status: number) {
