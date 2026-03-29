@@ -275,9 +275,9 @@ serve(async (req) => {
 
     const sbUrl = Deno.env.get("SUPABASE_URL")!;
     const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const vapidPub = (Deno.env.get("VAPID_PUBLIC_KEY") || "").trim();
+    const vapidPub = "BCAQpqqjHGJNpDoHlOt7wenXFdnlpKe_WMSwL0Vvmple6hZuMN7ip5UXF9TN8vBDZ7fHy1u1nODYT2gsiFGMLKE";
     const vapidPriv = (Deno.env.get("VAPID_PRIVATE_KEY") || "").trim();
-    console.log(`[WebPush] vapidPub length=${vapidPub.length}, starts=${vapidPub.slice(0,5)}, vapidPriv length=${vapidPriv.length}`);
+    console.log(`[WebPush] vapidPub length=${vapidPub.length}, vapidPriv length=${vapidPriv.length}`);
     const sb = createClient(sbUrl, sbKey);
 
     let pushed = 0, failed = 0, total = 0;
