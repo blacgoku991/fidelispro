@@ -477,7 +477,14 @@ function generateStripPng(width: number, height: number, hexColor: string): Uint
 
 function forgeSha1(data: Uint8Array): string {
   const md = forge.md.sha1.create();
-  md.update(forge.util.binary.raw.encode(data));
+  // Process in chunks to avoid stack overflow with large binary data
+  const CHUNK = 8192;
+  for (let i = 0; i < data.length; i += CHUNK) {
+    const end = Math.min(i + CHUNK, data.length);
+    let str = "";
+    for (let j = i; j < end; j++) str += String.fromCharCode(data[j]);
+    md.update(str);
+  }
   return md.digest().toHex();
 }
 
