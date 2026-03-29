@@ -111,15 +111,16 @@ serve(async (req) => {
 
     let pushed = 0;
     let failed = 0;
+    let totalSubs = 0;
 
     if (sendWebPushChannel) {
-      // Get web push subscriptions for this business
       const { data: subscriptions } = await supabase
         .from("web_push_subscriptions")
         .select("*")
         .eq("business_id", business_id);
 
       const subs = subscriptions || [];
+      totalSubs = subs.length;
       const payload = JSON.stringify({ title: title || "FidéliPro", body: message, tag: campaign_id || "notification" });
 
       for (const sub of subs) {
@@ -139,7 +140,6 @@ serve(async (req) => {
       }
     }
 
-    // Also trigger Apple Wallet push if available
     let walletResult = { pushed: 0, failed: 0 };
     if (sendWalletChannel) {
       try {
@@ -154,7 +154,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      web_push: { pushed, failed, total: subs.length },
+      web_push: { pushed, failed, total: totalSubs },
       wallet_push: walletResult,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
