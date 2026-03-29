@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decode as b64Decode, encode as b64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,20 +8,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// ── Base64url helpers ────────────────────────────────────────────────
-
 function b64urlDecode(s: string): Uint8Array {
   const p = "=".repeat((4 - (s.length % 4)) % 4);
-  const b = (s + p).replace(/-/g, "+").replace(/_/g, "/");
-  const r = atob(b);
-  return new Uint8Array([...r].map((c) => c.charCodeAt(0)));
+  const std = s.replace(/-/g, "+").replace(/_/g, "/") + p;
+  return new Uint8Array(b64Decode(std));
 }
 
 function b64urlEncode(buf: Uint8Array): string {
-  return btoa(String.fromCharCode(...buf))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+  return b64Encode(buf).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 function concat(...a: Uint8Array[]): Uint8Array {
