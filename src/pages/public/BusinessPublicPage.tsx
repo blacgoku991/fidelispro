@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, Wallet, AlertCircle, RefreshCw, Bell, Download, Share, X } from "lucide-react";
 import { toast } from "sonner";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
-import { registerPushSubscription, isPushSubscribed } from "@/lib/webPush";
+import { useWebPush } from "@/hooks/useWebPush";
 
 type Step = "landing" | "register" | "card";
 
@@ -27,9 +27,6 @@ const BusinessPublicPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
-  const [pushSubscribed, setPushSubscribed] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
-  const [showInstallHint, setShowInstallHint] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
@@ -69,25 +66,8 @@ const BusinessPublicPage = () => {
     }
   };
 
-  const handleSubscribePush = async () => {
-    if (!business || !customer) return;
-    setPushLoading(true);
-    try {
-      const success = await registerPushSubscription(business.id, customer.id);
-      setPushSubscribed(success);
-      if (success) {
-        toast.success("Notifications activées ! 🔔");
-      } else {
-        // If not standalone, suggest installing the app first
-        if (!isStandalone) {
-          setShowInstallHint(true);
-        }
-      }
-    } catch {
-      toast.error("Erreur lors de l'activation des notifications");
-    }
-    setPushLoading(false);
-  };
+  // Web Push hook - initialized after we have business+card
+  const webPush = useWebPush(business?.id || "", card?.id);
 
   const fetchBusiness = async () => {
     setLoading(true);
