@@ -39,6 +39,31 @@ const CustomizePage = () => {
   );
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+
+  const geocodeAddress = async (address: string) => {
+    if (!address.trim()) { toast.error("Entrez une adresse d'abord"); return; }
+    setGeocoding(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`, {
+        headers: { "Accept-Language": "fr" },
+      });
+      const data = await res.json();
+      if (data.length === 0) {
+        toast.error("Adresse introuvable. Essayez d'être plus précis.");
+        setGeocoding(false);
+        return;
+      }
+      const result = data[0];
+      const lat = parseFloat(parseFloat(result.lat).toFixed(7));
+      const lng = parseFloat(parseFloat(result.lon).toFixed(7));
+      setForm(prev => ({ ...prev, latitude: lat, longitude: lng }));
+      toast.success(`📍 Position trouvée : ${result.display_name.split(",").slice(0, 3).join(",")}`);
+    } catch {
+      toast.error("Erreur de géocodage. Réessayez.");
+    }
+    setGeocoding(false);
+  };
 
   useEffect(() => {
     if (!business) return;
