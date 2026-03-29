@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Flame, Star, Crown, Trophy, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
 const badgeIcons: Record<string, string> = {
   first_visit: "🎯",
