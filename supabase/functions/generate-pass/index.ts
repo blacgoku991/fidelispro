@@ -84,6 +84,8 @@ Deno.serve(async (req) => {
       p12Password
     );
 
+    validateSigningIdentity(signerCert, teamId);
+
     const iconPng = decodeBase64ToBytes(ICON_PNG_BASE64);
     const icon2xPng = decodeBase64ToBytes(ICON_2X_PNG_BASE64);
 
@@ -313,6 +315,21 @@ function certMatchesPrivateKey(cert: any, key: any): boolean {
 function hasPassTypeCommonName(cert: any): boolean {
   const cn = cert?.subject?.getField?.("CN")?.value;
   return typeof cn === "string" && cn.includes("Pass Type ID");
+}
+
+function validateSigningIdentity(cert: any, expectedTeamId: string): void {
+  const cn = cert?.subject?.getField?.("CN")?.value ?? "";
+  const ou = cert?.subject?.getField?.("OU")?.value ?? "";
+
+  if (cn !== `Pass Type ID: ${REQUIRED_PASS_TYPE_ID}`) {
+    throw new Error(
+      `Le certificat ne correspond pas à ${REQUIRED_PASS_TYPE_ID}`
+    );
+  }
+
+  if (ou !== expectedTeamId) {
+    throw new Error("Le Team ID ne correspond pas au certificat Apple")
+  }
 }
 
 function hexToRgb(hex: string): string {
