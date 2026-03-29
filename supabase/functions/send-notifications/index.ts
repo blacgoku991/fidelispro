@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { decode as b64Decode, encode as b64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,12 +7,44 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Pure base64 decoder - no atob dependency
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const B64_LOOKUP = new Uint8Array(128);
+for (let i = 0; i < B64.length; i++) B64_LOOKUP[B64.charCodeAt(i)] = i;
+
+function b64Decode(input: string): Uint8Array {
+  // Remove padding
+  let s = input.replace(/=+$/, "");
+  const out = new Uint8Array(Math.floor(s.length * 3 / 4));
+  let j = 0;
+  for (let i = 0; i < s.length; i += 4) {
+    const a = B64_LOOKUP[s.charCodeAt(i)];
+    const b = B64_LOOKUP[s.charCodeAt(i + 1)];
+    const c = i + 2 < s.length ? B64_LOOKUP[s.charCodeAt(i + 2)] : 0;
+    const d = i + 3 < s.length ? B64_LOOKUP[s.charCodeAt(i + 3)] : 0;
+    out[j++] = (a << 2) | (b >> 4);
+    if (i + 2 < s.length) out[j++] = ((b & 15) << 4) | (c >> 2);
+    if (i + 3 < s.length) out[j++] = ((c & 3) << 6) | d;
+  }
+  return out.slice(0, j);
+}
+
+function b64Encode(buf: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < buf.length; i += 3) {
+    const a = buf[i];
+    const b = i + 1 < buf.length ? buf[i + 1] : 0;
+    const c = i + 2 < buf.length ? buf[i + 2] : 0;
+    s += B64[a >> 2];
+    s += B64[((a & 3) << 4) | (b >> 4)];
+    s += i + 1 < buf.length ? B64[((b & 15) << 2) | (c >> 6)] : "=";
+    s += i + 2 < buf.length ? B64[c & 63] : "=";
+  }
+  return s;
+}
+
 function b64urlDecode(s: string): Uint8Array {
-  // Convert base64url to standard base64
-  let std = s.replace(/-/g, "+").replace(/_/g, "/");
-  // Add padding
-  while (std.length % 4 !== 0) std += "=";
-  return b64Decode(std);
+  return b64Decode(s.replace(/-/g, "+").replace(/_/g, "/"));
 }
 
 function b64urlEncode(buf: Uint8Array): string {
