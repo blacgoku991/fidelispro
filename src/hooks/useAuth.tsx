@@ -1,9 +1,19 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-export function useAuth(redirectTo = "/login") {
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  role: string | null;
+  business: any;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,7 +32,6 @@ export function useAuth(redirectTo = "/login") {
         setRole(null);
         setBusiness(null);
         setLoading(false);
-        navigate(redirectTo, { replace: true });
         return;
       }
 
@@ -39,7 +48,6 @@ export function useAuth(redirectTo = "/login") {
         setRole(null);
         setBusiness(null);
         setLoading(false);
-        navigate(redirectTo, { replace: true });
         return;
       }
 
@@ -52,15 +60,13 @@ export function useAuth(redirectTo = "/login") {
       active = false;
       subscription.unsubscribe();
     };
-  }, [navigate, redirectTo]);
+  }, []);
 
   useEffect(() => {
     let active = true;
 
     const loadUserContext = async () => {
       if (!user) return;
-
-      setLoading(true);
 
       const [rolesRes, bizRes] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", user.id).limit(1),
@@ -86,6 +92,26 @@ export function useAuth(redirectTo = "/login") {
     navigate("/", { replace: true });
   };
 
-  return { user, loading, role, business, logout };
+  return (
+    <AuthContext.Provider value={{ user, loading, role, business, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
+export function useAuth(redirectTo = "/login") {
+  const context = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (context && !context.loading && !context.user && redirectTo) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [context?.loading, context?.user, redirectTo, navigate]);
+
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+
+  return context;
+}
