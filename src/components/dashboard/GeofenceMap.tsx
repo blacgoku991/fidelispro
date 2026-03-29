@@ -4,6 +4,7 @@ interface GeofenceMapProps {
   latitude: number;
   longitude: number;
   radius: number;
+  onPositionChange?: (lat: number, lng: number) => void;
 }
 
 function getZoomForRadius(meters: number): number {
@@ -14,11 +15,10 @@ function getZoomForRadius(meters: number): number {
   return 12;
 }
 
-const GeofenceMap = ({ latitude, longitude, radius }: GeofenceMapProps) => {
+const GeofenceMap = ({ latitude, longitude, radius, onPositionChange }: GeofenceMapProps) => {
   const mapRef = useRef<any>(null);
   const circleRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
-  const initializedRef = useRef(false);
 
   // Init map
   useEffect(() => {
@@ -69,11 +69,21 @@ const GeofenceMap = ({ latitude, longitude, radius }: GeofenceMapProps) => {
         weight: 2,
       }).addTo(map);
 
-      markerRef.current = L.marker([latitude, longitude]).addTo(map);
+      markerRef.current = L.marker([latitude, longitude], {
+        draggable: true,
+      }).addTo(map);
+
+      // When marker is dragged, update circle + notify parent
+      markerRef.current.on("dragend", () => {
+        const pos = markerRef.current.getLatLng();
+        const newLat = parseFloat(pos.lat.toFixed(7));
+        const newLng = parseFloat(pos.lng.toFixed(7));
+        circleRef.current.setLatLng([newLat, newLng]);
+        onPositionChange?.(newLat, newLng);
+      });
 
       // Fit to circle bounds
       map.fitBounds(circleRef.current.getBounds(), { padding: [30, 30] });
-      initializedRef.current = true;
     };
 
     if ((window as any).L) {
@@ -91,7 +101,6 @@ const GeofenceMap = ({ latitude, longitude, radius }: GeofenceMapProps) => {
         mapRef.current = null;
         circleRef.current = null;
         markerRef.current = null;
-        initializedRef.current = false;
       }
     };
   }, [latitude, longitude]);
@@ -104,15 +113,20 @@ const GeofenceMap = ({ latitude, longitude, radius }: GeofenceMapProps) => {
   }, [radius]);
 
   return (
-    <div
-      id="geofence-map"
-      style={{
-        height: "320px",
-        width: "100%",
-        borderRadius: "12px",
-        overflow: "hidden",
-      }}
-    />
+    <div>
+      <div
+        id="geofence-map"
+        style={{
+          height: "320px",
+          width: "100%",
+          borderRadius: "12px",
+          overflow: "hidden",
+        }}
+      />
+      <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+        📌 Glissez le marqueur bleu pour ajuster la position exacte
+      </p>
+    </div>
   );
 };
 
