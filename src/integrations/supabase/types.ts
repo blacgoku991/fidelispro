@@ -18,24 +18,47 @@ export type Database = {
         Row: {
           address: string | null
           auto_notifications: boolean | null
+          auto_reminder_days: number | null
+          auto_reminder_enabled: boolean | null
+          business_template: string | null
+          card_bg_image_url: string | null
+          card_bg_type: string | null
           card_style: string | null
           category: string | null
           city: string | null
           created_at: string
           description: string | null
+          feature_analytics: boolean | null
+          feature_gamification: boolean | null
+          feature_notifications: boolean | null
+          feature_wallet: boolean | null
           geofence_enabled: boolean | null
           geofence_radius: number | null
           id: string
           latitude: number | null
           logo_url: string | null
           longitude: number | null
+          loyalty_type: string | null
           max_points_per_card: number | null
           name: string
+          notif_custom_interval_hours: number | null
+          notif_frequency: string | null
+          notif_time_end: string | null
+          notif_time_start: string | null
+          onboarding_mode: string | null
           owner_id: string
           phone: string | null
+          points_per_euro: number | null
+          points_per_visit: number | null
           primary_color: string | null
+          reward_alert_threshold: number | null
           reward_description: string | null
           secondary_color: string | null
+          show_customer_name: boolean | null
+          show_expiration: boolean | null
+          show_points: boolean | null
+          show_qr_code: boolean | null
+          show_rewards_preview: boolean | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_plan:
@@ -51,24 +74,47 @@ export type Database = {
         Insert: {
           address?: string | null
           auto_notifications?: boolean | null
+          auto_reminder_days?: number | null
+          auto_reminder_enabled?: boolean | null
+          business_template?: string | null
+          card_bg_image_url?: string | null
+          card_bg_type?: string | null
           card_style?: string | null
           category?: string | null
           city?: string | null
           created_at?: string
           description?: string | null
+          feature_analytics?: boolean | null
+          feature_gamification?: boolean | null
+          feature_notifications?: boolean | null
+          feature_wallet?: boolean | null
           geofence_enabled?: boolean | null
           geofence_radius?: number | null
           id?: string
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
+          loyalty_type?: string | null
           max_points_per_card?: number | null
           name: string
+          notif_custom_interval_hours?: number | null
+          notif_frequency?: string | null
+          notif_time_end?: string | null
+          notif_time_start?: string | null
+          onboarding_mode?: string | null
           owner_id: string
           phone?: string | null
+          points_per_euro?: number | null
+          points_per_visit?: number | null
           primary_color?: string | null
+          reward_alert_threshold?: number | null
           reward_description?: string | null
           secondary_color?: string | null
+          show_customer_name?: boolean | null
+          show_expiration?: boolean | null
+          show_points?: boolean | null
+          show_qr_code?: boolean | null
+          show_rewards_preview?: boolean | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?:
@@ -84,24 +130,47 @@ export type Database = {
         Update: {
           address?: string | null
           auto_notifications?: boolean | null
+          auto_reminder_days?: number | null
+          auto_reminder_enabled?: boolean | null
+          business_template?: string | null
+          card_bg_image_url?: string | null
+          card_bg_type?: string | null
           card_style?: string | null
           category?: string | null
           city?: string | null
           created_at?: string
           description?: string | null
+          feature_analytics?: boolean | null
+          feature_gamification?: boolean | null
+          feature_notifications?: boolean | null
+          feature_wallet?: boolean | null
           geofence_enabled?: boolean | null
           geofence_radius?: number | null
           id?: string
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
+          loyalty_type?: string | null
           max_points_per_card?: number | null
           name?: string
+          notif_custom_interval_hours?: number | null
+          notif_frequency?: string | null
+          notif_time_end?: string | null
+          notif_time_start?: string | null
+          onboarding_mode?: string | null
           owner_id?: string
           phone?: string | null
+          points_per_euro?: number | null
+          points_per_visit?: number | null
           primary_color?: string | null
+          reward_alert_threshold?: number | null
           reward_description?: string | null
           secondary_color?: string | null
+          show_customer_name?: boolean | null
+          show_expiration?: boolean | null
+          show_points?: boolean | null
+          show_qr_code?: boolean | null
+          show_rewards_preview?: boolean | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?:
