@@ -93,6 +93,20 @@ const CardViewPage = () => {
     fetch();
   }, [cardCode]);
 
+  // Check push subscription status
+  useEffect(() => {
+    isPushSubscribed().then(setPushSubscribed);
+  }, []);
+
+  const handleSubscribePush = async () => {
+    if (!business || !customer) return;
+    setPushLoading(true);
+    const success = await registerPushSubscription(business.id, customer.id);
+    setPushSubscribed(success);
+    if (success) toast.success("Notifications activées ! 🔔");
+    setPushLoading(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
