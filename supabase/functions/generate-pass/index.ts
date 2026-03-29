@@ -80,20 +80,19 @@ Deno.serve(async (req) => {
     const iconPng = decodeBase64ToBytes(ICON_PNG_BASE64);
     const icon2xPng = decodeBase64ToBytes(ICON_2X_PNG_BASE64);
 
-    // Level-based colors
-    const level = (customer?.level || "bronze").toLowerCase();
-    const levelColors: Record<string, { bg: string; fg: string; label: string }> = {
-      bronze: { bg: hexToRgb(business.primary_color || "#6B46C1"), fg: "rgb(255, 255, 255)", label: "rgb(255, 255, 255)" },
-      silver: { bg: "rgb(100, 116, 139)", fg: "rgb(255, 255, 255)", label: "rgb(226, 232, 240)" },
-      gold: { bg: "rgb(180, 130, 20)", fg: "rgb(255, 255, 255)", label: "rgb(254, 243, 199)" },
-    };
-    const colors = levelColors[level] || levelColors.bronze;
+    // Always use business colors (matching the web preview card)
+    const bgColor = hexToRgb(business.primary_color || "#6B46C1");
+    const fgColor = "rgb(255, 255, 255)";
+    const lblColor = "rgb(255, 255, 255)";
 
+    const level = (customer?.level || "bronze").toLowerCase();
     const pointsCurrent = card.current_points || 0;
     const pointsMax = card.max_points || 10;
     const pointsToReward = pointsMax - pointsCurrent;
+    const levelEmoji = level === "gold" ? "⭐" : level === "silver" ? "🥈" : "🥉";
+    const levelLabel = level.toUpperCase();
 
-    // Build premium pass.json
+    // Build pass.json — fields mirror the web LoyaltyCard preview exactly
     const passJson: any = {
       formatVersion: 1,
       passTypeIdentifier: REQUIRED_PASS_TYPE_ID,
@@ -102,9 +101,9 @@ Deno.serve(async (req) => {
       organizationName: business.name,
       description: `Carte de fidélité ${business.name}`,
       logoText: business.name,
-      foregroundColor: colors.fg,
-      backgroundColor: colors.bg,
-      labelColor: colors.label,
+      foregroundColor: fgColor,
+      backgroundColor: bgColor,
+      labelColor: lblColor,
       barcode: {
         message: card.card_code,
         format: "PKBarcodeFormatQR",
@@ -118,26 +117,29 @@ Deno.serve(async (req) => {
         },
       ],
       storeCard: {
+        // Top-right: points display like "5/10" (matches preview card)
         headerFields: [
           {
             key: "points",
             label: "POINTS",
-            value: `${pointsCurrent}`,
+            value: `${pointsCurrent}/${pointsMax}`,
             textAlignment: "PKTextAlignmentRight",
           },
         ],
+        // Large center: customer name (matches preview "Aperçu client")
         primaryFields: [
           {
             key: "name",
-            label: business.name.toUpperCase(),
+            label: "CLIENT",
             value: customer?.full_name || "Client",
           },
         ],
+        // Row below: statut + progression (matches preview middle row)
         secondaryFields: [
           {
             key: "level",
             label: "STATUT",
-            value: level === "gold" ? "⭐ GOLD" : level === "silver" ? "🥈 SILVER" : "🥉 BRONZE",
+            value: `${levelEmoji} ${levelLabel}`,
           },
           {
             key: "progress",
@@ -146,6 +148,7 @@ Deno.serve(async (req) => {
             textAlignment: "PKTextAlignmentRight",
           },
         ],
+        // Bottom row: rewards + next (matches preview auxiliary info)
         auxiliaryFields: [
           {
             key: "rewards",
