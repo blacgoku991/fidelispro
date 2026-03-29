@@ -236,6 +236,10 @@ export type Database = {
           max_points: number | null
           rewards_earned: number | null
           updated_at: string
+          wallet_auth_token: string | null
+          wallet_change_message: string | null
+          wallet_installed_at: string | null
+          wallet_last_fetched_at: string | null
         }
         Insert: {
           business_id: string
@@ -248,6 +252,10 @@ export type Database = {
           max_points?: number | null
           rewards_earned?: number | null
           updated_at?: string
+          wallet_auth_token?: string | null
+          wallet_change_message?: string | null
+          wallet_installed_at?: string | null
+          wallet_last_fetched_at?: string | null
         }
         Update: {
           business_id?: string
@@ -260,6 +268,10 @@ export type Database = {
           max_points?: number | null
           rewards_earned?: number | null
           updated_at?: string
+          wallet_auth_token?: string | null
+          wallet_change_message?: string | null
+          wallet_installed_at?: string | null
+          wallet_last_fetched_at?: string | null
         }
         Relationships: [
           {
@@ -811,6 +823,111 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_apns_logs: {
+        Row: {
+          apns_response: string | null
+          business_id: string | null
+          campaign_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          push_token: string
+          serial_number: string
+          status: string
+        }
+        Insert: {
+          apns_response?: string | null
+          business_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          push_token: string
+          serial_number: string
+          status?: string
+        }
+        Update: {
+          apns_response?: string | null
+          business_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          push_token?: string
+          serial_number?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      wallet_pass_updates: {
+        Row: {
+          campaign_id: string | null
+          change_message: string | null
+          id: string
+          last_updated: string
+          pass_type_id: string
+          serial_number: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          change_message?: string | null
+          id?: string
+          last_updated?: string
+          pass_type_id?: string
+          serial_number: string
+        }
+        Update: {
+          campaign_id?: string | null
+          change_message?: string | null
+          id?: string
+          last_updated?: string
+          pass_type_id?: string
+          serial_number?: string
+        }
+        Relationships: []
+      }
+      wallet_registrations: {
+        Row: {
+          authentication_token: string
+          business_id: string | null
+          card_id: string | null
+          created_at: string
+          customer_id: string | null
+          device_library_id: string
+          id: string
+          pass_type_id: string
+          push_token: string
+          serial_number: string
+          updated_at: string
+        }
+        Insert: {
+          authentication_token: string
+          business_id?: string | null
+          card_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          device_library_id: string
+          id?: string
+          pass_type_id?: string
+          push_token: string
+          serial_number: string
+          updated_at?: string
+        }
+        Update: {
+          authentication_token?: string
+          business_id?: string | null
+          card_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          device_library_id?: string
+          id?: string
+          pass_type_id?: string
+          push_token?: string
+          serial_number?: string
+          updated_at?: string
         }
         Relationships: []
       }
