@@ -21,6 +21,7 @@ export type Database = {
           auto_reminder_days: number | null
           auto_reminder_enabled: boolean | null
           business_template: string | null
+          card_animation_intensity: string
           card_bg_image_url: string | null
           card_bg_type: string | null
           card_style: string | null
@@ -29,11 +30,16 @@ export type Database = {
           created_at: string
           description: string | null
           feature_analytics: boolean | null
+          feature_customer_scoring: boolean
           feature_gamification: boolean | null
           feature_notifications: boolean | null
+          feature_rich_notifications: boolean
+          feature_special_events: boolean
           feature_wallet: boolean | null
           geofence_enabled: boolean | null
           geofence_radius: number | null
+          geofence_time_end: string
+          geofence_time_start: string
           id: string
           latitude: number | null
           logo_url: string | null
@@ -45,6 +51,7 @@ export type Database = {
           notif_frequency: string | null
           notif_time_end: string | null
           notif_time_start: string | null
+          notification_frequency_limit: string
           onboarding_mode: string | null
           owner_id: string
           phone: string | null
@@ -53,6 +60,10 @@ export type Database = {
           primary_color: string | null
           reward_alert_threshold: number | null
           reward_description: string | null
+          score_at_risk_threshold: number
+          score_loyal_threshold: number
+          score_regular_threshold: number
+          score_vip_threshold: number
           secondary_color: string | null
           show_customer_name: boolean | null
           show_expiration: boolean | null
@@ -69,6 +80,8 @@ export type Database = {
             | null
           trial_ends_at: string | null
           updated_at: string
+          vip_min_total_spent: number
+          vip_min_visits: number
           website: string | null
         }
         Insert: {
@@ -77,6 +90,7 @@ export type Database = {
           auto_reminder_days?: number | null
           auto_reminder_enabled?: boolean | null
           business_template?: string | null
+          card_animation_intensity?: string
           card_bg_image_url?: string | null
           card_bg_type?: string | null
           card_style?: string | null
@@ -85,11 +99,16 @@ export type Database = {
           created_at?: string
           description?: string | null
           feature_analytics?: boolean | null
+          feature_customer_scoring?: boolean
           feature_gamification?: boolean | null
           feature_notifications?: boolean | null
+          feature_rich_notifications?: boolean
+          feature_special_events?: boolean
           feature_wallet?: boolean | null
           geofence_enabled?: boolean | null
           geofence_radius?: number | null
+          geofence_time_end?: string
+          geofence_time_start?: string
           id?: string
           latitude?: number | null
           logo_url?: string | null
@@ -101,6 +120,7 @@ export type Database = {
           notif_frequency?: string | null
           notif_time_end?: string | null
           notif_time_start?: string | null
+          notification_frequency_limit?: string
           onboarding_mode?: string | null
           owner_id: string
           phone?: string | null
@@ -109,6 +129,10 @@ export type Database = {
           primary_color?: string | null
           reward_alert_threshold?: number | null
           reward_description?: string | null
+          score_at_risk_threshold?: number
+          score_loyal_threshold?: number
+          score_regular_threshold?: number
+          score_vip_threshold?: number
           secondary_color?: string | null
           show_customer_name?: boolean | null
           show_expiration?: boolean | null
@@ -125,6 +149,8 @@ export type Database = {
             | null
           trial_ends_at?: string | null
           updated_at?: string
+          vip_min_total_spent?: number
+          vip_min_visits?: number
           website?: string | null
         }
         Update: {
@@ -133,6 +159,7 @@ export type Database = {
           auto_reminder_days?: number | null
           auto_reminder_enabled?: boolean | null
           business_template?: string | null
+          card_animation_intensity?: string
           card_bg_image_url?: string | null
           card_bg_type?: string | null
           card_style?: string | null
@@ -141,11 +168,16 @@ export type Database = {
           created_at?: string
           description?: string | null
           feature_analytics?: boolean | null
+          feature_customer_scoring?: boolean
           feature_gamification?: boolean | null
           feature_notifications?: boolean | null
+          feature_rich_notifications?: boolean
+          feature_special_events?: boolean
           feature_wallet?: boolean | null
           geofence_enabled?: boolean | null
           geofence_radius?: number | null
+          geofence_time_end?: string
+          geofence_time_start?: string
           id?: string
           latitude?: number | null
           logo_url?: string | null
@@ -157,6 +189,7 @@ export type Database = {
           notif_frequency?: string | null
           notif_time_end?: string | null
           notif_time_start?: string | null
+          notification_frequency_limit?: string
           onboarding_mode?: string | null
           owner_id?: string
           phone?: string | null
@@ -165,6 +198,10 @@ export type Database = {
           primary_color?: string | null
           reward_alert_threshold?: number | null
           reward_description?: string | null
+          score_at_risk_threshold?: number
+          score_loyal_threshold?: number
+          score_regular_threshold?: number
+          score_vip_threshold?: number
           secondary_color?: string | null
           show_customer_name?: boolean | null
           show_expiration?: boolean | null
@@ -181,6 +218,8 @@ export type Database = {
             | null
           trial_ends_at?: string | null
           updated_at?: string
+          vip_min_total_spent?: number
+          vip_min_visits?: number
           website?: string | null
         }
         Relationships: []
@@ -238,6 +277,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      customer_locations: {
+        Row: {
+          business_id: string
+          captured_at: string
+          city: string | null
+          consent_granted: boolean
+          created_at: string
+          customer_id: string
+          distance_meters: number | null
+          id: string
+          is_nearby: boolean
+          latitude: number | null
+          longitude: number | null
+        }
+        Insert: {
+          business_id: string
+          captured_at?: string
+          city?: string | null
+          consent_granted?: boolean
+          created_at?: string
+          customer_id: string
+          distance_meters?: number | null
+          id?: string
+          is_nearby?: boolean
+          latitude?: number | null
+          longitude?: number | null
+        }
+        Update: {
+          business_id?: string
+          captured_at?: string
+          city?: string | null
+          consent_granted?: boolean
+          created_at?: string
+          customer_id?: string
+          distance_meters?: number | null
+          id?: string
+          is_nearby?: boolean
+          latitude?: number | null
+          longitude?: number | null
+        }
+        Relationships: []
+      }
+      customer_scores: {
+        Row: {
+          business_id: string
+          calculated_at: string
+          created_at: string
+          customer_id: string
+          engagement_score: number
+          id: string
+          inactivity_days: number
+          recency_score: number
+          score: number
+          segment: string
+          spend_score: number
+          total_spent: number
+          updated_at: string
+          visits_score: number
+        }
+        Insert: {
+          business_id: string
+          calculated_at?: string
+          created_at?: string
+          customer_id: string
+          engagement_score?: number
+          id?: string
+          inactivity_days?: number
+          recency_score?: number
+          score?: number
+          segment?: string
+          spend_score?: number
+          total_spent?: number
+          updated_at?: string
+          visits_score?: number
+        }
+        Update: {
+          business_id?: string
+          calculated_at?: string
+          created_at?: string
+          customer_id?: string
+          engagement_score?: number
+          id?: string
+          inactivity_days?: number
+          recency_score?: number
+          score?: number
+          segment?: string
+          spend_score?: number
+          total_spent?: number
+          updated_at?: string
+          visits_score?: number
+        }
+        Relationships: []
       }
       customers: {
         Row: {
@@ -301,6 +433,63 @@ export type Database = {
           },
         ]
       }
+      notification_campaigns: {
+        Row: {
+          business_id: string
+          created_at: string
+          cta_label: string | null
+          cta_url: string | null
+          frequency_limit: string | null
+          id: string
+          media_url: string | null
+          message: string
+          recipients_count: number
+          segment: string
+          send_at: string | null
+          send_mode: string
+          status: string
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          cta_label?: string | null
+          cta_url?: string | null
+          frequency_limit?: string | null
+          id?: string
+          media_url?: string | null
+          message: string
+          recipients_count?: number
+          segment?: string
+          send_at?: string | null
+          send_mode?: string
+          status?: string
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          cta_label?: string | null
+          cta_url?: string | null
+          frequency_limit?: string | null
+          id?: string
+          media_url?: string | null
+          message?: string
+          recipients_count?: number
+          segment?: string
+          send_at?: string | null
+          send_mode?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       notification_templates: {
         Row: {
           business_id: string
@@ -351,36 +540,60 @@ export type Database = {
       notifications_log: {
         Row: {
           business_id: string
+          campaign_id: string | null
+          cta_label: string | null
+          cta_url: string | null
           customer_id: string
+          delivery_status: string
           id: string
+          media_url: string | null
           message: string
           read_at: string | null
+          scheduled_at: string | null
+          segment: string | null
           sent_at: string
           template_id: string | null
           title: string
           type: Database["public"]["Enums"]["notification_type"]
+          video_url: string | null
         }
         Insert: {
           business_id: string
+          campaign_id?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
           customer_id: string
+          delivery_status?: string
           id?: string
+          media_url?: string | null
           message: string
           read_at?: string | null
+          scheduled_at?: string | null
+          segment?: string | null
           sent_at?: string
           template_id?: string | null
           title: string
           type: Database["public"]["Enums"]["notification_type"]
+          video_url?: string | null
         }
         Update: {
           business_id?: string
+          campaign_id?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
           customer_id?: string
+          delivery_status?: string
           id?: string
+          media_url?: string | null
           message?: string
           read_at?: string | null
+          scheduled_at?: string | null
+          segment?: string | null
           sent_at?: string
           template_id?: string | null
           title?: string
           type?: Database["public"]["Enums"]["notification_type"]
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -529,6 +742,60 @@ export type Database = {
           },
         ]
       }
+      special_events: {
+        Row: {
+          business_id: string
+          created_at: string
+          description: string | null
+          eligible_segment: string
+          end_hour: string | null
+          ends_at: string
+          id: string
+          is_active: boolean
+          media_url: string | null
+          name: string
+          notification_message: string | null
+          reward_multiplier: number
+          start_hour: string | null
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          description?: string | null
+          eligible_segment?: string
+          end_hour?: string | null
+          ends_at: string
+          id?: string
+          is_active?: boolean
+          media_url?: string | null
+          name: string
+          notification_message?: string | null
+          reward_multiplier?: number
+          start_hour?: string | null
+          starts_at: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          description?: string | null
+          eligible_segment?: string
+          end_hour?: string | null
+          ends_at?: string
+          id?: string
+          is_active?: boolean
+          media_url?: string | null
+          name?: string
+          notification_message?: string | null
+          reward_multiplier?: number
+          start_hour?: string | null
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -558,6 +825,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      recompute_customer_scores: {
+        Args: { p_business_id?: string }
+        Returns: number
       }
     }
     Enums: {

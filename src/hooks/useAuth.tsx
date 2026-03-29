@@ -11,67 +11,81 @@ export function useAuth(redirectTo = "/login") {
   const [business, setBusiness] = useState<any>(null);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_, session) => {
-      if (!session) {
-        navigate(redirectTo);
+    let active = true;
+
+    const bootSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (!active) return;
+
+      if (error || !data.session) {
+        setUser(null);
+        setRole(null);
+        setBusiness(null);
+        setLoading(false);
+        navigate(redirectTo, { replace: true });
         return;
       }
-      setUser(session.user);
-      
-      // Fetch role
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
-      
-      if (roles && roles.length > 0) {
-        setRole(roles[0].role);
-      }
 
-      // Fetch business
-      const { data: biz } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("owner_id", session.user.id)
-        .maybeSingle();
-      
-      if (biz) setBusiness(biz);
-      setLoading(false);
-    });
+      setUser(data.session.user);
+    };
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+
       if (!session) {
-        navigate(redirectTo);
+        setUser(null);
+        setRole(null);
+        setBusiness(null);
+        setLoading(false);
+        navigate(redirectTo, { replace: true });
         return;
       }
+
       setUser(session.user);
-
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
-      
-      if (roles && roles.length > 0) {
-        setRole(roles[0].role);
-      }
-
-      const { data: biz } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("owner_id", session.user.id)
-        .maybeSingle();
-      
-      if (biz) setBusiness(biz);
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    bootSession();
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, [navigate, redirectTo]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadUserContext = async () => {
+      if (!user) return;
+
+      setLoading(true);
+
+      const [rolesRes, bizRes] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", user.id).limit(1),
+        supabase.from("businesses").select("*").eq("owner_id", user.id).maybeSingle(),
+      ]);
+
+      if (!active) return;
+
+      setRole(rolesRes.data?.[0]?.role ?? null);
+      setBusiness(bizRes.data ?? null);
+      setLoading(false);
+    };
+
+    loadUserContext();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   const logout = async () => {
     await supabase.auth.signOut();
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   return { user, loading, role, business, logout };
 }
+
