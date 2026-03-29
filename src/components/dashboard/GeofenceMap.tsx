@@ -1,25 +1,3 @@
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-// Fix default marker icon
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-function MapUpdater({ lat, lng, radius }: { lat: number; lng: number; radius: number }) {
-  const map = useMap();
-  useEffect(() => {
-    const bounds = L.latLng(lat, lng).toBounds(radius * 2.5);
-    map.fitBounds(bounds, { padding: [20, 20], maxZoom: 17 });
-  }, [lat, lng, radius, map]);
-  return null;
-}
-
 interface GeofenceMapProps {
   latitude: number;
   longitude: number;
@@ -27,32 +5,40 @@ interface GeofenceMapProps {
 }
 
 const GeofenceMap = ({ latitude, longitude, radius }: GeofenceMapProps) => {
+  // Scale zoom based on radius - larger radius needs more zoom out
+  const zoomDelta = radius <= 200 ? 0.003 : radius <= 500 ? 0.005 : radius <= 1000 ? 0.01 : 0.02;
+  
+  // Circle size relative to the map viewport (percentage)
+  // The iframe shows a bbox of 2*zoomDelta degrees wide
+  // We need to convert radius (meters) to a percentage of the viewport
+  // 1 degree latitude ≈ 111,320 meters
+  const viewportMeters = zoomDelta * 2 * 111320;
+  const circlePct = Math.min((radius * 2) / viewportMeters * 100, 95);
+
   return (
-    <div className="rounded-xl overflow-hidden border border-border/50 h-[250px]">
-      <MapContainer
-        center={[latitude, longitude]}
-        zoom={15}
-        style={{ height: "100%", width: "100%" }}
-        zoomControl={true}
-        attributionControl={true}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Marker position={[latitude, longitude]} />
-        <Circle
-          center={[latitude, longitude]}
-          radius={radius}
-          pathOptions={{
-            color: "#eab308",
-            fillColor: "#eab308",
-            fillOpacity: 0.18,
-            weight: 2,
-          }}
-        />
-        <MapUpdater lat={latitude} lng={longitude} radius={radius} />
-      </MapContainer>
+    <div className="rounded-xl overflow-hidden border border-border/50 h-[250px] relative">
+      <iframe
+        title="Position de votre boutique"
+        width="100%"
+        height="100%"
+        style={{ border: 0 }}
+        loading="lazy"
+        src={`https://www.openstreetmap.org/export/embed.html?bbox=${longitude - zoomDelta},${latitude - zoomDelta * 0.6},${longitude + zoomDelta},${latitude + zoomDelta * 0.6}&layer=mapnik&marker=${latitude},${longitude}`}
+      />
+      {/* Yellow radius overlay */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          width: `${circlePct}%`,
+          height: `${circlePct}%`,
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          borderRadius: '50%',
+          border: '2px solid #eab308',
+          backgroundColor: 'rgba(234, 179, 8, 0.15)',
+        }}
+      />
     </div>
   );
 };
