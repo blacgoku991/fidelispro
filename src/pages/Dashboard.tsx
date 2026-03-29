@@ -287,7 +287,7 @@ const Dashboard = () => {
               </div>
 
               {/* Camera scanner */}
-              <QrCameraScanner onScan={handleCameraScan} disabled={scanning} />
+              <QrCameraScanner onScan={handleCameraScan} disabled={scanning} paused={scannerPaused} />
 
               {/* Divider */}
               <div className="flex items-center gap-3">
@@ -317,21 +317,6 @@ const Dashboard = () => {
 
             {/* Results panel */}
             <div className="space-y-4">
-              {/* Success animation */}
-              <AnimatePresence>
-                {success && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-center"
-                  >
-                    <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-                    <p className="font-display font-bold text-emerald-700 dark:text-emerald-400">Point ajouté avec succès !</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               {/* Last scan info */}
               {lastScan && (
                 <motion.div
@@ -447,6 +432,19 @@ const Dashboard = () => {
           {business && <QrVitrineSection business={business} />}
         </TabsContent>
       </Tabs>
+
+      {/* Scan result popup */}
+      <ScanResultPopup
+        open={popup.open}
+        type={popup.type}
+        title={popup.title}
+        message={popup.message}
+        details={popup.details}
+        onClose={() => {
+          setPopup((p) => ({ ...p, open: false }));
+          setScannerPaused(false);
+        }}
+      />
     </DashboardLayout>
   );
 };
