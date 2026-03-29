@@ -90,8 +90,16 @@ const CampaignsPage = () => {
 
     setSegmentCounts({
       all: customers.length,
-      active: customers.filter(c => c.last_visit_at && new Date(c.last_visit_at) > sevenDaysAgo).length,
-      inactive: customers.filter(c => !c.last_visit_at || new Date(c.last_visit_at) < thirtyDaysAgo).length,
+      active: customers.filter(c => {
+        const lastVisit = c.last_visit_at ? new Date(c.last_visit_at) : null;
+        const created = new Date(c.created_at);
+        return (lastVisit && lastVisit > sevenDaysAgo) || created > sevenDaysAgo;
+      }).length,
+      inactive: customers.filter(c => {
+        const lastVisit = c.last_visit_at ? new Date(c.last_visit_at) : null;
+        const created = new Date(c.created_at);
+        return (!lastVisit && created < thirtyDaysAgo) || (lastVisit && lastVisit < thirtyDaysAgo);
+      }).length,
       vip: customers.filter(c => c.level === "gold").length,
       close_to_reward: customers.filter(c => {
         const card = c.customer_cards?.[0];
