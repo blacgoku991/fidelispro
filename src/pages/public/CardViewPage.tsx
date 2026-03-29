@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Flame, Star, Crown, Trophy, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
 const badgeIcons: Record<string, string> = {
   first_visit: "🎯",
@@ -121,9 +122,9 @@ const CardViewPage = () => {
             className="w-full flex justify-center"
           >
             <img
-              src="https://developer.apple.com/wallet/add-to-apple-wallet-guidelines/images/add-to-apple-wallet-logo.svg"
-              alt="Add to Apple Wallet"
-              className="h-12 hover:opacity-80 transition-opacity"
+              src={addToWalletBadge}
+              alt="Ajouter à Apple Cartes"
+              className="h-14 hover:opacity-80 transition-opacity"
               style={{ filter: walletLoading ? "grayscale(1) opacity(0.5)" : "none" }}
             />
           </button>
