@@ -465,16 +465,52 @@ const BusinessPublicPage = () => {
             )}
 
             {/* Web Push notifications */}
-            {!pushSubscribed && "Notification" in window && Notification.permission !== "denied" && (
-              <Button
-                onClick={handleSubscribePush}
-                disabled={pushLoading}
-                variant="outline"
-                className="w-full rounded-xl gap-2 h-12"
-              >
-                <Bell className="w-4 h-4" />
-                {pushLoading ? "Activation..." : "🔔 Recevoir les offres et promos"}
-              </Button>
+            {/* Web Push notifications - always show on all devices */}
+            {!pushSubscribed && (
+              <>
+                {/* On iPhone without PWA: show install instructions first */}
+                {isAppleDevice && !isStandalone && !("Notification" in window) ? (
+                  <div className="p-4 rounded-2xl bg-card border border-border/50 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-primary" />
+                      <p className="font-semibold text-sm">🔔 Recevoir les offres et promos</p>
+                    </div>
+                    <div className="flex items-start gap-3 text-xs text-muted-foreground">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Download className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Étape 1 : Installez l'app</p>
+                        <p className="mt-0.5">
+                          Appuyez sur <Share className="w-3 h-3 inline text-primary" /> en bas de Safari, puis « Sur l'écran d'accueil »
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 text-xs text-muted-foreground">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bell className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Étape 2 : Activez les notifications</p>
+                        <p className="mt-0.5">Rouvrez l'app depuis l'écran d'accueil et activez les notifications</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Normal case: browser supports notifications */
+                  ("Notification" in window && Notification.permission !== "denied") && (
+                    <Button
+                      onClick={handleSubscribePush}
+                      disabled={pushLoading}
+                      variant="outline"
+                      className="w-full rounded-xl gap-2 h-12"
+                    >
+                      <Bell className="w-4 h-4" />
+                      {pushLoading ? "Activation..." : "🔔 Recevoir les offres et promos"}
+                    </Button>
+                  )
+                )}
+              </>
             )}
             {pushSubscribed && (
               <div className="flex items-center justify-center gap-2 text-xs text-primary font-medium">
@@ -482,40 +518,6 @@ const BusinessPublicPage = () => {
                 Notifications activées ✓
               </div>
             )}
-
-            {/* PWA install hint */}
-            <AnimatePresence>
-              {showInstallHint && !isStandalone && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="p-4 rounded-2xl bg-card border border-border/50 text-left"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <Download className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="text-xs">
-                      <p className="font-semibold text-sm">💡 Astuce</p>
-                      {isAppleDevice ? (
-                        <p className="text-muted-foreground mt-1">
-                          Pour recevoir les notifications : appuyez sur{" "}
-                          <Share className="w-3 h-3 inline text-primary" /> puis « Sur l'écran d'accueil »
-                        </p>
-                      ) : (
-                        <p className="text-muted-foreground mt-1">
-                          Pour recevoir les notifications : menu ⋮ → « Ajouter à l'écran d'accueil »
-                        </p>
-                      )}
-                    </div>
-                    <button onClick={() => setShowInstallHint(false)} className="shrink-0 p-1">
-                      <X className="w-3.5 h-3.5 text-muted-foreground" />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             <p className="text-xs text-muted-foreground">
               Code : <span className="font-mono">{card.card_code}</span>
