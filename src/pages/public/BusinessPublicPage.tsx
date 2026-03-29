@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Phone, Globe, Star, Sparkles, CreditCard } from "lucide-react";
+import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 type Step = "landing" | "register" | "card";
@@ -22,6 +22,41 @@ const BusinessPublicPage = () => {
   const [customer, setCustomer] = useState<any>(null);
   const [card, setCard] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [walletLoading, setWalletLoading] = useState(false);
+
+  const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+
+  const handleAddToWallet = async (cardCode: string) => {
+    setWalletLoading(true);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/generate-pass`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ card_code: cardCode }),
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erreur");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${cardCode}.pkpass`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Carte ajoutée au Wallet !");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Impossible de générer la carte Wallet");
+    } finally {
+      setWalletLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchBusiness = async () => {
@@ -262,6 +297,18 @@ const BusinessPublicPage = () => {
               cardId={card.card_code || card.id}
               accentColor={business.primary_color}
             />
+
+            {/* Wallet buttons */}
+            {isAppleDevice && card.card_code && (
+              <Button
+                onClick={() => handleAddToWallet(card.card_code)}
+                disabled={walletLoading}
+                className="w-full h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-semibold gap-2"
+              >
+                <Wallet className="w-5 h-5" />
+                {walletLoading ? "Génération..." : " Ajouter à Apple Wallet"}
+              </Button>
+            )}
 
             <div className="p-4 rounded-2xl bg-card border border-border/50">
               <p className="text-sm text-muted-foreground">Votre code carte</p>
