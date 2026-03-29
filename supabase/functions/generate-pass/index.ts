@@ -272,16 +272,39 @@ export async function buildPkpass(
   return zip.generateAsync({ type: "uint8array" });
 }
 
-// ── Logo helpers ──────────────────────────────────────────────────
+// ── Icon helpers (square, for notification icon) ─────────────────
+
+async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Array; icon2xPng: Uint8Array; icon3xPng: Uint8Array }> {
+  if (business.logo_url) {
+    try {
+      const logoUrl = business.logo_url.split("?")[0];
+      const response = await fetch(logoUrl);
+      if (response.ok) {
+        const imageBytes = new Uint8Array(await response.arrayBuffer());
+        // Use the fetched logo directly for all icon sizes — Wallet handles scaling
+        return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+      }
+    } catch (err) {
+      console.error("[Pass] Failed to fetch logo for icons, using fallback:", err);
+    }
+  }
+
+  // Generate square solid-color fallback icons
+  const iconPng = generateSolidColorPng(29, 29, business.primary_color || "#6B46C1");
+  const icon2xPng = generateSolidColorPng(58, 58, business.primary_color || "#6B46C1");
+  const icon3xPng = generateSolidColorPng(87, 87, business.primary_color || "#6B46C1");
+  return { iconPng, icon2xPng, icon3xPng };
+}
+
+// ── Logo helpers (rectangular, shown on card front) ──────────────
 
 async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array; logo2xPng: Uint8Array }> {
   if (business.logo_url) {
     try {
-      const logoUrl = business.logo_url.split("?")[0]; // Remove cache buster
+      const logoUrl = business.logo_url.split("?")[0];
       const response = await fetch(logoUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
-        // Use the fetched image for both sizes (browser/Wallet handles scaling)
         return { logoPng: imageBytes, logo2xPng: imageBytes };
       }
     } catch (err) {
@@ -289,17 +312,9 @@ async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array
     }
   }
 
-  // Generate text-based initials logo
-  const logoPng = generateInitialsLogo(business.name, business.primary_color || "#6B46C1", 160, 50);
-  const logo2xPng = generateInitialsLogo(business.name, business.primary_color || "#6B46C1", 320, 100);
+  const logoPng = generateSolidColorPng(160, 50, business.primary_color || "#6B46C1");
+  const logo2xPng = generateSolidColorPng(320, 100, business.primary_color || "#6B46C1");
   return { logoPng, logo2xPng };
-}
-
-function generateInitialsLogo(name: string, hexColor: string, width: number, height: number): Uint8Array {
-  // Generate a minimal BMP with initials rendered as a solid color block
-  // Since we can't use Canvas in Deno edge functions, we create a simple solid-color PNG
-  // The logoText field in pass.json shows the business name, so the logo just needs brand color
-  return generateSolidColorPng(width, height, hexColor);
 }
 
 function generateSolidColorPng(width: number, height: number, hexColor: string): Uint8Array {
