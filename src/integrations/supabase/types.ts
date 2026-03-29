@@ -937,6 +937,54 @@ export type Database = {
         }
         Relationships: []
       }
+      web_push_subscriptions: {
+        Row: {
+          auth: string
+          business_id: string
+          created_at: string
+          customer_id: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+        }
+        Insert: {
+          auth: string
+          business_id: string
+          created_at?: string
+          customer_id?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+        }
+        Update: {
+          auth?: string
+          business_id?: string
+          created_at?: string
+          customer_id?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_push_subscriptions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_push_subscriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
