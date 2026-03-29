@@ -7,6 +7,7 @@ import { LogoUpload } from "@/components/dashboard/LogoUpload";
 import { TemplatePicker } from "@/components/dashboard/TemplatePicker";
 import { FeatureToggles } from "@/components/dashboard/FeatureToggles";
 import { defaultConfig, type BusinessConfig, type BusinessTemplate } from "@/lib/businessTemplates";
+import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  Save, Palette, CreditCard, Bell, Zap, Shield, Layout, Users, Download, Copy, Printer, ExternalLink, Link,
+  Save, Palette, CreditCard, Bell, Zap, Shield, Layout, Users, Download, Copy, Printer, ExternalLink, Link, MapPin, Radar, Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
 
