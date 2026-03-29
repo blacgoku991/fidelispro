@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -33,7 +33,12 @@ const SettingsPage = () => {
   const [geoTimeStart, setGeoTimeStart] = useState("09:00");
   const [geoTimeEnd, setGeoTimeEnd] = useState("20:00");
   const [savingGeo, setSavingGeo] = useState(false);
-  const [geocoding, setGeocoding] = useState(false);
+
+  // Autocomplete
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<any>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) setEmail(user.email || "");
