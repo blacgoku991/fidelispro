@@ -144,6 +144,11 @@ const BusinessPublicPage = () => {
     fetchBusiness();
   }, [businessId]);
 
+  useEffect(() => {
+    if (!card?.card_code) return;
+    localStorage.setItem("customer_last_card_path", `/card/${card.card_code}`);
+  }, [card?.card_code]);
+
   const handleRegister = async () => {
     if (!name.trim()) {
       toast.error("Veuillez entrer votre nom");
