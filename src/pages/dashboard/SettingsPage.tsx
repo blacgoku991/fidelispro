@@ -253,10 +253,15 @@ const SettingsPage = () => {
                       {latitude.toFixed(5)}, {longitude.toFixed(5)}
                     </span>
                   </div>
-                  <GeofenceMap latitude={latitude} longitude={longitude} radius={geoRadius} />
-                  <p className="text-[10px] text-muted-foreground text-center">
-                    Si la position n'est pas exacte, ajustez l'adresse et relocalisez
-                  </p>
+                  <GeofenceMap
+                    latitude={latitude}
+                    longitude={longitude}
+                    radius={geoRadius}
+                    onPositionChange={(lat, lng) => {
+                      setLatitude(lat);
+                      setLongitude(lng);
+                    }}
+                  />
                 </div>
               )}
 
