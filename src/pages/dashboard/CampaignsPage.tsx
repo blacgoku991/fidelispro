@@ -498,6 +498,7 @@ const CampaignsPage = () => {
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
                   <span className="text-sm">🔔 Push Web (PWA)</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">({channelCounts.webpush} abonné{channelCounts.webpush > 1 ? 's' : ''})</span>
                 </label>
                 <label className="flex items-center gap-2.5 cursor-pointer">
                   <input
@@ -507,6 +508,7 @@ const CampaignsPage = () => {
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
                   <span className="text-sm">🍎 Apple Wallet</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">({channelCounts.wallet} appareil{channelCounts.wallet > 1 ? 's' : ''})</span>
                 </label>
               </div>
               {!form.channels.webPush && !form.channels.appleWallet && (

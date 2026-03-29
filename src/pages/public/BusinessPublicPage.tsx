@@ -451,56 +451,52 @@ const BusinessPublicPage = () => {
             )}
 
             {/* Web Push notifications */}
-            {/* Web Push notifications - always show on all devices */}
-            {!pushSubscribed && (
-              <>
-                {/* On iPhone without PWA: show install instructions first */}
-                {isAppleDevice && !isStandalone && !('Notification' in window) ? (
-                  <div className="p-4 rounded-2xl bg-card border border-border/50 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-primary" />
-                      <p className="font-semibold text-sm">🔔 Notifications iPhone</p>
-                    </div>
-                    <div className="flex items-start gap-3 text-xs text-muted-foreground">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Download className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">1) Ajouter à l'écran d'accueil</p>
-                        <p className="mt-0.5">
-                          Dans Safari : appuyez sur <Share className="w-3 h-3 inline text-primary" /> puis « Sur l'écran d'accueil »
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 text-xs text-muted-foreground">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Bell className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">2) Ouvrir depuis l'icône installée</p>
-                        <p className="mt-0.5">Ensuite le bouton « Recevoir les offres » apparaîtra sur la page carte.</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  ("Notification" in window && Notification.permission !== "denied") && (
-                    <Button
-                      onClick={handleSubscribePush}
-                      disabled={pushLoading}
-                      variant="outline"
-                      className="w-full rounded-xl gap-2 h-12"
-                    >
-                      <Bell className="w-4 h-4" />
-                      {pushLoading ? "Activation..." : "🔔 Recevoir les offres et promos"}
-                    </Button>
-                  )
-                )}
-              </>
-            )}
-            {pushSubscribed && (
+            {(webPush.subscribed || webPush.permission === 'granted') && (
               <div className="flex items-center justify-center gap-2 text-xs text-primary font-medium">
                 <Bell className="w-3.5 h-3.5" />
-                Notifications activées ✓
+                ✓ Notifications activées — vous recevrez les offres automatiquement
+              </div>
+            )}
+
+            {webPush.isSupported && webPush.permission !== 'granted' && !webPush.subscribed && (
+              <Button
+                onClick={async () => {
+                  await webPush.subscribe();
+                  if (webPush.subscribed) toast.success("Notifications activées ! 🔔");
+                }}
+                disabled={webPush.loading}
+                variant="outline"
+                className="w-full rounded-xl gap-2 h-12"
+              >
+                <Bell className="w-4 h-4" />
+                {webPush.loading ? "Activation..." : "🔔 Recevoir les offres & promotions"}
+              </Button>
+            )}
+
+            {!webPush.isSupported && !webPush.isPWA && isAppleDevice && (
+              <div className="p-4 rounded-2xl bg-card border border-border/50 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-primary" />
+                  <p className="font-semibold text-sm">📲 Installez l'app pour les notifications</p>
+                </div>
+                <div className="flex items-start gap-3 text-xs text-muted-foreground">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Download className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">1) Appuyez sur Partager dans Safari</p>
+                    <p className="mt-0.5">Icône <Share className="w-3 h-3 inline text-primary" /> en bas de l'écran</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 text-xs text-muted-foreground">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Bell className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">2) Choisissez « Sur l'écran d'accueil »</p>
+                    <p className="mt-0.5">Puis ouvrez l'app et cliquez « Recevoir les offres »</p>
+                  </div>
+                </div>
               </div>
             )}
 
