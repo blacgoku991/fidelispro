@@ -177,17 +177,22 @@ export async function buildPkpass(
           value: `${levelEmoji} ${levelLabel}`,
         },
         {
-          key: "offer",
-          label: "OFFRE DU JOUR",
-          value: latestOffer,
-          changeMessage: "%@",
+          key: "progress",
+          label: "PROGRESSION",
+          value: `${pointsCurrent} / ${pointsMax}`,
+          changeMessage: "Vous avez maintenant %@ points !",
         },
       ],
       auxiliaryFields: [
         {
-          key: "progress",
-          label: "PROGRESSION",
-          value: `${pointsCurrent} / ${pointsMax}`,
+          key: "visits",
+          label: "VISITES",
+          value: `${customer?.total_visits || 0}`,
+        },
+        {
+          key: "rewards",
+          label: "RÉCOMPENSES",
+          value: `${card.rewards_earned || 0}`,
         },
         {
           key: "next_reward",

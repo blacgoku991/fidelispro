@@ -97,8 +97,20 @@ const BusinessPublicPage = () => {
   }, [businessId]);
 
   const handleRegister = async () => {
-    if (!name.trim() && !phone.trim() && !email.trim()) {
-      toast.error("Entrez au moins un moyen de contact");
+    if (!name.trim()) {
+      toast.error("Veuillez entrer votre nom");
+      return;
+    }
+    if (!email.trim() && !phone.trim()) {
+      toast.error("Veuillez entrer votre email ou numéro de téléphone");
+      return;
+    }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      toast.error("Adresse email invalide");
+      return;
+    }
+    if (phone.trim() && !/^[\d\s+()-]{7,20}$/.test(phone.trim())) {
+      toast.error("Numéro de téléphone invalide");
       return;
     }
     if (!business) return;
@@ -304,16 +316,17 @@ const BusinessPublicPage = () => {
             </div>
             <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-4">
               <div className="space-y-2">
-                <Label>Votre nom</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jean Dupont" className="rounded-xl h-12" />
+                <Label>Votre nom <span className="text-destructive">*</span></Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jean Dupont" className="rounded-xl h-12" required />
               </div>
               <div className="space-y-2">
-                <Label>Email <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
+                <Label>Email <span className="text-destructive">*</span></Label>
                 <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jean@email.com" className="rounded-xl h-12" type="email" />
+                <p className="text-[10px] text-muted-foreground">Email ou téléphone requis</p>
               </div>
               <div className="space-y-2">
-                <Label>Téléphone <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+33 6 12 34 56 78" className="rounded-xl h-12" />
+                <Label>Téléphone</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+33 6 12 34 56 78" className="rounded-xl h-12" type="tel" />
               </div>
               <Button
                 onClick={handleRegister}
@@ -362,14 +375,18 @@ const BusinessPublicPage = () => {
             />
 
             {isAppleDevice && card.card_code && (
-              <Button
+              <button
                 onClick={() => handleAddToWallet(card.card_code)}
                 disabled={walletLoading}
-                className="w-full h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-semibold gap-2"
+                className="w-full flex justify-center"
               >
-                <Wallet className="w-5 h-5" />
-                {walletLoading ? "Génération..." : " Ajouter à Apple Wallet"}
-              </Button>
+                <img
+                  src="https://developer.apple.com/wallet/add-to-apple-wallet-guidelines/images/add-to-apple-wallet-logo.svg"
+                  alt="Add to Apple Wallet"
+                  className="h-12 hover:opacity-80 transition-opacity"
+                  style={{ filter: walletLoading ? "grayscale(1) opacity(0.5)" : "none" }}
+                />
+              </button>
             )}
 
             <p className="text-xs text-muted-foreground">
