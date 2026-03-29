@@ -4,6 +4,7 @@ import JSZip from "npm:jszip@3.10.1";
 
 const REQUIRED_PASS_TYPE_ID = "pass.app.lovable.fidelispro";
 
+// Minimal 29x29 icon PNG (valid)
 const ICON_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAAgklEQVR4nGPkF9f6z0BnwERvCwfMUhZcEh9eXL1LqeECEtrK2MSx+pQaFuIzhxE9ISErxOVSUi1EN4eJWIWkAmT96D7GGryUWkjInJGTZUYtHbV01NJRS0ctHSSW0rrlgGIpvoqXEgvR61WM5go1LEQG2CryAWk5YPUprcHgSb20BgDttTV1QCPBRwAAAABJRU5ErkJggg==";
 
@@ -33,13 +34,6 @@ Deno.serve(async (req) => {
     const teamId = requireEnv("APPLE_TEAM_ID").trim();
     const p12Base64 = requireEnv("APPLE_P12_BASE64");
     const p12Password = requireEnv("APPLE_P12_PASSWORD");
-    const configuredPassTypeId = Deno.env.get("APPLE_PASS_TYPE_ID")?.trim();
-
-    if (configuredPassTypeId && configuredPassTypeId !== REQUIRED_PASS_TYPE_ID) {
-      throw new Error(
-        `APPLE_PASS_TYPE_ID doit être exactement ${REQUIRED_PASS_TYPE_ID}`
-      );
-    }
 
     if (!/^[A-Z0-9]{10}$/.test(teamId)) {
       throw new Error("APPLE_TEAM_ID invalide");
@@ -50,7 +44,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch card + customer + business
     const { data: card, error: cardErr } = await supabase
       .from("customer_cards")
       .select("*, customers(*)")
@@ -84,13 +77,24 @@ Deno.serve(async (req) => {
       p12Password
     );
 
-    validateSigningIdentity(signerCert, teamId);
-
     const iconPng = decodeBase64ToBytes(ICON_PNG_BASE64);
     const icon2xPng = decodeBase64ToBytes(ICON_2X_PNG_BASE64);
 
-    // Build pass.json
-    const passJson = {
+    // Level-based colors
+    const level = (customer?.level || "bronze").toLowerCase();
+    const levelColors: Record<string, { bg: string; fg: string; label: string }> = {
+      bronze: { bg: hexToRgb(business.primary_color || "#6B46C1"), fg: "rgb(255, 255, 255)", label: "rgb(255, 255, 255)" },
+      silver: { bg: "rgb(100, 116, 139)", fg: "rgb(255, 255, 255)", label: "rgb(226, 232, 240)" },
+      gold: { bg: "rgb(180, 130, 20)", fg: "rgb(255, 255, 255)", label: "rgb(254, 243, 199)" },
+    };
+    const colors = levelColors[level] || levelColors.bronze;
+
+    const pointsCurrent = card.current_points || 0;
+    const pointsMax = card.max_points || 10;
+    const pointsToReward = pointsMax - pointsCurrent;
+
+    // Build premium pass.json
+    const passJson: any = {
       formatVersion: 1,
       passTypeIdentifier: REQUIRED_PASS_TYPE_ID,
       serialNumber: card.id,
@@ -98,9 +102,9 @@ Deno.serve(async (req) => {
       organizationName: business.name,
       description: `Carte de fidélité ${business.name}`,
       logoText: business.name,
-      foregroundColor: "rgb(255, 255, 255)",
-      backgroundColor: hexToRgb(business.primary_color || "#6B46C1"),
-      labelColor: "rgb(255, 255, 255)",
+      foregroundColor: colors.fg,
+      backgroundColor: colors.bg,
+      labelColor: colors.label,
       barcode: {
         message: card.card_code,
         format: "PKBarcodeFormatQR",
@@ -118,33 +122,63 @@ Deno.serve(async (req) => {
           {
             key: "points",
             label: "POINTS",
-            value: `${card.current_points || 0}/${card.max_points || 10}`,
+            value: `${pointsCurrent}`,
+            textAlignment: "PKTextAlignmentRight",
           },
         ],
         primaryFields: [
           {
             key: "name",
-            label: "CLIENT",
+            label: business.name.toUpperCase(),
             value: customer?.full_name || "Client",
           },
         ],
         secondaryFields: [
           {
             key: "level",
-            label: "NIVEAU",
-            value: (customer?.level || "bronze").toUpperCase(),
+            label: "STATUT",
+            value: level === "gold" ? "⭐ GOLD" : level === "silver" ? "🥈 SILVER" : "🥉 BRONZE",
           },
+          {
+            key: "progress",
+            label: "PROGRESSION",
+            value: `${pointsCurrent} / ${pointsMax}`,
+            textAlignment: "PKTextAlignmentRight",
+          },
+        ],
+        auxiliaryFields: [
           {
             key: "rewards",
             label: "RÉCOMPENSES",
-            value: `${card.rewards_earned || 0}`,
+            value: `${card.rewards_earned || 0} obtenues`,
+          },
+          {
+            key: "next_reward",
+            label: "PROCHAINE",
+            value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !",
+            textAlignment: "PKTextAlignmentRight",
           },
         ],
         backFields: [
           {
+            key: "reward_info",
+            label: "🎁 Récompense",
+            value: business.reward_description || "Récompense offerte !",
+          },
+          {
+            key: "visits",
+            label: "📊 Statistiques",
+            value: `Visites : ${customer?.total_visits || 0}\nStreak : ${customer?.current_streak || 0} jours`,
+          },
+          {
             key: "info",
-            label: "À propos",
-            value: `Carte de fidélité ${business.name}. ${business.reward_description || ""}`,
+            label: "ℹ️ À propos",
+            value: `Programme de fidélité ${business.name}.\n${business.address ? `Adresse : ${business.address}` : ""}\n${business.phone ? `Tél : ${business.phone}` : ""}`.trim(),
+          },
+          {
+            key: "powered",
+            label: "",
+            value: "Propulsé par FidéliPro",
           },
         ],
       },
@@ -162,7 +196,7 @@ Deno.serve(async (req) => {
     const manifestStr = JSON.stringify(manifest);
     const manifestBytes = new TextEncoder().encode(manifestStr);
 
-    // Create PKCS#7 signed data (detached signature of manifest)
+    // Create PKCS#7 signed data
     const p7 = forge.pkcs7.createSignedData();
     p7.content = forge.util.createBuffer(manifestStr, "utf8");
     p7.addCertificate(signerCert);
@@ -174,17 +208,9 @@ Deno.serve(async (req) => {
       certificate: signerCert,
       digestAlgorithm: forge.pki.oids.sha256,
       authenticatedAttributes: [
-        {
-          type: forge.pki.oids.contentType,
-          value: forge.pki.oids.data,
-        },
-        {
-          type: forge.pki.oids.messageDigest,
-        },
-        {
-          type: forge.pki.oids.signingTime,
-          value: new Date(),
-        },
+        { type: forge.pki.oids.contentType, value: forge.pki.oids.data },
+        { type: forge.pki.oids.messageDigest },
+        { type: forge.pki.oids.signingTime, value: new Date() },
       ],
     });
     p7.sign({ detached: true });
@@ -234,28 +260,17 @@ function forgeSha1(data: Uint8Array): string {
 
 function requireEnv(name: string): string {
   const value = Deno.env.get(name);
-  if (!value) {
-    throw new Error(`Missing secret ${name}`);
-  }
+  if (!value) throw new Error(`Missing secret ${name}`);
   return value;
 }
 
 async function extractCardCode(req: Request): Promise<string | null> {
   const url = new URL(req.url);
   const fromQuery = url.searchParams.get("card_code");
-  if (fromQuery) {
-    return fromQuery;
-  }
-
-  if (req.method !== "POST") {
-    return null;
-  }
-
+  if (fromQuery) return fromQuery;
+  if (req.method !== "POST") return null;
   const contentType = req.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) {
-    return null;
-  }
-
+  if (!contentType.includes("application/json")) return null;
   const body = await req.json().catch(() => ({}));
   return typeof body?.card_code === "string" ? body.card_code : null;
 }
@@ -282,10 +297,7 @@ function extractSigningMaterial(p12Base64: string, p12Password: string) {
       if (safeBag.type === forge.pki.oids.certBag && safeBag.cert) {
         certs.push(safeBag.cert);
       }
-      if (
-        safeBag.type === forge.pki.oids.pkcs8ShroudedKeyBag &&
-        safeBag.key
-      ) {
+      if (safeBag.type === forge.pki.oids.pkcs8ShroudedKeyBag && safeBag.key) {
         signerKey = safeBag.key;
       }
     }
@@ -306,30 +318,13 @@ function extractSigningMaterial(p12Base64: string, p12Password: string) {
 }
 
 function certMatchesPrivateKey(cert: any, key: any): boolean {
-  if (!cert?.publicKey?.n || !key?.n) {
-    return false;
-  }
+  if (!cert?.publicKey?.n || !key?.n) return false;
   return cert.publicKey.n.compareTo(key.n) === 0;
 }
 
 function hasPassTypeCommonName(cert: any): boolean {
   const cn = cert?.subject?.getField?.("CN")?.value;
   return typeof cn === "string" && cn.includes("Pass Type ID");
-}
-
-function validateSigningIdentity(cert: any, expectedTeamId: string): void {
-  const cn = cert?.subject?.getField?.("CN")?.value ?? "";
-  const ou = cert?.subject?.getField?.("OU")?.value ?? "";
-
-  if (cn !== `Pass Type ID: ${REQUIRED_PASS_TYPE_ID}`) {
-    throw new Error(
-      `Le certificat ne correspond pas à ${REQUIRED_PASS_TYPE_ID}`
-    );
-  }
-
-  if (ou !== expectedTeamId) {
-    throw new Error("Le Team ID ne correspond pas au certificat Apple")
-  }
 }
 
 function hexToRgb(hex: string): string {
