@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, Wallet } from "lucide-react";
+import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, Wallet, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 type Step = "landing" | "register" | "card";
@@ -15,6 +15,7 @@ const BusinessPublicPage = () => {
   const { businessId } = useParams();
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("landing");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,31 +27,72 @@ const BusinessPublicPage = () => {
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
 
-  const handleAddToWallet = async (cardCode: string) => {
+  const handleAddToWallet = (cardCode: string) => {
     setWalletLoading(true);
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const walletUrl = `https://${projectId}.supabase.co/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
       window.location.assign(walletUrl);
     } catch (e: any) {
-      console.error(e);
+      console.error("Wallet error:", e);
       toast.error(e.message || "Impossible de générer la carte Wallet");
     } finally {
-      setWalletLoading(false);
+      setTimeout(() => setWalletLoading(false), 3000);
     }
   };
 
-  useEffect(() => {
-    const fetchBusiness = async () => {
-      if (!businessId) return;
-      const { data } = await supabase
-        .from("businesses")
-        .select("id, name, description, primary_color, secondary_color, card_style, max_points_per_card, reward_description, address, city, phone, website, category, logo_url")
-        .eq("id", businessId)
-        .maybeSingle();
-      if (data) setBusiness(data);
+  const fetchBusiness = async () => {
+    setLoading(true);
+    setFetchError(null);
+
+    if (!businessId) {
+      setFetchError("Aucun identifiant de commerce dans l'URL.");
       setLoading(false);
-    };
+      return;
+    }
+
+    console.log("[QR Debug] Fetching business:", businessId);
+
+    try {
+      // Use the REST API directly for anonymous access to avoid auth issues
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/businesses?id=eq.${encodeURIComponent(businessId)}&select=id,name,description,primary_color,secondary_color,card_style,max_points_per_card,reward_description,address,city,phone,website,category,logo_url`,
+        {
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("[QR Debug] HTTP error:", response.status, await response.text());
+        setFetchError(`Erreur serveur (${response.status}). Réessayez.`);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("[QR Debug] Result:", data);
+
+      if (data && data.length > 0) {
+        setBusiness(data[0]);
+      } else {
+        console.warn("[QR Debug] No business found for ID:", businessId);
+        setFetchError("Ce commerce n'existe pas ou le lien est invalide.");
+      }
+    } catch (err: any) {
+      console.error("[QR Debug] Fetch error:", err);
+      setFetchError("Erreur de connexion. Vérifiez votre réseau.");
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchBusiness();
   }, [businessId]);
 
@@ -62,71 +104,87 @@ const BusinessPublicPage = () => {
     if (!business) return;
     setSubmitting(true);
 
-    // Check if customer already exists by email or phone
-    let existingCustomer = null;
-    if (email.trim()) {
-      const { data } = await supabase
-        .from("customers")
-        .select("*, customer_cards(*)")
-        .eq("business_id", business.id)
-        .eq("email", email.trim())
-        .maybeSingle();
-      existingCustomer = data;
-    }
-    if (!existingCustomer && phone.trim()) {
-      const { data } = await supabase
-        .from("customers")
-        .select("*, customer_cards(*)")
-        .eq("business_id", business.id)
-        .eq("phone", phone.trim())
-        .maybeSingle();
-      existingCustomer = data;
-    }
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const headers = {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      };
 
-    if (existingCustomer) {
-      setCustomer(existingCustomer);
-      const existingCard = existingCustomer.customer_cards?.[0];
-      if (existingCard) setCard(existingCard);
+      // Check existing by email
+      let existingCustomer = null;
+      if (email.trim()) {
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&email=eq.${encodeURIComponent(email.trim())}&select=*,customer_cards(*)`,
+          { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+        );
+        const data = await res.json();
+        if (data?.length > 0) existingCustomer = data[0];
+      }
+      if (!existingCustomer && phone.trim()) {
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&phone=eq.${encodeURIComponent(phone.trim())}&select=*,customer_cards(*)`,
+          { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+        );
+        const data = await res.json();
+        if (data?.length > 0) existingCustomer = data[0];
+      }
+
+      if (existingCustomer) {
+        setCustomer(existingCustomer);
+        const existingCard = existingCustomer.customer_cards?.[0];
+        if (existingCard) setCard(existingCard);
+        setStep("card");
+        setSubmitting(false);
+        toast.success("Bon retour parmi nous ! 🎉");
+        return;
+      }
+
+      // Create new customer
+      const custRes = await fetch(`${supabaseUrl}/rest/v1/customers`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          business_id: business.id,
+          full_name: name.trim() || null,
+          email: email.trim() || null,
+          phone: phone.trim() || null,
+        }),
+      });
+      const newCustomers = await custRes.json();
+      const newCustomer = newCustomers?.[0];
+
+      if (!newCustomer) {
+        toast.error("Erreur lors de l'inscription");
+        setSubmitting(false);
+        return;
+      }
+
+      // Auto-create loyalty card
+      const cardRes = await fetch(`${supabaseUrl}/rest/v1/customer_cards`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          customer_id: newCustomer.id,
+          business_id: business.id,
+          max_points: business.max_points_per_card || 10,
+        }),
+      });
+      const newCards = await cardRes.json();
+      const newCard = newCards?.[0];
+
+      setCustomer(newCustomer);
+      setCard(newCard);
       setStep("card");
-      setSubmitting(false);
-      toast.success("Bon retour parmi nous ! 🎉");
-      return;
-    }
-
-    // Create new customer
-    const { data: newCustomer, error } = await supabase
-      .from("customers")
-      .insert({
-        business_id: business.id,
-        full_name: name.trim() || null,
-        email: email.trim() || null,
-        phone: phone.trim() || null,
-      })
-      .select()
-      .single();
-
-    if (error || !newCustomer) {
+      toast.success("Bienvenue ! Votre carte de fidélité est prête 🎉");
+    } catch (err) {
+      console.error("Registration error:", err);
       toast.error("Erreur lors de l'inscription");
-      setSubmitting(false);
-      return;
     }
-
-    // Auto-create loyalty card
-    const { data: newCard } = await supabase
-      .from("customer_cards")
-      .insert({
-        customer_id: newCustomer.id,
-        business_id: business.id,
-        max_points: business.max_points_per_card || 10,
-      })
-      .select()
-      .single();
-
-    setCustomer(newCustomer);
-    setCard(newCard);
-    setStep("card");
     setSubmitting(false);
-    toast.success("Bienvenue ! Votre carte de fidélité est prête 🎉");
   };
 
   if (loading) {
@@ -137,12 +195,23 @@ const BusinessPublicPage = () => {
     );
   }
 
-  if (!business) {
+  if (fetchError || !business) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
           <h1 className="text-2xl font-display font-bold">Commerce introuvable</h1>
-          <p className="text-muted-foreground mt-2">Ce lien n'est pas valide.</p>
+          <p className="text-muted-foreground text-sm">
+            {fetchError || "Ce lien n'est pas valide."}
+          </p>
+          <Button onClick={fetchBusiness} variant="outline" className="gap-2 rounded-xl">
+            <RefreshCw className="w-4 h-4" /> Réessayer
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            ID: {businessId || "manquant"}
+          </p>
         </div>
       </div>
     );
@@ -164,12 +233,20 @@ const BusinessPublicPage = () => {
             exit={{ opacity: 0, y: -30 }}
             className="w-full max-w-md text-center space-y-6"
           >
-            <div
-              className="w-20 h-20 rounded-2xl mx-auto flex items-center justify-center text-white font-display font-bold text-2xl"
-              style={{ background: `linear-gradient(135deg, ${business.primary_color}, ${business.secondary_color})` }}
-            >
-              {business.name.charAt(0)}
-            </div>
+            {business.logo_url ? (
+              <img
+                src={business.logo_url}
+                alt={business.name}
+                className="w-20 h-20 rounded-2xl mx-auto object-cover"
+              />
+            ) : (
+              <div
+                className="w-20 h-20 rounded-2xl mx-auto flex items-center justify-center text-white font-display font-bold text-2xl"
+                style={{ background: `linear-gradient(135deg, ${business.primary_color}, ${business.secondary_color})` }}
+              >
+                {business.name.charAt(0)}
+              </div>
+            )}
             <div>
               <h1 className="text-3xl font-display font-bold">{business.name}</h1>
               {business.description && (
@@ -280,7 +357,6 @@ const BusinessPublicPage = () => {
               accentColor={business.primary_color}
             />
 
-            {/* Wallet buttons */}
             {isAppleDevice && card.card_code && (
               <Button
                 onClick={() => handleAddToWallet(card.card_code)}
@@ -292,7 +368,7 @@ const BusinessPublicPage = () => {
               </Button>
             )}
 
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-muted-foreground">
               Code : <span className="font-mono">{card.card_code}</span>
             </p>
 
