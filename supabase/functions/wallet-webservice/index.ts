@@ -346,15 +346,27 @@ async function buildPkpassForUpdate(
     },
   };
 
-  // Apple Wallet native geofencing
+  // Apple Wallet native geofencing with satellite points
   if (business.geofence_enabled && business.latitude && business.longitude) {
-    passJson.locations = [
-      {
-        latitude: parseFloat(String(business.latitude)),
-        longitude: parseFloat(String(business.longitude)),
-        relevantText: business.geofence_message || `Passez nous voir chez ${business.name} !`,
-      },
-    ];
+    const lat = parseFloat(String(business.latitude));
+    const lng = parseFloat(String(business.longitude));
+    const relevantText = business.geofence_message || `Passez nous voir chez ${business.name} !`;
+
+    const locations: any[] = [{ latitude: lat, longitude: lng, relevantText }];
+
+    // Add manually placed satellite points
+    const satellites = Array.isArray(business.geofence_satellite_points) ? business.geofence_satellite_points : [];
+    for (const pt of satellites) {
+      if (pt?.lat && pt?.lng && locations.length < 10) {
+        locations.push({
+          latitude: parseFloat(String(pt.lat)),
+          longitude: parseFloat(String(pt.lng)),
+          relevantText,
+        });
+      }
+    }
+
+    passJson.locations = locations;
     passJson.maxDistance = business.geofence_radius || 200;
   }
 
