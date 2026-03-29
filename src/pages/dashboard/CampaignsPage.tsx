@@ -260,6 +260,13 @@ const CampaignsPage = () => {
             </div>
           )}
         </div>
+
+        {/* Wallet Debug Panel */}
+        {business && (
+          <div className="mt-8">
+            <WalletDebugPanel businessId={business.id} />
+          </div>
+        )}
       </main>
     </div>
   );
