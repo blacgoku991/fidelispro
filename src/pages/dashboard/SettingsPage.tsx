@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -466,27 +467,16 @@ const SettingsPage = () => {
 };
 
 function SubscribeButton({ plan }: { plan: PlanKey }) {
-  const [loading, setLoading] = useState(false);
-
-  const handleSubscribe = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { plan },
-      });
-      if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank");
-    } catch (err: any) {
-      toast.error(err.message || "Erreur lors de la création du checkout");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const navigate = useNavigate();
 
   return (
-    <Button size="sm" variant="outline" className="rounded-lg text-[11px] mt-1 gap-1" onClick={handleSubscribe} disabled={loading}>
-      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CreditCard className="w-3 h-3" />}
-      Souscrire
+    <Button
+      size="sm"
+      variant="outline"
+      className="rounded-lg text-[11px] mt-1 gap-1"
+      onClick={() => navigate(`/dashboard/checkout?plan=${plan}`)}
+    >
+      <CreditCard className="w-3 h-3" /> Souscrire
     </Button>
   );
 }

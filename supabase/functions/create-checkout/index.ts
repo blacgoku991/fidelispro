@@ -30,7 +30,7 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { plan } = await req.json();
+    const { plan, ui_mode } = await req.json();
     const priceId = PLANS[plan];
     if (!priceId) throw new Error(`Invalid plan: ${plan}`);
 
@@ -47,6 +47,28 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://fidelispro.lovable.app";
 
+    // Embedded mode: return client_secret instead of URL
+    if (ui_mode === "embedded") {
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: "subscription",
+        ui_mode: "embedded",
+        return_url: `${origin}/dashboard/settings?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        subscription_data: {
+          metadata: { user_id: user.id, plan },
+        },
+        metadata: { user_id: user.id, plan },
+      });
+
+      return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Default: hosted mode (redirect)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
