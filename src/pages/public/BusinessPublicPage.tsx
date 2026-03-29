@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, Wallet, AlertCircle, RefreshCw, Bell, Download, Share, X } from "lucide-react";
 import { toast } from "sonner";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
-import { useWebPush } from "@/hooks/useWebPush";
+import { useWebPush, VAPID_PUBLIC_KEY } from "@/hooks/useWebPush";
 
 type Step = "landing" | "register" | "card";
 
