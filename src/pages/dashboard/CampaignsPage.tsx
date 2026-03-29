@@ -18,6 +18,7 @@ import {
 import { Send, Users, Zap, Clock, Crown, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { WalletDebugPanel } from "@/components/dashboard/WalletDebugPanel";
 
 type Segment = "all" | "active" | "inactive" | "vip" | "close_to_reward";
 
