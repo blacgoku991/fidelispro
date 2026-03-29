@@ -176,7 +176,7 @@ async function handleGetSerialNumbers(
     .eq("pass_type_id", passTypeId);
 
   if (!regs || regs.length === 0) {
-    return new Response("", { status: 204 });
+    return new Response(null, { status: 204 });
   }
 
   const serialNumbers = regs.map((r) => r.serial_number);
@@ -195,7 +195,7 @@ async function handleGetSerialNumbers(
   const { data: updates } = await query;
 
   if (!updates || updates.length === 0) {
-    return new Response("", { status: 204 });
+    return new Response(null, { status: 204 });
   }
 
   const lastUpdated = updates.reduce(
