@@ -7,12 +7,8 @@ import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import { adminSidebarItems } from "@/lib/sidebarItems";
-import { Building2, Users, TrendingUp, Crown, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Building2, Users, TrendingUp, Crown } from "lucide-react";
 import { motion } from "framer-motion";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { AnalyticsChart } from "@/components/dashboard/AnalyticsChart";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
