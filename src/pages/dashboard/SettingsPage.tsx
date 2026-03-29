@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation } from "lucide-react";
+import GeofenceMap from "@/components/dashboard/GeofenceMap";
 import { toast } from "sonner";
 
 const planLabels: Record<string, string> = {
@@ -199,16 +200,7 @@ const SettingsPage = () => {
                       {latitude.toFixed(5)}, {longitude.toFixed(5)}
                     </span>
                   </div>
-                  <div className="rounded-xl overflow-hidden border border-border/50 h-[200px]">
-                    <iframe
-                      title="Position de votre boutique"
-                      width="100%"
-                      height="100%"
-                      style={{ border: 0 }}
-                      loading="lazy"
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.005},${latitude - 0.003},${longitude + 0.005},${latitude + 0.003}&layer=mapnik&marker=${latitude},${longitude}`}
-                    />
-                  </div>
+                  <GeofenceMap latitude={latitude} longitude={longitude} radius={geoRadius} />
                   <p className="text-[10px] text-muted-foreground text-center">
                     Si la position n'est pas exacte, ajustez l'adresse et relocalisez
                   </p>
