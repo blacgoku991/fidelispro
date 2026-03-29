@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Star, Crown, Trophy, Wallet, Bell, BellOff, Share, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { registerPushSubscription, isPushSubscribed } from "@/lib/webPush";
+import { useWebPush } from "@/hooks/useWebPush";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
 const badgeIcons: Record<string, string> = {
@@ -26,8 +26,6 @@ const CardViewPage = () => {
   const [loading, setLoading] = useState(true);
   const [walletLoading, setWalletLoading] = useState(false);
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
-  const [pushSubscribed, setPushSubscribed] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
@@ -95,10 +93,7 @@ const CardViewPage = () => {
     fetch();
   }, [cardCode]);
 
-  // Check push subscription status
-  useEffect(() => {
-    isPushSubscribed().then(setPushSubscribed);
-  }, []);
+  const webPush = useWebPush(business?.id || "", card?.id);
 
   // Show install banner if not already installed as PWA
   useEffect(() => {
@@ -107,15 +102,6 @@ const CardViewPage = () => {
       if (!dismissed) setShowInstallBanner(true);
     }
   }, []);
-
-  const handleSubscribePush = async () => {
-    if (!business || !customer) return;
-    setPushLoading(true);
-    const success = await registerPushSubscription(business.id, customer.id);
-    setPushSubscribed(success);
-    if (success) toast.success("Notifications activées ! 🔔");
-    setPushLoading(false);
-  };
 
   if (loading) {
     return (
@@ -255,22 +241,25 @@ const CardViewPage = () => {
         )}
 
         {/* Push notification subscribe button */}
-        {!pushSubscribed && "Notification" in window && Notification.permission !== "denied" && (
+        {(webPush.subscribed || webPush.permission === 'granted') && (
+          <div className="flex items-center justify-center gap-2 text-xs text-primary">
+            <Bell className="w-3.5 h-3.5" />
+            ✓ Notifications activées
+          </div>
+        )}
+        {webPush.isSupported && webPush.permission !== 'granted' && !webPush.subscribed && (
           <Button
-            onClick={handleSubscribePush}
-            disabled={pushLoading}
+            onClick={async () => {
+              await webPush.subscribe();
+              if (webPush.subscribed) toast.success("Notifications activées ! 🔔");
+            }}
+            disabled={webPush.loading}
             variant="outline"
             className="w-full rounded-xl gap-2 h-12"
           >
             <Bell className="w-4 h-4" />
-            {pushLoading ? "Activation..." : "🔔 Activer les notifications"}
+            {webPush.loading ? "Activation..." : "🔔 Activer les notifications"}
           </Button>
-        )}
-        {pushSubscribed && (
-          <div className="flex items-center justify-center gap-2 text-xs text-primary">
-            <Bell className="w-3.5 h-3.5" />
-            Notifications activées
-          </div>
         )}
 
         <p className="text-center text-xs text-muted-foreground">
