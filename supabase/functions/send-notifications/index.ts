@@ -140,20 +140,20 @@ async function createVapidJwt(
   );
   const unsigned = `${header}.${payload}`;
 
-  // Build PKCS8 from raw 32-byte private key
+  // Import private key as JWK (works reliably across runtimes)
   const rawPriv = b64urlDecode(privKeyB64);
-  const pkcs8 = concat(
-    new Uint8Array([
-      0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48,
-      0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03,
-      0x01, 0x07, 0x04, 0x27, 0x30, 0x25, 0x02, 0x01, 0x01, 0x04, 0x20,
-    ]),
-    rawPriv
-  );
+  const rawPub = b64urlDecode(pubKey);
+  // Extract x and y from uncompressed public key (04 || x || y)
+  const x = b64urlEncode(rawPub.slice(1, 33));
+  const y = b64urlEncode(rawPub.slice(33, 65));
+  const d = b64urlEncode(rawPriv);
 
   const key = await crypto.subtle.importKey(
-    "pkcs8", pkcs8,
-    { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]
+    "jwk",
+    { kty: "EC", crv: "P-256", x, y, d, ext: true },
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"]
   );
 
   const sigBuf = new Uint8Array(
