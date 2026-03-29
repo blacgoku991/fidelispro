@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -33,7 +33,23 @@ const SettingsPage = () => {
   const [geoTimeStart, setGeoTimeStart] = useState("09:00");
   const [geoTimeEnd, setGeoTimeEnd] = useState("20:00");
   const [savingGeo, setSavingGeo] = useState(false);
-  const [geocoding, setGeocoding] = useState(false);
+
+  // Autocomplete
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<any>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
 
   useEffect(() => {
     if (user) setEmail(user.email || "");
@@ -59,28 +75,30 @@ const SettingsPage = () => {
     else { toast.success("Mot de passe mis à jour"); setNewPassword(""); }
   };
 
-  const geocodeAddress = async () => {
-    if (!address.trim()) { toast.error("Entrez une adresse d'abord"); return; }
-    setGeocoding(true);
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`, {
-        headers: { "Accept-Language": "fr" },
-      });
-      const data = await res.json();
-      if (data.length === 0) {
-        toast.error("Adresse introuvable. Essayez d'être plus précis.");
-        setGeocoding(false);
-        return;
-      }
-      const result = data[0];
-      setLatitude(parseFloat(parseFloat(result.lat).toFixed(7)));
-      setLongitude(parseFloat(parseFloat(result.lon).toFixed(7)));
-      setAddress(result.display_name || address);
-      toast.success(`📍 Position confirmée : ${result.display_name.split(",").slice(0, 4).join(",")}`);
-    } catch {
-      toast.error("Erreur de géocodage. Réessayez.");
-    }
-    setGeocoding(false);
+  const handleAddressInput = (value: string) => {
+    setAddress(value);
+    clearTimeout(debounceRef.current);
+    if (value.length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&limit=5&addressdetails=1&countrycodes=fr`,
+          { headers: { "Accept-Language": "fr" } }
+        );
+        const data = await res.json();
+        setSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      } catch { /* ignore */ }
+    }, 400);
+  };
+
+  const selectSuggestion = (s: any) => {
+    setAddress(s.display_name);
+    setLatitude(parseFloat(parseFloat(s.lat).toFixed(7)));
+    setLongitude(parseFloat(parseFloat(s.lon).toFixed(7)));
+    setShowSuggestions(false);
+    setSuggestions([]);
+    toast.success("📍 Position confirmée");
   };
 
   const handleSaveGeofencing = async () => {
@@ -143,27 +161,32 @@ const SettingsPage = () => {
                 <Label className="text-xs flex items-center gap-1.5">
                   <MapPin className="w-3 h-3" /> Adresse de votre établissement
                 </Label>
-                <div className="flex gap-2">
+                <div className="relative" ref={suggestionsRef}>
                   <Input
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Ex: 12 rue de la Paix, 75002 Paris"
-                    className="rounded-xl text-sm flex-1"
-                    onKeyDown={(e) => e.key === "Enter" && geocodeAddress()}
+                    onChange={(e) => handleAddressInput(e.target.value)}
+                    placeholder="Ex: Wok N Thai Colombes, 12 rue..."
+                    className="rounded-xl text-sm"
+                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl gap-1.5 text-xs shrink-0"
-                    disabled={geocoding}
-                    onClick={geocodeAddress}
-                  >
-                    {geocoding ? "..." : "📍 Localiser"}
-                  </Button>
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div
+                      className="absolute top-full left-0 right-0 bg-card border border-border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
+                    >
+                      {suggestions.map((s: any, i: number) => (
+                        <div
+                          key={i}
+                          onClick={() => selectSuggestion(s)}
+                          className="px-3.5 py-2.5 cursor-pointer text-[13px] text-foreground leading-snug border-b border-border/30 last:border-0 hover:bg-muted/60 transition-colors"
+                        >
+                          {s.display_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  Tapez l'adresse puis cliquez "Localiser" pour obtenir les coordonnées GPS
+                  Tapez un nom de commerce, une adresse ou une ville — les suggestions apparaissent automatiquement
                 </p>
               </div>
 
