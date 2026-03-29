@@ -5,40 +5,67 @@ interface GeofenceMapProps {
 }
 
 const GeofenceMap = ({ latitude, longitude, radius }: GeofenceMapProps) => {
-  // Scale zoom based on radius - larger radius needs more zoom out
-  const zoomDelta = radius <= 200 ? 0.003 : radius <= 500 ? 0.005 : radius <= 1000 ? 0.01 : 0.02;
+  // Use a static tile approach: render an iframe centered exactly on the marker
+  // and overlay a precisely positioned circle
   
-  // Circle size relative to the map viewport (percentage)
-  // The iframe shows a bbox of 2*zoomDelta degrees wide
-  // We need to convert radius (meters) to a percentage of the viewport
-  // 1 degree latitude ≈ 111,320 meters
-  const viewportMeters = zoomDelta * 2 * 111320;
-  const circlePct = Math.min((radius * 2) / viewportMeters * 100, 95);
+  // Calculate the zoom level based on radius to ensure the circle fits nicely
+  // At zoom 15, 1 pixel ≈ 4.78 meters at equator, adjusted by cos(lat)
+  const cosLat = Math.cos((latitude * Math.PI) / 180);
+  
+  // We want the circle to take about 40-60% of the map width (400px wide map)
+  // meters per pixel = 156543.03 * cos(lat) / 2^zoom
+  // We want: radius * 2 in pixels ≈ 200px (half the map width)
+  // So: zoom = log2(156543.03 * cos(lat) * 200 / (radius * 2)) 
+  const mapWidthPx = 600;
+  const desiredCirclePx = mapWidthPx * 0.4; // circle diameter = 40% of map
+  const zoom = Math.min(18, Math.max(12, Math.round(
+    Math.log2((156543.03 * cosLat * desiredCirclePx) / (radius * 2))
+  )));
+  
+  // At this zoom, calculate meters per pixel
+  const metersPerPx = (156543.03 * cosLat) / Math.pow(2, zoom);
+  
+  // Circle diameter in pixels
+  const circleDiameterPx = (radius * 2) / metersPerPx;
+  
+  // Use OpenStreetMap static embed centered on the point
+  // The bbox needs to be calculated from zoom + map dimensions
+  const mapHeightPx = 250;
+  const halfWidthDeg = (mapWidthPx / 2) * metersPerPx / 111320;
+  const halfHeightDeg = (mapHeightPx / 2) * metersPerPx / 111320;
+  
+  const bbox = {
+    west: longitude - halfWidthDeg,
+    south: latitude - halfHeightDeg,
+    east: longitude + halfWidthDeg,
+    north: latitude + halfHeightDeg,
+  };
 
   return (
-    <div className="rounded-xl overflow-hidden border border-border/50 h-[250px] relative">
+    <div className="rounded-xl overflow-hidden border border-border/50 relative" style={{ height: `${mapHeightPx}px` }}>
       <iframe
         title="Position de votre boutique"
         width="100%"
         height="100%"
         style={{ border: 0 }}
         loading="lazy"
-        src={`https://www.openstreetmap.org/export/embed.html?bbox=${longitude - zoomDelta},${latitude - zoomDelta * 0.6},${longitude + zoomDelta},${latitude + zoomDelta * 0.6}&layer=mapnik&marker=${latitude},${longitude}`}
+        src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox.west},${bbox.south},${bbox.east},${bbox.north}&layer=mapnik&marker=${latitude},${longitude}`}
       />
-      {/* Yellow radius overlay */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          width: `${circlePct}%`,
-          height: `${circlePct}%`,
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          borderRadius: '50%',
-          border: '2px solid #eab308',
-          backgroundColor: 'rgba(234, 179, 8, 0.15)',
-        }}
-      />
+      {/* Geofence radius circle - centered on the marker which is at center of map */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        viewBox={`0 0 ${mapWidthPx} ${mapHeightPx}`}
+        preserveAspectRatio="none"
+      >
+        <circle
+          cx={mapWidthPx / 2}
+          cy={mapHeightPx / 2}
+          r={circleDiameterPx / 2}
+          fill="rgba(234, 179, 8, 0.15)"
+          stroke="#eab308"
+          strokeWidth="2"
+        />
+      </svg>
     </div>
   );
 };
