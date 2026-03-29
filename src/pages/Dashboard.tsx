@@ -12,7 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users, TrendingUp, QrCode, Crown, Sparkles, Search,
   Download, Copy, ExternalLink, Printer, Flame, Gift, Eye,
+  Mail, Phone, History, ChevronDown, ChevronUp, MapPin, Radar,
 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
