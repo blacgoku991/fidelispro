@@ -39,27 +39,30 @@ export function Navbar() {
                 <Menu className="w-4 h-4" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[82vw] max-w-sm p-5">
-              <SheetHeader className="mb-4">
-                <SheetTitle className="flex items-center gap-2">
+            <SheetContent side="right" className="w-[80vw] max-w-xs p-6">
+              <SheetHeader className="mb-6">
+                <SheetTitle className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
                     <CreditCard className="w-4 h-4 text-primary-foreground" />
                   </div>
-                  FidéliPro
+                  <span className="font-display font-bold">FidéliPro</span>
                 </SheetTitle>
               </SheetHeader>
 
-              <div className="flex flex-col gap-3">
-                <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
+              <nav className="flex flex-col gap-2">
+                <a
+                  href="#pricing"
+                  className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
                   Tarifs
                 </a>
-                <Button asChild variant="outline" className="justify-start rounded-lg">
+                <Button asChild variant="outline" className="w-full justify-center rounded-xl h-11">
                   <Link to="/login">Se connecter</Link>
                 </Button>
-                <Button asChild className="bg-gradient-primary text-primary-foreground rounded-lg">
+                <Button asChild className="w-full justify-center bg-gradient-primary text-primary-foreground rounded-xl h-11">
                   <Link to="/register">Commencer</Link>
                 </Button>
-              </div>
+              </nav>
             </SheetContent>
           </Sheet>
         </div>

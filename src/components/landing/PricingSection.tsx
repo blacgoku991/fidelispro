@@ -69,13 +69,13 @@ export function PricingSection() {
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto px-2 sm:px-0">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
               className={`relative p-8 rounded-2xl border transition-all duration-300 ${
                 plan.popular
-                  ? "bg-gradient-card text-primary-foreground border-primary/30 shadow-glow scale-105"
+                  ? "bg-gradient-card text-primary-foreground border-primary/30 shadow-glow md:scale-105"
                   : "bg-card border-border/50 hover:border-primary/20"
               }`}
               initial={{ opacity: 0, y: 20 }}
