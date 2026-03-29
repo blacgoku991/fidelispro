@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { SubscriptionGuard } from "@/components/dashboard/SubscriptionGuard";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { businessSidebarItems } from "@/lib/sidebarItems";
 
@@ -37,7 +38,9 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
           {headerAction && <div className="shrink-0">{headerAction}</div>}
         </div>
 
-        {children}
+        <SubscriptionGuard>
+          {children}
+        </SubscriptionGuard>
       </main>
     </div>
   );
