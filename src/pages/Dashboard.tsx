@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { QrCameraScanner } from "@/components/dashboard/QrCameraScanner";
 import { ScanResultPopup } from "@/components/dashboard/ScanResultPopup";
@@ -29,6 +30,8 @@ const levelConfig: Record<string, { bg: string; text: string; label: string; emo
 
 const Dashboard = () => {
   const { user, business } = useAuth();
+  const { permissions, requestNotifications, requestGeolocation } = usePermissions();
+  const [permissionsDismissed, setPermissionsDismissed] = useState(false);
   const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0 });
 
   // Scanner
@@ -242,6 +245,35 @@ const Dashboard = () => {
           );
         })}
       </div>
+
+      {/* Permission banner */}
+      {!permissionsDismissed && (permissions.notifications !== "granted" || permissions.geolocation !== "granted") && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3"
+        >
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">Activez les permissions pour une meilleure expérience</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Notifications push et géolocalisation pour vos clients</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {permissions.notifications !== "granted" && (
+              <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5" onClick={requestNotifications}>
+                🔔 Notifications
+              </Button>
+            )}
+            {permissions.geolocation !== "granted" && (
+              <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5" onClick={requestGeolocation}>
+                📍 Localisation
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" className="rounded-xl text-xs" onClick={() => setPermissionsDismissed(true)}>
+              ✕
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       {/* ── Tabs ── */}
       <Tabs defaultValue="scanner" className="space-y-6">
