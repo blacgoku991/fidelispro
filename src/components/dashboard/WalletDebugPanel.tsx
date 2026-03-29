@@ -243,7 +243,7 @@ export const WalletDebugPanel = ({ businessId }: WalletDebugPanelProps) => {
             <span className="text-muted-foreground">Action</span>
             <span className="font-mono">{lastResult.action_type}</span>
             <span className="text-muted-foreground">Push réussis</span>
-            <span className="font-mono text-green-600">{lastResult.pushed}</span>
+            <span className="font-mono text-primary">{lastResult.pushed}</span>
             <span className="text-muted-foreground">Push échoués</span>
             <span className="font-mono text-destructive">{lastResult.failed}</span>
             <span className="text-muted-foreground">Appareils uniques</span>
@@ -294,7 +294,7 @@ export const WalletDebugPanel = ({ businessId }: WalletDebugPanelProps) => {
             >
               <div className="flex items-center gap-2">
                 {log.status === "sent" ? (
-                  <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                  <CheckCircle className="w-3.5 h-3.5 text-primary" />
                 ) : (
                   <XCircle className="w-3.5 h-3.5 text-destructive" />
                 )}
