@@ -13,6 +13,7 @@ import ClientsPage from "./pages/dashboard/ClientsPage";
 
 import CustomizePage from "./pages/dashboard/CustomizePage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
+import CheckoutPage from "./pages/dashboard/CheckoutPage";
 import RewardsPage from "./pages/dashboard/RewardsPage";
 import CampaignsPage from "./pages/dashboard/CampaignsPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/dashboard/campaigns" element={<CampaignsPage />} />
             <Route path="/dashboard/customize" element={<CustomizePage />} />
             <Route path="/dashboard/settings" element={<SettingsPage />} />
+            <Route path="/dashboard/checkout" element={<CheckoutPage />} />
             {/* Redirects for removed pages */}
             <Route path="/dashboard/cards" element={<Navigate to="/dashboard/clients" replace />} />
             <Route path="/dashboard/qrcode" element={<Navigate to="/dashboard/customize" replace />} />
