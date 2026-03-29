@@ -160,75 +160,40 @@ async function handleUnregisterDevice(
 // ── Get updated serial numbers ─────────────────────────────────────
 
 async function handleGetSerialNumbers(
-  deviceLibraryId: string,
+  deviceId: string,
   passTypeId: string,
   passesUpdatedSince: string | null
 ): Promise<Response> {
-  const normalizedSince = normalizePassesUpdatedSince(passesUpdatedSince);
-  console.log(
-    `[PassKit WS] Get serials device=${deviceLibraryId} since_raw=${passesUpdatedSince} since_normalized=${normalizedSince}`
-  );
+  const since = normalizePassesUpdatedSince(passesUpdatedSince);
+  console.log(`[PassKit WS] Get serials device=${deviceId} since=${since}`);
 
   const supabase = getSupabase();
 
-  // Get all serial numbers registered for this device
-  const { data: regs } = await supabase
+  let query = supabase
     .from("wallet_registrations")
-    .select("serial_number")
-    .eq("device_library_id", deviceLibraryId)
+    .select("serial_number, updated_at")
+    .eq("device_library_id", deviceId)
     .eq("pass_type_id", passTypeId);
 
-  if (!regs || regs.length === 0) {
-    return new Response(null, { status: 204 });
+  if (since) {
+    query = query.gt("updated_at", since);
   }
 
-  const serialNumbers = regs.map((r) => r.serial_number);
+  const { data, error } = await query;
 
-  // Check which ones have been updated
-  let query = supabase
-    .from("wallet_pass_updates")
-    .select("serial_number, last_updated")
-    .eq("pass_type_id", passTypeId)
-    .in("serial_number", serialNumbers);
-
-  if (normalizedSince) {
-    query = query.gt("last_updated", normalizedSince);
-  }
-
-  let { data: updates, error: updatesError } = await query;
-
-  if (updatesError) {
-    console.error("[PassKit WS] Failed to filter updates by since:", updatesError);
-    // Fallback: return all updated serials for the registered passes,
-    // to avoid Apple's "spurious push" when timestamp parsing is malformed.
-    const fallback = await supabase
-      .from("wallet_pass_updates")
-      .select("serial_number, last_updated")
-      .eq("pass_type_id", passTypeId)
-      .in("serial_number", serialNumbers);
-
-    updates = fallback.data;
-    updatesError = fallback.error;
-  }
-
-  if (updatesError) {
-    console.error("[PassKit WS] Failed to fetch updates:", updatesError);
+  if (error) {
+    console.error("[PassKit WS] Get serials error:", error);
     return new Response("Server error", { status: 500 });
   }
 
-  if (!updates || updates.length === 0) {
+  if (!data || data.length === 0) {
     return new Response(null, { status: 204 });
   }
 
-  const lastUpdated = updates.reduce(
-    (max, u) => (u.last_updated > max ? u.last_updated : max),
-    updates[0].last_updated
-  );
-
   return new Response(
     JSON.stringify({
-      serialNumbers: updates.map((u) => u.serial_number),
-      lastUpdated,
+      serialNumbers: data.map((r) => r.serial_number),
+      lastUpdated: new Date().toISOString(),
     }),
     {
       status: 200,
@@ -237,21 +202,10 @@ async function handleGetSerialNumbers(
   );
 }
 
-function normalizePassesUpdatedSince(raw: string | null): string | null {
-  if (!raw) return null;
-
-  let value = raw.trim();
-
-  // Apple can send timezone with '+' (e.g. +00:00), but URLSearchParams decodes '+' as space.
-  // Example: "2026-03-29T15:46:50.13+00:00" becomes "2026-03-29T15:46:50.13 00:00".
-  value = value.replace(/\s(\d{2}:\d{2})$/, "+$1");
-
-  if (Number.isNaN(Date.parse(value))) {
-    console.warn(`[PassKit WS] Invalid passesUpdatedSince received: ${raw}`);
-    return null;
-  }
-
-  return value;
+function normalizePassesUpdatedSince(value: string | null): string | null {
+  if (!value) return null;
+  // URLSearchParams turns '+' into ' ' in timezone offsets
+  return value.replace(/\s(\d{2}:\d{2})$/, "+$1");
 }
 
 // ── Get latest pass ────────────────────────────────────────────────
@@ -301,6 +255,7 @@ async function handleGetLatestPass(
       headers: {
         "Content-Type": "application/vnd.apple.pkpass",
         "Last-Modified": new Date().toUTCString(),
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     });
   } catch (err: any) {
@@ -330,6 +285,7 @@ async function buildPkpassForUpdate(
   const pointsCurrent = card.current_points || 0;
   const pointsMax = card.max_points || 10;
   const pointsToReward = pointsMax - pointsCurrent;
+  const latestOffer = card.wallet_change_message || "";
   const levelEmoji = level === "gold" ? "⭐" : level === "silver" ? "🥈" : "🥉";
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -354,31 +310,30 @@ async function buildPkpassForUpdate(
         {
           key: "points",
           label: "POINTS",
-          value: `${pointsCurrent}/${pointsMax}`,
+          value: pointsCurrent,
           textAlignment: "PKTextAlignmentRight",
-          ...(card.wallet_change_message ? { changeMessage: card.wallet_change_message } : {}),
+          changeMessage: "Vous avez gagné %@ points !",
         },
       ],
       primaryFields: [{ key: "name", label: "CLIENT", value: customer?.full_name || "Client" }],
       secondaryFields: [
         { key: "level", label: "STATUT", value: `${levelEmoji} ${level.toUpperCase()}` },
         { key: "progress", label: "PROGRESSION", value: `${pointsCurrent} / ${pointsMax}`, textAlignment: "PKTextAlignmentRight" },
+        {
+          key: "offer",
+          label: "OFFRE DU JOUR",
+          value: latestOffer,
+          changeMessage: "%@",
+        },
       ],
       auxiliaryFields: [
         { key: "rewards", label: "RÉCOMPENSES", value: `${card.rewards_earned || 0} obtenues` },
-        ...(card.wallet_change_message
-          ? [{
-              key: "offer",
-              label: "OFFRE",
-              value: card.wallet_change_message,
-              changeMessage: card.wallet_change_message,
-            }]
-          : [{
-              key: "next_reward",
-              label: "PROCHAINE",
-              value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !",
-              textAlignment: "PKTextAlignmentRight",
-            }]),
+        {
+          key: "next_reward",
+          label: "PROCHAINE",
+          value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !",
+          textAlignment: "PKTextAlignmentRight",
+        },
       ],
       backFields: [
         { key: "reward_info", label: "🎁 Récompense", value: business.reward_description || "Récompense offerte !" },

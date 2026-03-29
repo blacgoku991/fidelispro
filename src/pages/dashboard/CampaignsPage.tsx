@@ -138,6 +138,7 @@ const CampaignsPage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             business_id: business.id,
+            action_type: "campaign",
             change_message: `${form.title}: ${form.message}`.slice(0, 100),
           }),
         }
