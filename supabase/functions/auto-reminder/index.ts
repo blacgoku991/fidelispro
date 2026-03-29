@@ -95,7 +95,6 @@ Deno.serve(async (req) => {
           const message = `👋 ${customer.full_name || "Cher client"}, ça fait ${daysSince} jours ! Vos ${unitLabel} vous attendent chez ${biz.name}.`;
 
           // Send wallet push
-          const projectUrl = Deno.env.get("SUPABASE_URL")!;
           try {
             await fetch(`${projectUrl}/functions/v1/wallet-push`, {
               method: "POST",
