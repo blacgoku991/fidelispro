@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, Wallet, AlertCircle, RefreshCw, Bell, Download, Share, X } from "lucide-react";
 import { toast } from "sonner";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
-import { useWebPush } from "@/hooks/useWebPush";
+import { useWebPush, VAPID_PUBLIC_KEY } from "@/hooks/useWebPush";
 
 type Step = "landing" | "register" | "card";
 
@@ -472,6 +472,30 @@ const BusinessPublicPage = () => {
                 {webPush.loading ? "Activation..." : "🔔 Recevoir les offres & promotions"}
               </Button>
             )}
+
+            {/* Debug notifications panel */}
+            <div className="p-4 rounded-2xl bg-muted border border-border text-left space-y-2">
+              <p className="font-semibold text-sm text-foreground">🔧 Debug notifications</p>
+              <p className="text-xs text-muted-foreground">SW support: {'serviceWorker' in navigator ? '✅' : '❌'}</p>
+              <p className="text-xs text-muted-foreground">Push support: {'PushManager' in window ? '✅' : '❌'}</p>
+              <p className="text-xs text-muted-foreground">Notif support: {'Notification' in window ? '✅' : '❌'}</p>
+              <p className="text-xs text-muted-foreground">Permission: {typeof Notification !== 'undefined' ? Notification.permission : 'N/A'}</p>
+              <p className="text-xs text-muted-foreground">VAPID key: {VAPID_PUBLIC_KEY ? VAPID_PUBLIC_KEY.slice(0, 15) + '...' : 'MISSING ❌'}</p>
+              <p className="text-xs text-muted-foreground">Subscribed: {webPush.subscribed ? '✅' : '❌'}</p>
+              <Button
+                onClick={async () => {
+                  console.log('[WebPush Debug] Manual test triggered');
+                  await webPush.subscribe();
+                }}
+                disabled={webPush.loading}
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 gap-2"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                {webPush.loading ? "En cours..." : "Tester l'activation des notifications"}
+              </Button>
+            </div>
 
             {!webPush.isSupported && !webPush.isPWA && isAppleDevice && (
               <div className="p-4 rounded-2xl bg-card border border-border/50 space-y-3">
