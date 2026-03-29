@@ -147,6 +147,7 @@ const BusinessPublicPage = () => {
   useEffect(() => {
     if (!card?.card_code) return;
     localStorage.setItem("customer_last_card_path", `/card/${card.card_code}`);
+    document.cookie = `customer_last_card_code=${encodeURIComponent(card.card_code)}; path=/; max-age=31536000; SameSite=Lax`;
   }, [card?.card_code]);
 
   const handleRegister = async () => {
