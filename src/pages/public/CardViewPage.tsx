@@ -127,6 +127,18 @@ const CardViewPage = () => {
           accentColor={business.primary_color}
         />
 
+        {/* Apple Wallet button */}
+        {isAppleDevice && (
+          <Button
+            onClick={handleAddToWallet}
+            disabled={walletLoading}
+            className="w-full h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-semibold gap-2"
+          >
+            <Wallet className="w-5 h-5" />
+            {walletLoading ? "Génération..." : "Ajouter à Apple Wallet"}
+          </Button>
+        )}
+
         {/* Progress info */}
         <div className="p-5 rounded-2xl bg-card border border-border/50">
           {pointsToReward > 0 ? (
