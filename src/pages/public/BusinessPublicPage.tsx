@@ -48,6 +48,47 @@ const BusinessPublicPage = () => {
     }
   };
 
+  const handleAddToGoogleWallet = async (cardCode: string) => {
+    setGoogleWalletLoading(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/generate-google-pass?card_code=${encodeURIComponent(cardCode)}`
+      );
+      const data = await res.json();
+      if (data.saveUrl) {
+        window.open(data.saveUrl, "_blank");
+      } else {
+        toast.error(data.error || "Impossible de générer la carte Google Wallet");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Erreur Google Wallet");
+    } finally {
+      setGoogleWalletLoading(false);
+    }
+  };
+
+  const handleSubscribePush = async () => {
+    if (!business || !customer) return;
+    setPushLoading(true);
+    try {
+      const success = await registerPushSubscription(business.id, customer.id);
+      setPushSubscribed(success);
+      if (success) {
+        toast.success("Notifications activées ! 🔔");
+      } else {
+        // If not standalone, suggest installing the app first
+        if (!isStandalone) {
+          setShowInstallHint(true);
+        }
+      }
+    } catch {
+      toast.error("Erreur lors de l'activation des notifications");
+    }
+    setPushLoading(false);
+  };
+
   const fetchBusiness = async () => {
     setLoading(true);
     setFetchError(null);
