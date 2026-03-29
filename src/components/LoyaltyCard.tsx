@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { Crown, Flame, Star, Trophy } from "lucide-react";
+import { Crown, Flame, Star, Trophy, Sparkles } from "lucide-react";
 
 interface LoyaltyCardProps {
   businessName: string;
@@ -17,6 +17,11 @@ interface LoyaltyCardProps {
   showQr?: boolean;
   showPoints?: boolean;
   showCustomerName?: boolean;
+  showExpiration?: boolean;
+  showRewardsPreview?: boolean;
+  cardStyle?: string;
+  cardBgType?: string;
+  cardBgImageUrl?: string;
 }
 
 const levelConfig = {
@@ -40,6 +45,47 @@ const levelConfig = {
   },
 };
 
+// Style presets that change the visual appearance
+const stylePresets: Record<string, {
+  borderRadius: string;
+  overlay?: string;
+  fontClass?: string;
+  badgeStyle?: string;
+  glowEffect?: boolean;
+  pattern?: string;
+}> = {
+  classic: {
+    borderRadius: "rounded-2xl",
+  },
+  luxury: {
+    borderRadius: "rounded-3xl",
+    overlay: "bg-gradient-to-br from-yellow-400/10 via-transparent to-yellow-600/10",
+    badgeStyle: "bg-yellow-500/20 border border-yellow-400/30",
+    pattern: "radial-gradient(circle at 20% 80%, rgba(255,215,0,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,215,0,0.06) 0%, transparent 50%)",
+  },
+  coffee: {
+    borderRadius: "rounded-2xl",
+    overlay: "bg-gradient-to-br from-amber-900/20 via-transparent to-orange-900/10",
+    pattern: "radial-gradient(circle at 90% 90%, rgba(180,100,20,0.15) 0%, transparent 40%)",
+  },
+  barber: {
+    borderRadius: "rounded-xl",
+    overlay: "bg-gradient-to-r from-red-500/10 via-transparent to-blue-500/10",
+    pattern: "repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.02) 20px, rgba(255,255,255,0.02) 40px)",
+  },
+  restaurant: {
+    borderRadius: "rounded-2xl",
+    overlay: "bg-gradient-to-br from-emerald-500/10 via-transparent to-amber-500/10",
+    pattern: "radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08) 0%, transparent 50%)",
+  },
+  neon: {
+    borderRadius: "rounded-2xl",
+    glowEffect: true,
+    overlay: "bg-gradient-to-br from-purple-500/15 via-transparent to-pink-500/15",
+    pattern: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 30%, transparent 70%, rgba(255,255,255,0.04) 100%)",
+  },
+};
+
 export function LoyaltyCard({
   businessName,
   customerName,
@@ -55,34 +101,91 @@ export function LoyaltyCard({
   showQr = true,
   showPoints = true,
   showCustomerName = true,
+  showExpiration = false,
+  showRewardsPreview = true,
+  cardStyle = "classic",
+  cardBgType = "gradient",
+  cardBgImageUrl,
 }: LoyaltyCardProps) {
   const config = levelConfig[level] || levelConfig.bronze;
   const Icon = config.icon;
   const progress = Math.min((points / maxPoints) * 100, 100);
   const pointsToReward = maxPoints - points;
+  const preset = stylePresets[cardStyle] || stylePresets.classic;
 
-  // Use business colors when provided, otherwise fall back to level-based
-  const bgStyle = accentColor
-    ? {
+  // Build background based on bgType
+  const getBgStyle = () => {
+    if (cardBgType === "image" && cardBgImageUrl) {
+      return {
+        backgroundImage: `url(${cardBgImageUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      };
+    }
+    if (cardBgType === "solid" && accentColor) {
+      return { background: accentColor };
+    }
+    // Default: gradient
+    if (accentColor) {
+      return {
         background: secondaryColor
           ? `linear-gradient(135deg, ${accentColor}, ${secondaryColor})`
           : `linear-gradient(135deg, ${accentColor}, ${darken(accentColor, 30)})`,
-      }
-    : { background: config.fallbackBg };
+      };
+    }
+    return { background: config.fallbackBg };
+  };
+
+  const bgStyle = getBgStyle();
+
+  // Neon glow box shadow
+  const glowShadow = preset.glowEffect && accentColor
+    ? `0 0 30px ${accentColor}44, 0 0 60px ${accentColor}22, 0 25px 50px -12px rgba(0,0,0,0.4)`
+    : "0 25px 50px -12px rgba(0,0,0,0.4)";
 
   return (
     <motion.div
-      className="relative w-full max-w-[400px] aspect-[1.586/1] rounded-2xl p-5 card-shine cursor-pointer select-none overflow-hidden"
+      className={`relative w-full max-w-[400px] aspect-[1.586/1] ${preset.borderRadius} p-5 card-shine cursor-pointer select-none overflow-hidden`}
       whileHover={{ scale: 1.02, rotateY: 5, rotateX: -2 }}
       transition={{ type: "spring", stiffness: 300 }}
       style={{
         ...bgStyle,
         transformStyle: "preserve-3d",
-        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.4)",
+        boxShadow: glowShadow,
       }}
     >
+      {/* Style-specific pattern overlay */}
+      {preset.pattern && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: preset.pattern, borderRadius: "inherit" }}
+        />
+      )}
+
+      {/* Style-specific color overlay */}
+      {preset.overlay && (
+        <div className={`absolute inset-0 ${preset.overlay} pointer-events-none`} style={{ borderRadius: "inherit" }} />
+      )}
+
+      {/* Image overlay for readability */}
+      {cardBgType === "image" && cardBgImageUrl && (
+        <div className="absolute inset-0 bg-black/40 pointer-events-none" style={{ borderRadius: "inherit" }} />
+      )}
+
       {/* Noise texture overlay */}
-      <div className="absolute inset-0 rounded-2xl opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNhKSIgb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')]" />
+      <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNhKSIgb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')]" style={{ borderRadius: "inherit" }} />
+
+      {/* Neon border glow */}
+      {preset.glowEffect && accentColor && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            borderRadius: "inherit",
+            border: `1px solid ${accentColor}66`,
+            boxShadow: `inset 0 0 20px ${accentColor}15`,
+          }}
+        />
+      )}
 
       {/* Header — logo + business name + level badge */}
       <div className="relative z-10 flex items-start justify-between">
@@ -103,13 +206,13 @@ export function LoyaltyCard({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm">
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-sm ${preset.badgeStyle || "bg-white/15"}`}>
           <span className="text-xs">{config.emoji}</span>
           <span className="text-[11px] font-bold text-white tracking-wide">{config.label}</span>
         </div>
       </div>
 
-      {/* Middle — Stats row matching Wallet secondaryFields */}
+      {/* Middle — Stats row */}
       <div className="relative z-10 mt-3 flex justify-between">
         <div>
           <p className="text-[10px] text-white/50 uppercase tracking-widest font-medium">Statut</p>
@@ -123,7 +226,7 @@ export function LoyaltyCard({
         )}
       </div>
 
-      {/* Bottom — Points + QR + progress (matching Wallet layout) */}
+      {/* Bottom — Points + QR + progress */}
       <div className="relative z-10 mt-auto pt-2">
         <div className="flex items-end justify-between">
           <div>
@@ -137,16 +240,26 @@ export function LoyaltyCard({
             )}
             {/* Auxiliary info */}
             <div className="flex gap-4 mt-1.5">
-              <div>
-                <p className="text-[9px] text-white/40 uppercase tracking-wider">Récompenses</p>
-                <p className="text-xs font-semibold text-white/80">{rewardsEarned} obtenues</p>
-              </div>
-              <div>
-                <p className="text-[9px] text-white/40 uppercase tracking-wider">Prochaine</p>
-                <p className="text-xs font-semibold text-white/80">
-                  {pointsToReward > 0 ? `${pointsToReward} pts` : "🎁 Dispo !"}
-                </p>
-              </div>
+              {showRewardsPreview && (
+                <div>
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider">Récompenses</p>
+                  <p className="text-xs font-semibold text-white/80">{rewardsEarned} obtenues</p>
+                </div>
+              )}
+              {showRewardsPreview && (
+                <div>
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider">Prochaine</p>
+                  <p className="text-xs font-semibold text-white/80">
+                    {pointsToReward > 0 ? `${pointsToReward} pts` : "🎁 Dispo !"}
+                  </p>
+                </div>
+              )}
+              {showExpiration && (
+                <div>
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider">Expire</p>
+                  <p className="text-xs font-semibold text-white/80">31/12/2026</p>
+                </div>
+              )}
             </div>
           </div>
           {showQr && cardId && (
@@ -166,7 +279,12 @@ export function LoyaltyCard({
         {showPoints && (
           <div className="mt-2.5 w-full h-1.5 rounded-full bg-white/15 overflow-hidden">
             <motion.div
-              className="h-full rounded-full bg-white/80"
+              className="h-full rounded-full"
+              style={{
+                background: preset.glowEffect && accentColor
+                  ? `linear-gradient(90deg, ${accentColor}, ${secondaryColor || "#fff"})`
+                  : "rgba(255,255,255,0.8)",
+              }}
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 1.2, ease: "easeOut" }}
