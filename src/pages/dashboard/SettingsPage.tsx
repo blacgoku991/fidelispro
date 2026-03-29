@@ -40,6 +40,17 @@ const SettingsPage = () => {
   const debounceRef = useRef<any>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
+
   useEffect(() => {
     if (user) setEmail(user.email || "");
   }, [user]);
@@ -64,28 +75,30 @@ const SettingsPage = () => {
     else { toast.success("Mot de passe mis à jour"); setNewPassword(""); }
   };
 
-  const geocodeAddress = async () => {
-    if (!address.trim()) { toast.error("Entrez une adresse d'abord"); return; }
-    setGeocoding(true);
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`, {
-        headers: { "Accept-Language": "fr" },
-      });
-      const data = await res.json();
-      if (data.length === 0) {
-        toast.error("Adresse introuvable. Essayez d'être plus précis.");
-        setGeocoding(false);
-        return;
-      }
-      const result = data[0];
-      setLatitude(parseFloat(parseFloat(result.lat).toFixed(7)));
-      setLongitude(parseFloat(parseFloat(result.lon).toFixed(7)));
-      setAddress(result.display_name || address);
-      toast.success(`📍 Position confirmée : ${result.display_name.split(",").slice(0, 4).join(",")}`);
-    } catch {
-      toast.error("Erreur de géocodage. Réessayez.");
-    }
-    setGeocoding(false);
+  const handleAddressInput = (value: string) => {
+    setAddress(value);
+    clearTimeout(debounceRef.current);
+    if (value.length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&limit=5&addressdetails=1&countrycodes=fr`,
+          { headers: { "Accept-Language": "fr" } }
+        );
+        const data = await res.json();
+        setSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      } catch { /* ignore */ }
+    }, 400);
+  };
+
+  const selectSuggestion = (s: any) => {
+    setAddress(s.display_name);
+    setLatitude(parseFloat(parseFloat(s.lat).toFixed(7)));
+    setLongitude(parseFloat(parseFloat(s.lon).toFixed(7)));
+    setShowSuggestions(false);
+    setSuggestions([]);
+    toast.success("📍 Position confirmée");
   };
 
   const handleSaveGeofencing = async () => {
