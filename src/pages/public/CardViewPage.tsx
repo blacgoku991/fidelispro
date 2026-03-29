@@ -106,7 +106,11 @@ const CardViewPage = () => {
           maxPoints={card.max_points || 10}
           level={customer.level || "bronze"}
           cardId={card.card_code || card.id}
+          logoUrl={business.logo_url || undefined}
           accentColor={business.primary_color}
+          secondaryColor={business.secondary_color}
+          rewardDescription={business.reward_description}
+          rewardsEarned={card.rewards_earned || 0}
         />
 
         {/* Apple Wallet button */}
