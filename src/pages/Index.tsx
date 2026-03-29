@@ -11,8 +11,17 @@ const Index = () => {
     if (!isStandalone) return;
 
     const lastCardPath = localStorage.getItem("customer_last_card_path");
-    if (lastCardPath && lastCardPath.startsWith("/card/")) {
-      window.location.replace(lastCardPath);
+
+    const cookieCardCode = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("customer_last_card_code="))
+      ?.split("=")[1];
+
+    const cookieCardPath = cookieCardCode ? `/card/${decodeURIComponent(cookieCardCode)}` : null;
+    const targetPath = lastCardPath || cookieCardPath;
+
+    if (targetPath && targetPath.startsWith("/card/")) {
+      window.location.replace(targetPath);
     }
   }, []);
 

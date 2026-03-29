@@ -147,6 +147,7 @@ const BusinessPublicPage = () => {
   useEffect(() => {
     if (!card?.card_code) return;
     localStorage.setItem("customer_last_card_path", `/card/${card.card_code}`);
+    document.cookie = `customer_last_card_code=${encodeURIComponent(card.card_code)}; path=/; max-age=31536000; SameSite=Lax`;
   }, [card?.card_code]);
 
   const handleRegister = async () => {
@@ -474,20 +475,20 @@ const BusinessPublicPage = () => {
             {!pushSubscribed && (
               <>
                 {/* On iPhone without PWA: show install instructions first */}
-                {isAppleDevice && !isStandalone && !("Notification" in window) ? (
+                {isAppleDevice && !isStandalone && !('Notification' in window) ? (
                   <div className="p-4 rounded-2xl bg-card border border-border/50 space-y-3">
                     <div className="flex items-center gap-2">
                       <Bell className="w-4 h-4 text-primary" />
-                      <p className="font-semibold text-sm">🔔 Recevoir les offres et promos</p>
+                      <p className="font-semibold text-sm">🔔 Notifications iPhone</p>
                     </div>
                     <div className="flex items-start gap-3 text-xs text-muted-foreground">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                         <Download className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">Étape 1 : Installez l'app</p>
+                        <p className="font-medium text-foreground">1) Ajouter à l'écran d'accueil</p>
                         <p className="mt-0.5">
-                          Appuyez sur <Share className="w-3 h-3 inline text-primary" /> en bas de Safari, puis « Sur l'écran d'accueil »
+                          Dans Safari : appuyez sur <Share className="w-3 h-3 inline text-primary" /> puis « Sur l'écran d'accueil »
                         </p>
                       </div>
                     </div>
@@ -496,13 +497,12 @@ const BusinessPublicPage = () => {
                         <Bell className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">Étape 2 : Activez les notifications</p>
-                        <p className="mt-0.5">Rouvrez l'app depuis l'écran d'accueil et activez les notifications</p>
+                        <p className="font-medium text-foreground">2) Ouvrir depuis l'icône installée</p>
+                        <p className="mt-0.5">Ensuite le bouton « Recevoir les offres » apparaîtra sur la page carte.</p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  /* Normal case: browser supports notifications */
                   ("Notification" in window && Notification.permission !== "denied") && (
                     <Button
                       onClick={handleSubscribePush}
