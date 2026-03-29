@@ -29,26 +29,32 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // ── Resolve target registrations ─────────────────────────────
-    let query = supabase
+    const act = action_type || "test";
+
+    // ── Resolve target serial numbers ─────────────────────────────
+    let serialQuery = supabase
       .from("wallet_registrations")
-      .select("*")
+      .select("serial_number")
       .eq("business_id", business_id);
 
     if (customer_id) {
-      query = query.eq("customer_id", customer_id);
+      serialQuery = serialQuery.eq("customer_id", customer_id);
     } else if (card_ids && card_ids.length > 0) {
-      query = query.in("card_id", card_ids);
+      serialQuery = serialQuery.in("card_id", card_ids);
     }
 
-    const { data: registrations, error: regErr } = await query;
-
-    if (regErr) {
-      console.error("[Wallet Push] Error fetching registrations:", regErr);
-      return jsonResponse({ error: "Failed to fetch registrations" }, 500);
+    if (act === "send_test_notification" && !customer_id && (!card_ids || card_ids.length === 0)) {
+      serialQuery = serialQuery.order("updated_at", { ascending: false }).limit(1);
     }
 
-    if (!registrations || registrations.length === 0) {
+    const { data: targetSerials, error: targetErr } = await serialQuery;
+
+    if (targetErr) {
+      console.error("[Wallet Push] Error fetching target serials:", targetErr);
+      return jsonResponse({ error: "Failed to fetch wallet targets" }, 500);
+    }
+
+    if (!targetSerials || targetSerials.length === 0) {
       return jsonResponse({
         success: true,
         message: "No wallet registrations found",
@@ -58,8 +64,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Apply card updates based on action_type ──────────────────
-    const act = action_type || "test";
-    const serialNumbers = [...new Set(registrations.map((r: any) => r.serial_number))];
+    const serialNumbers = [...new Set(targetSerials.map((r: any) => r.serial_number))];
     const now = new Date().toISOString();
     const cardUpdateResults: any[] = [];
 
@@ -67,7 +72,7 @@ Deno.serve(async (req) => {
       let cardUpdate: Record<string, any> = {};
       let effectiveMessage = change_message || "🔔 Mise à jour Wallet";
 
-      if (act === "points_increment" || act === "full_test") {
+      if (act === "points_increment" || act === "full_test" || act === "send_test_notification") {
         // Actually increment points — the VALUE must change for visible notification
         const { data: cardData } = await supabase
           .from("customer_cards")
@@ -87,6 +92,7 @@ Deno.serve(async (req) => {
 
       // Always set a unique wallet_change_message so the field value changes
       cardUpdate.wallet_change_message = effectiveMessage;
+      cardUpdate.updated_at = now;
 
       const { error: updateErr } = await supabase
         .from("customer_cards")
@@ -101,6 +107,12 @@ Deno.serve(async (req) => {
         ...(updateErr ? { error: updateErr.message } : {}),
       });
 
+      await supabase
+        .from("wallet_registrations")
+        .update({ updated_at: now })
+        .eq("business_id", business_id)
+        .eq("serial_number", sn);
+
       // Mark pass as updated in wallet_pass_updates
       await supabase.from("wallet_pass_updates").upsert(
         {
@@ -112,6 +124,41 @@ Deno.serve(async (req) => {
         },
         { onConflict: "serial_number,pass_type_id" }
       );
+    }
+
+    // Fetch push tokens AFTER DB update (required for proper Wallet update ordering)
+    let registrationsQuery = supabase
+      .from("wallet_registrations")
+      .select("*")
+      .eq("business_id", business_id)
+      .in("serial_number", serialNumbers);
+
+    if (customer_id) {
+      registrationsQuery = registrationsQuery.eq("customer_id", customer_id);
+    }
+
+    if (act === "send_test_notification") {
+      registrationsQuery = registrationsQuery.order("updated_at", { ascending: false }).limit(1);
+    }
+
+    const { data: registrations, error: regErr } = await registrationsQuery;
+
+    if (regErr) {
+      console.error("[Wallet Push] Error fetching registrations after DB update:", regErr);
+      return jsonResponse({ error: "Failed to fetch registrations" }, 500);
+    }
+
+    if (!registrations || registrations.length === 0) {
+      return jsonResponse({
+        success: true,
+        action_type: act,
+        total_registrations: 0,
+        unique_passes: serialNumbers.length,
+        unique_devices: 0,
+        pushed: 0,
+        failed: 0,
+        card_updates: cardUpdateResults,
+      }, 200);
     }
 
     // ── REAL APNs Push via Token-Based Auth ──────────────────────────
@@ -179,6 +226,8 @@ Deno.serve(async (req) => {
         pushResults.push({
           serial_number: reg.serial_number,
           device: reg.device_library_id,
+          token_suffix: pushToken.slice(-8),
+          timestamp: new Date().toISOString(),
           ...result,
         });
       } catch (err: any) {
@@ -188,6 +237,8 @@ Deno.serve(async (req) => {
         pushResults.push({
           serial_number: reg.serial_number,
           device: reg.device_library_id,
+          token_suffix: pushToken.slice(-8),
+          timestamp: new Date().toISOString(),
           success: false,
           error: String(err),
         });
@@ -196,6 +247,15 @@ Deno.serve(async (req) => {
       // Log the attempt
       await supabase.from("wallet_apns_logs").insert(logEntry);
     }
+
+    const testNotificationLog = act === "send_test_notification"
+      ? {
+          db_update_status: cardUpdateResults[0]?.updated ? "updated" : "failed",
+          apns_http_status: pushResults[0]?.status ?? null,
+          device_token_last8: pushResults[0]?.token_suffix ?? null,
+          timestamp: new Date().toISOString(),
+        }
+      : null;
 
     return jsonResponse({
       success: true,
@@ -207,6 +267,7 @@ Deno.serve(async (req) => {
       failed: failCount,
       card_updates: cardUpdateResults,
       apns_results: pushResults,
+      ...(testNotificationLog ? { test_notification_log: testNotificationLog } : {}),
     }, 200);
   } catch (err: any) {
     console.error("[Wallet Push] Error:", err);
@@ -283,7 +344,7 @@ async function sendApnsPush(
       "apns-push-type": "background",
       "apns-priority": "5",
     },
-    body: JSON.stringify({}),
+    body: "{}",
   });
 
   const status = response.status;
