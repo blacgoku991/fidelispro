@@ -277,8 +277,11 @@ async function buildPkpassForUpdate(
   const p12Password = Deno.env.get("APPLE_P12_PASSWORD")!;
 
   const { signerCert, signerKey, certificateChain } = extractSigningMaterial(p12Base64, p12Password);
-  const iconPng = decodeBase64(ICON_PNG_BASE64);
-  const icon2xPng = decodeBase64(ICON_2X_PNG_BASE64);
+
+  // Fetch business logo for icons and logo
+  const { iconPng, icon2xPng, icon3xPng } = await fetchOrGenerateIcons(business);
+  const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
+  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
   const level = (customer?.level || "bronze").toLowerCase();
@@ -289,12 +292,6 @@ async function buildPkpassForUpdate(
   const levelEmoji = level === "gold" ? "⭐" : level === "silver" ? "🥈" : "🥉";
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-
-  // Fetch merchant logo
-  const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
-
-  // Generate strip images
-  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
 
   const passJson: any = {
     formatVersion: 1,
@@ -356,6 +353,7 @@ async function buildPkpassForUpdate(
     "pass.json": sha1Hex(passJsonBytes),
     "icon.png": sha1Hex(iconPng),
     "icon@2x.png": sha1Hex(icon2xPng),
+    "icon@3x.png": sha1Hex(icon3xPng),
     "logo.png": sha1Hex(logoPng),
     "logo@2x.png": sha1Hex(logo2xPng),
     "strip.png": sha1Hex(stripPng),
@@ -390,6 +388,7 @@ async function buildPkpassForUpdate(
   zip.file("signature", sigBytes);
   zip.file("icon.png", iconPng);
   zip.file("icon@2x.png", icon2xPng);
+  zip.file("icon@3x.png", icon3xPng);
   zip.file("logo.png", logoPng);
   zip.file("logo@2x.png", logo2xPng);
   zip.file("strip.png", stripPng);
