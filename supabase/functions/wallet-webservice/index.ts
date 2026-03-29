@@ -164,7 +164,10 @@ async function handleGetSerialNumbers(
   passTypeId: string,
   passesUpdatedSince: string | null
 ): Promise<Response> {
-  console.log(`[PassKit WS] Get serials device=${deviceLibraryId} since=${passesUpdatedSince}`);
+  const normalizedSince = normalizePassesUpdatedSince(passesUpdatedSince);
+  console.log(
+    `[PassKit WS] Get serials device=${deviceLibraryId} since_raw=${passesUpdatedSince} since_normalized=${normalizedSince}`
+  );
 
   const supabase = getSupabase();
 
@@ -188,11 +191,30 @@ async function handleGetSerialNumbers(
     .eq("pass_type_id", passTypeId)
     .in("serial_number", serialNumbers);
 
-  if (passesUpdatedSince) {
-    query = query.gt("last_updated", passesUpdatedSince);
+  if (normalizedSince) {
+    query = query.gt("last_updated", normalizedSince);
   }
 
-  const { data: updates } = await query;
+  let { data: updates, error: updatesError } = await query;
+
+  if (updatesError) {
+    console.error("[PassKit WS] Failed to filter updates by since:", updatesError);
+    // Fallback: return all updated serials for the registered passes,
+    // to avoid Apple's "spurious push" when timestamp parsing is malformed.
+    const fallback = await supabase
+      .from("wallet_pass_updates")
+      .select("serial_number, last_updated")
+      .eq("pass_type_id", passTypeId)
+      .in("serial_number", serialNumbers);
+
+    updates = fallback.data;
+    updatesError = fallback.error;
+  }
+
+  if (updatesError) {
+    console.error("[PassKit WS] Failed to fetch updates:", updatesError);
+    return new Response("Server error", { status: 500 });
+  }
 
   if (!updates || updates.length === 0) {
     return new Response(null, { status: 204 });
@@ -213,6 +235,23 @@ async function handleGetSerialNumbers(
       headers: { "Content-Type": "application/json" },
     }
   );
+}
+
+function normalizePassesUpdatedSince(raw: string | null): string | null {
+  if (!raw) return null;
+
+  let value = raw.trim();
+
+  // Apple can send timezone with '+' (e.g. +00:00), but URLSearchParams decodes '+' as space.
+  // Example: "2026-03-29T15:46:50.13+00:00" becomes "2026-03-29T15:46:50.13 00:00".
+  value = value.replace(/\s(\d{2}:\d{2})$/, "+$1");
+
+  if (Number.isNaN(Date.parse(value))) {
+    console.warn(`[PassKit WS] Invalid passesUpdatedSince received: ${raw}`);
+    return null;
+  }
+
+  return value;
 }
 
 // ── Get latest pass ────────────────────────────────────────────────
