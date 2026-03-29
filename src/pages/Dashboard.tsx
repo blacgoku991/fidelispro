@@ -135,12 +135,23 @@ const Dashboard = () => {
       return;
     }
 
-    const newPoints = (card.current_points || 0) + 1;
-    const rewardEarned = newPoints >= (card.max_points || 10);
+    // Respect loyalty_type settings
+    const loyaltyType = business.loyalty_type || "points";
+    const pointsToAdd = business.points_per_visit || 1;
+    const maxPts = card.max_points || business.max_points_per_card || 10;
+
+    const newPoints = (card.current_points || 0) + pointsToAdd;
+    const rewardEarned = newPoints >= maxPts;
     const customer = card.customers;
+
+    // Build label based on loyalty type
+    const unitLabel = loyaltyType === "stamps" ? "tampon" : "point";
+    const unitLabelPlural = loyaltyType === "stamps" ? "tampons" : "points";
+    const addedLabel = pointsToAdd > 1 ? `+${pointsToAdd} ${unitLabelPlural}` : `+1 ${unitLabel}`;
+
     const changeMsg = rewardEarned
       ? `🎁 Récompense débloquée chez ${business.name} !`
-      : `+1 point chez ${business.name} ! Vous avez ${newPoints} points.`;
+      : `${addedLabel} chez ${business.name} ! ${loyaltyType === "stamps" ? `${newPoints}/${maxPts} tampons` : `${newPoints}/${maxPts} points`}.`;
 
     await supabase.from("customer_cards").update({
       current_points: rewardEarned ? 0 : newPoints,
@@ -160,29 +171,35 @@ const Dashboard = () => {
 
     const newStreak = (customer.current_streak || 0) + 1;
     await supabase.from("customers").update({
-      total_points: (customer.total_points || 0) + 1,
+      total_points: (customer.total_points || 0) + pointsToAdd,
       total_visits: (customer.total_visits || 0) + 1,
       current_streak: newStreak,
       longest_streak: Math.max(newStreak, customer.longest_streak || 0),
       last_visit_at: new Date().toISOString(),
-      level: (customer.total_points || 0) + 1 >= 50 ? "gold" : (customer.total_points || 0) + 1 >= 20 ? "silver" : "bronze",
+      level: (customer.total_points || 0) + pointsToAdd >= 50 ? "gold" : (customer.total_points || 0) + pointsToAdd >= 20 ? "silver" : "bronze",
     }).eq("id", customer.id);
 
     await supabase.from("points_history").insert({
       customer_id: customer.id, business_id: business.id, card_id: card.id,
-      points_added: 1, action: "scan", scanned_by: user.id,
+      points_added: pointsToAdd, action: "scan", scanned_by: user.id,
     });
 
-    setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: card.max_points || 10, rewardEarned });
+    setLastScan({
+      customerName: customer.full_name,
+      points: rewardEarned ? 0 : newPoints,
+      maxPoints: maxPts,
+      rewardEarned,
+      loyaltyType,
+    });
     setTodayScans((p) => p + 1);
     setCardCode("");
     setScanning(false);
     fetchStats();
 
     if (rewardEarned) {
-      setPopup({ open: true, type: "reward", title: "🎉 Récompense débloquée !", message: `${customer.full_name} a gagné sa récompense !`, details: "Le compteur de points a été remis à zéro." });
+      setPopup({ open: true, type: "reward", title: "🎉 Récompense débloquée !", message: `${customer.full_name} a gagné sa récompense !`, details: "Le compteur a été remis à zéro." });
     } else {
-      setPopup({ open: true, type: "success", title: "+1 point ajouté !", message: `${customer.full_name} — ${newPoints}/${card.max_points || 10} points` });
+      setPopup({ open: true, type: "success", title: `${addedLabel} !`, message: `${customer.full_name} — ${newPoints}/${maxPts} ${unitLabelPlural}` });
     }
   };
 
@@ -314,7 +331,7 @@ const Dashboard = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-display font-semibold text-sm truncate">{lastScan.customerName}</p>
-                        <p className="text-xs text-muted-foreground">{lastScan.points}/{lastScan.maxPoints} points</p>
+                        <p className="text-xs text-muted-foreground">{lastScan.points}/{lastScan.maxPoints} {lastScan.loyaltyType === "stamps" ? "tampons" : "points"}</p>
                       </div>
                     </div>
                     <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">

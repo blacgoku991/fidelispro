@@ -388,50 +388,11 @@ const CustomizePage = () => {
         <TabsContent value="notifications">
           <div className="space-y-4 max-w-2xl">
             <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
-              <h2 className="font-display font-semibold text-sm">Fréquence & horaires</h2>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm">Notifications activées</p>
-                  <p className="text-xs text-muted-foreground">Envoyer des notifications aux clients</p>
-                </div>
-                <Switch checked={form.auto_notifications} onCheckedChange={(v) => update("auto_notifications", v)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Fréquence max</Label>
-                <Select value={form.notif_frequency} onValueChange={(v) => update("notif_frequency", v as BusinessConfig["notif_frequency"])}>
-                  <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unlimited">Illimité</SelectItem>
-                    <SelectItem value="daily">1/jour</SelectItem>
-                    <SelectItem value="weekly">1/semaine</SelectItem>
-                    <SelectItem value="custom">Personnalisé</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {form.notif_frequency === "custom" && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Intervalle min (heures)</Label>
-                  <Input type="number" value={form.notif_custom_interval_hours} onChange={(e) => update("notif_custom_interval_hours", parseInt(e.target.value) || 24)} className="rounded-xl text-sm" />
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Début</Label>
-                  <Input type="time" value={form.notif_time_start} onChange={(e) => update("notif_time_start", e.target.value)} className="rounded-xl text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Fin</Label>
-                  <Input type="time" value={form.notif_time_end} onChange={(e) => update("notif_time_end", e.target.value)} className="rounded-xl text-sm" />
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
               <h2 className="font-display font-semibold text-sm">Relance auto</h2>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm">Relance des inactifs</p>
-                  <p className="text-xs text-muted-foreground">Rappel après X jours d'inactivité</p>
+                  <p className="text-xs text-muted-foreground">Envoie une notification push aux clients qui ne sont pas venus depuis X jours</p>
                 </div>
                 <Switch checked={form.auto_reminder_enabled} onCheckedChange={(v) => update("auto_reminder_enabled", v)} />
               </div>
@@ -439,6 +400,7 @@ const CustomizePage = () => {
                 <div className="space-y-1.5">
                   <Label className="text-xs">Jours d'inactivité</Label>
                   <Input type="number" value={form.auto_reminder_days} onChange={(e) => update("auto_reminder_days", parseInt(e.target.value) || 7)} className="rounded-xl text-sm" />
+                  <p className="text-[11px] text-muted-foreground">Le client recevra une notification push s'il n'a pas scanné sa carte depuis {form.auto_reminder_days} jours</p>
                 </div>
               )}
               <div className="space-y-1.5">
