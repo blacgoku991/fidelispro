@@ -26,8 +26,13 @@ const BusinessPublicPage = () => {
   const [card, setCard] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [showInstallHint, setShowInstallHint] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
 
   const handleAddToWallet = (cardCode: string) => {
     setWalletLoading(true);
