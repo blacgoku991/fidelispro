@@ -226,7 +226,7 @@ export async function buildPkpass(
     },
   };
 
-  // Apple Wallet native geofencing with multi-point coverage
+  // Apple Wallet native geofencing with manual satellite points
   if (business.geofence_enabled && business.latitude && business.longitude) {
     const lat = parseFloat(String(business.latitude));
     const lng = parseFloat(String(business.longitude));
@@ -236,26 +236,15 @@ export async function buildPkpass(
     // Center point
     const locations: any[] = [{ latitude: lat, longitude: lng, relevantText }];
 
-    // Add satellite points if radius > 100m (iOS only detects ~100m per point)
-    if (radiusMeters > 100) {
-      // Place points at ~80m from each other to cover the radius
-      const stepMeters = 80;
-      const rings = Math.min(3, Math.ceil(radiusMeters / stepMeters));
-      const pointsPerRing = [4, 4]; // N/S/E/W for each ring
-      
-      for (let ring = 1; ring <= rings && locations.length < 10; ring++) {
-        const dist = stepMeters * ring;
-        const count = pointsPerRing[Math.min(ring - 1, pointsPerRing.length - 1)] || 4;
-        for (let i = 0; i < count && locations.length < 10; i++) {
-          const angle = (2 * Math.PI * i) / count;
-          const dLat = (dist * Math.cos(angle)) / 111320;
-          const dLng = (dist * Math.sin(angle)) / (111320 * Math.cos(lat * Math.PI / 180));
-          locations.push({
-            latitude: parseFloat((lat + dLat).toFixed(7)),
-            longitude: parseFloat((lng + dLng).toFixed(7)),
-            relevantText,
-          });
-        }
+    // Add manually placed satellite points from DB
+    const satellites = Array.isArray(business.geofence_satellite_points) ? business.geofence_satellite_points : [];
+    for (const pt of satellites) {
+      if (pt?.lat && pt?.lng && locations.length < 10) {
+        locations.push({
+          latitude: parseFloat(String(pt.lat)),
+          longitude: parseFloat(String(pt.lng)),
+          relevantText,
+        });
       }
     }
 

@@ -33,6 +33,7 @@ const SettingsPage = () => {
   const [geoTimeStart, setGeoTimeStart] = useState("09:00");
   const [geoTimeEnd, setGeoTimeEnd] = useState("20:00");
   const [savingGeo, setSavingGeo] = useState(false);
+  const [satellitePoints, setSatellitePoints] = useState<{ lat: number; lng: number }[]>([]);
 
   // Autocomplete
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -65,6 +66,7 @@ const SettingsPage = () => {
       setGeoMessage(business.geofence_message || "Passez nous voir, on vous attend ! 🎉");
       setGeoTimeStart(business.geofence_time_start || "09:00");
       setGeoTimeEnd(business.geofence_time_end || "20:00");
+      setSatellitePoints(Array.isArray((business as any).geofence_satellite_points) ? (business as any).geofence_satellite_points : []);
     }
   }, [business]);
 
@@ -142,7 +144,8 @@ const SettingsPage = () => {
       geofence_message: geoMessage,
       geofence_time_start: geoTimeStart,
       geofence_time_end: geoTimeEnd,
-    }).eq("id", business.id);
+      geofence_satellite_points: satellitePoints,
+    } as any).eq("id", business.id);
 
     if (error) toast.error("Erreur de sauvegarde");
     else toast.success("Paramètres de géolocalisation sauvegardés !");
@@ -257,10 +260,12 @@ const SettingsPage = () => {
                     latitude={latitude}
                     longitude={longitude}
                     radius={geoRadius}
+                    satellitePoints={satellitePoints}
                     onPositionChange={(lat, lng) => {
                       setLatitude(lat);
                       setLongitude(lng);
                     }}
+                    onSatellitePointsChange={setSatellitePoints}
                   />
                 </div>
               )}
