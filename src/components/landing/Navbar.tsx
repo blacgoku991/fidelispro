@@ -11,7 +11,7 @@ import {
 
 export function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+    <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50 safe-area-top">
       <div className="container flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
