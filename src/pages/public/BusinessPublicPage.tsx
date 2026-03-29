@@ -30,26 +30,8 @@ const BusinessPublicPage = () => {
     setWalletLoading(true);
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/generate-pass`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ card_code: cardCode }),
-        }
-      );
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Erreur");
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${cardCode}.pkpass`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Carte ajoutée au Wallet !");
+      const walletUrl = `https://${projectId}.supabase.co/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
+      window.location.assign(walletUrl);
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Impossible de générer la carte Wallet");
