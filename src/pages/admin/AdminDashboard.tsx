@@ -226,9 +226,10 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Activity chart */}
-        <div className="mt-8">
-          <AnalyticsChart businessId={null} />
+        {/* Activity info */}
+        <div className="mt-8 rounded-2xl bg-card border border-border/40 p-6 shadow-sm">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Activité cette semaine</p>
+          <p className="text-3xl font-display font-bold">{stats.scansWeek} scans</p>
         </div>
       </main>
     </div>
