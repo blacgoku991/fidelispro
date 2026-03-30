@@ -937,54 +937,6 @@ export type Database = {
         }
         Relationships: []
       }
-      web_push_subscriptions: {
-        Row: {
-          auth: string
-          business_id: string
-          card_id: string | null
-          created_at: string | null
-          endpoint: string
-          id: string
-          p256dh: string
-          user_agent: string | null
-        }
-        Insert: {
-          auth: string
-          business_id: string
-          card_id?: string | null
-          created_at?: string | null
-          endpoint: string
-          id?: string
-          p256dh: string
-          user_agent?: string | null
-        }
-        Update: {
-          auth?: string
-          business_id?: string
-          card_id?: string | null
-          created_at?: string | null
-          endpoint?: string
-          id?: string
-          p256dh?: string
-          user_agent?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "web_push_subscriptions_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "web_push_subscriptions_card_id_fkey"
-            columns: ["card_id"]
-            isOneToOne: false
-            referencedRelation: "customer_cards"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
