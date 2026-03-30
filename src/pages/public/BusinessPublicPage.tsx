@@ -6,10 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, Wallet, AlertCircle, RefreshCw, Bell, Download, Share, X } from "lucide-react";
+import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, AlertCircle, RefreshCw, Download, Share, X } from "lucide-react";
 import { toast } from "sonner";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
-import { useWebPush, VAPID_PUBLIC_KEY } from "@/hooks/useWebPush";
 
 type Step = "landing" | "register" | "card";
 
@@ -65,9 +64,6 @@ const BusinessPublicPage = () => {
       setGoogleWalletLoading(false);
     }
   };
-
-  // Web Push hook - initialized after we have business+card
-  const webPush = useWebPush(business?.id || "", card?.id);
 
   const fetchBusiness = async () => {
     setLoading(true);
@@ -448,80 +444,6 @@ const BusinessPublicPage = () => {
                   </div>
                 </div>
               </button>
-            )}
-
-            {/* Web Push notifications */}
-            {(webPush.subscribed || webPush.permission === 'granted') && (
-              <div className="flex items-center justify-center gap-2 text-xs text-primary font-medium">
-                <Bell className="w-3.5 h-3.5" />
-                ✓ Notifications activées — vous recevrez les offres automatiquement
-              </div>
-            )}
-
-            {webPush.isSupported && webPush.permission !== 'granted' && !webPush.subscribed && (
-              <Button
-                onClick={async () => {
-                  await webPush.subscribe();
-                  if (webPush.subscribed) toast.success("Notifications activées ! 🔔");
-                }}
-                disabled={webPush.loading}
-                variant="outline"
-                className="w-full rounded-xl gap-2 h-12"
-              >
-                <Bell className="w-4 h-4" />
-                {webPush.loading ? "Activation..." : "🔔 Recevoir les offres & promotions"}
-              </Button>
-            )}
-
-            {/* Debug notifications panel */}
-            <div className="p-4 rounded-2xl bg-muted border border-border text-left space-y-2">
-              <p className="font-semibold text-sm text-foreground">🔧 Debug notifications</p>
-              <p className="text-xs text-muted-foreground">SW support: {'serviceWorker' in navigator ? '✅' : '❌'}</p>
-              <p className="text-xs text-muted-foreground">Push support: {'PushManager' in window ? '✅' : '❌'}</p>
-              <p className="text-xs text-muted-foreground">Notif support: {'Notification' in window ? '✅' : '❌'}</p>
-              <p className="text-xs text-muted-foreground">Permission: {typeof Notification !== 'undefined' ? Notification.permission : 'N/A'}</p>
-              <p className="text-xs text-muted-foreground">VAPID key: {VAPID_PUBLIC_KEY ? VAPID_PUBLIC_KEY.slice(0, 15) + '...' : 'MISSING ❌'}</p>
-              <p className="text-xs text-muted-foreground">Subscribed: {webPush.subscribed ? '✅' : '❌'}</p>
-              <Button
-                onClick={async () => {
-                  console.log('[WebPush Debug] Manual test triggered');
-                  await webPush.subscribe();
-                }}
-                disabled={webPush.loading}
-                variant="outline"
-                size="sm"
-                className="w-full mt-2 gap-2"
-              >
-                <Bell className="w-3.5 h-3.5" />
-                {webPush.loading ? "En cours..." : "Tester l'activation des notifications"}
-              </Button>
-            </div>
-
-            {!webPush.isSupported && !webPush.isPWA && isAppleDevice && (
-              <div className="p-4 rounded-2xl bg-card border border-border/50 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-primary" />
-                  <p className="font-semibold text-sm">📲 Installez l'app pour les notifications</p>
-                </div>
-                <div className="flex items-start gap-3 text-xs text-muted-foreground">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Download className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">1) Appuyez sur Partager dans Safari</p>
-                    <p className="mt-0.5">Icône <Share className="w-3 h-3 inline text-primary" /> en bas de l'écran</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 text-xs text-muted-foreground">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Bell className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">2) Choisissez « Sur l'écran d'accueil »</p>
-                    <p className="mt-0.5">Puis ouvrez l'app et cliquez « Recevoir les offres »</p>
-                  </div>
-                </div>
-              </div>
             )}
 
             <p className="text-xs text-muted-foreground">
