@@ -11,6 +11,14 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
+function showDebugOverlay(msg: string, isError = true) {
+  const div = document.createElement('div');
+  div.style.cssText = `position:fixed;bottom:0;left:0;right:0;background:${isError ? 'red' : 'green'};color:white;padding:16px;font-size:12px;z-index:9999;word-break:break-all;max-height:30vh;overflow:auto;`;
+  div.textContent = msg;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 15000);
+}
+
 export { VAPID_PUBLIC_KEY };
 
 export function useWebPush(businessId: string, cardId?: string) {
@@ -37,13 +45,23 @@ export function useWebPush(businessId: string, cardId?: string) {
   }, []);
 
   const subscribe = async () => {
-    if (!isSupported || !VAPID_PUBLIC_KEY) {
-      console.error('[WebPush] Not supported or VAPID key missing');
+    if (!isSupported) {
+      showDebugOverlay('WebPush not supported on this browser/device');
       return;
     }
+    if (!VAPID_PUBLIC_KEY) {
+      showDebugOverlay('VAPID_PUBLIC_KEY is missing!');
+      return;
+    }
+    if (!businessId) {
+      showDebugOverlay('businessId is empty! Cannot save subscription.');
+      return;
+    }
+
     setLoading(true);
     try {
       console.log('[WebPush] Starting subscription...');
+      console.log('[WebPush] businessId:', businessId);
       console.log('[WebPush] VAPID key:', VAPID_PUBLIC_KEY.slice(0, 20) + '...');
 
       const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
@@ -56,9 +74,16 @@ export function useWebPush(businessId: string, cardId?: string) {
       setPermission(perm);
       console.log('[WebPush] Permission:', perm);
       if (perm !== 'granted') {
-        console.warn('[WebPush] Permission denied, aborting');
+        showDebugOverlay('Permission denied: ' + perm);
         setLoading(false);
         return;
+      }
+
+      // Unsubscribe existing subscription first (in case VAPID key changed)
+      const existingSub = await ready.pushManager.getSubscription();
+      if (existingSub) {
+        console.log('[WebPush] Unsubscribing old subscription...');
+        await existingSub.unsubscribe();
       }
 
       const sub = await ready.pushManager.subscribe({
@@ -71,7 +96,7 @@ export function useWebPush(businessId: string, cardId?: string) {
       console.log('[WebPush] Saving to DB...', {
         business_id: businessId,
         card_id: cardId || null,
-        endpoint: subJson.endpoint?.slice(0, 50),
+        endpoint_prefix: subJson.endpoint?.slice(0, 50),
         has_p256dh: !!subJson.keys?.p256dh,
         has_auth: !!subJson.keys?.auth,
       });
@@ -88,16 +113,20 @@ export function useWebPush(businessId: string, cardId?: string) {
         }, { onConflict: 'endpoint' })
         .select();
 
+      console.log('[WebPush] DB insert data:', data);
+      console.log('[WebPush] DB insert error:', JSON.stringify(error));
+
       if (error) {
-        console.error('[WebPush] DB error:', error);
+        showDebugOverlay('DB ERROR: ' + JSON.stringify(error));
         throw error;
       }
 
-      console.log('[WebPush] Saved to DB:', data);
+      showDebugOverlay('✅ Saved! ID: ' + (data?.[0]?.id || 'unknown') + ' | business: ' + businessId, false);
       setSubscribed(true);
       console.log('[WebPush] Done! ✅');
-    } catch (err) {
+    } catch (err: any) {
       console.error('[WebPush] FAILED:', err);
+      showDebugOverlay('FAILED: ' + (err?.message || String(err)));
     } finally {
       setLoading(false);
     }
