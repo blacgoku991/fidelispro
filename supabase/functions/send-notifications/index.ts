@@ -225,7 +225,7 @@ async function sendPush(
     const data = new TextEncoder().encode(payloadStr);
 
     const { body } = await encryptPayload(clientPub, authSecret, data);
-    const jwt = await createVapidJwt(sub.endpoint, vapidSubject, vapidPriv);
+    const jwt = await createVapidJwt(sub.endpoint, vapidSubject, vapidPriv, vapidPub);
 
     const res = await fetch(sub.endpoint, {
       method: "POST",
