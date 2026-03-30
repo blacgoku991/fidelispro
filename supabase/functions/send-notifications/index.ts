@@ -107,12 +107,70 @@ async function encryptPayload(
   return { body: concat(header, ciphertext), serverPubBytes, salt };
 }
 
-// ── VAPID JWT (ES256 with PKCS8) ────────────────────────────────────
+// ── VAPID JWT (ES256; supports PKCS8 or raw 32-byte private key) ─────
+
+function pemToBytes(pem: string): Uint8Array {
+  const b64 = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "");
+  const raw = atob(b64);
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+async function importVapidPrivateKey(priv: string, vapidPub: string): Promise<CryptoKey> {
+  const v = (priv || "").trim();
+
+  // 1) PEM PKCS#8
+  if (v.includes("BEGIN PRIVATE KEY")) {
+    const bytes = pemToBytes(v);
+    return crypto.subtle.importKey(
+      "pkcs8",
+      bytes,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["sign"],
+    );
+  }
+
+  // 2) Base64/base64url input
+  const keyBytes = b64urlDecode(v);
+
+  // 2a) Raw 32-byte private key (web-push style)
+  if (keyBytes.length === 32) {
+    const pubBytes = b64urlDecode(vapidPub);
+    if (pubBytes.length !== 65 || pubBytes[0] !== 0x04) {
+      throw new Error("Invalid VAPID_PUBLIC_KEY format (expected uncompressed P-256 key)");
+    }
+
+    const x = b64urlEncode(pubBytes.slice(1, 33));
+    const y = b64urlEncode(pubBytes.slice(33, 65));
+    const d = b64urlEncode(keyBytes);
+
+    return crypto.subtle.importKey(
+      "jwk",
+      { kty: "EC", crv: "P-256", x, y, d, ext: true, key_ops: ["sign"] },
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["sign"],
+    );
+  }
+
+  // 2b) PKCS#8 bytes (base64/base64url encoded)
+  return crypto.subtle.importKey(
+    "pkcs8",
+    keyBytes,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"],
+  );
+}
 
 async function createVapidJwt(
   endpoint: string,
   vapidSubject: string,
-  privKeyB64: string,
+  privKey: string,
+  vapidPub: string,
 ): Promise<string> {
   const audience = new URL(endpoint).origin;
   const now = Math.floor(Date.now() / 1000);
@@ -124,14 +182,14 @@ async function createVapidJwt(
   const payload = encodeJson({ aud: audience, exp: now + 43200, sub: vapidSubject });
   const unsigned = `${header}.${payload}`;
 
-  const privKeyBytes = b64urlDecode(privKeyB64);
-  const key = await crypto.subtle.importKey(
-    "pkcs8", privKeyBytes,
-    { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"],
-  );
+  const key = await importVapidPrivateKey(privKey, vapidPub);
 
   const sigBuf = new Uint8Array(
-    await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(unsigned)),
+    await crypto.subtle.sign(
+      { name: "ECDSA", hash: "SHA-256" },
+      key,
+      new TextEncoder().encode(unsigned),
+    ),
   );
 
   // Deno uses raw r||s (64 bytes) but handle DER just in case
@@ -167,7 +225,7 @@ async function sendPush(
     const data = new TextEncoder().encode(payloadStr);
 
     const { body } = await encryptPayload(clientPub, authSecret, data);
-    const jwt = await createVapidJwt(sub.endpoint, vapidSubject, vapidPriv);
+    const jwt = await createVapidJwt(sub.endpoint, vapidSubject, vapidPriv, vapidPub);
 
     const res = await fetch(sub.endpoint, {
       method: "POST",
