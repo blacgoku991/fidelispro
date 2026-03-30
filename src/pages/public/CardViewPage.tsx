@@ -3,10 +3,9 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Star, Crown, Trophy, Wallet, Bell, BellOff, Share, Download, X } from "lucide-react";
+import { Flame, Star, Crown, Trophy, Share, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useWebPush } from "@/hooks/useWebPush";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
 const badgeIcons: Record<string, string> = {
@@ -92,8 +91,6 @@ const CardViewPage = () => {
     };
     fetch();
   }, [cardCode]);
-
-  const webPush = useWebPush(business?.id || "", card?.id);
 
   // Show install banner if not already installed as PWA
   useEffect(() => {
@@ -238,28 +235,6 @@ const CardViewPage = () => {
               </div>
             </div>
           </button>
-        )}
-
-        {/* Push notification subscribe button */}
-        {(webPush.subscribed || webPush.permission === 'granted') && (
-          <div className="flex items-center justify-center gap-2 text-xs text-primary">
-            <Bell className="w-3.5 h-3.5" />
-            ✓ Notifications activées
-          </div>
-        )}
-        {webPush.isSupported && webPush.permission !== 'granted' && !webPush.subscribed && (
-          <Button
-            onClick={async () => {
-              await webPush.subscribe();
-              if (webPush.subscribed) toast.success("Notifications activées ! 🔔");
-            }}
-            disabled={webPush.loading}
-            variant="outline"
-            className="w-full rounded-xl gap-2 h-12"
-          >
-            <Bell className="w-4 h-4" />
-            {webPush.loading ? "Activation..." : "🔔 Activer les notifications"}
-          </Button>
         )}
 
         <p className="text-center text-xs text-muted-foreground">
