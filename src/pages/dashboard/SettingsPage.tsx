@@ -389,6 +389,60 @@ const SettingsPage = () => {
           )}
         </div>
 
+        {/* Widget intégrable */}
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+          <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+            <QrCode className="w-4 h-4 text-primary" /> Widget pour votre site web
+          </h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Intégrez ce code sur votre site web pour afficher un bandeau d'invitation à rejoindre votre programme de fidélité.
+          </p>
+
+          {/* Banner preview */}
+          <div className="rounded-xl border border-border/30 bg-secondary/30 p-4 space-y-2">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Aperçu du widget</p>
+            <div
+              className="flex items-center gap-3 p-3.5 rounded-2xl text-white shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${(business as any)?.accent_color || "#F59E0B"}f0, ${(business as any)?.accent_color || "#F59E0B"}cc)` }}
+            >
+              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Gift className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-xs leading-tight">Rejoignez notre programme de fidélité 🎁</p>
+                <p className="text-[10px] text-white/80 mt-0.5 truncate">{business?.name || "Votre commerce"} — Cumulez des points à chaque visite</p>
+              </div>
+              <span className="text-xs font-bold bg-white/95 px-3 py-1.5 rounded-lg shrink-0" style={{ color: (business as any)?.accent_color || "#F59E0B" }}>
+                Rejoindre →
+              </span>
+            </div>
+          </div>
+
+          {/* Snippet */}
+          {business && (
+            <div className="space-y-2">
+              <Label className="text-xs">Code à copier sur votre site</Label>
+              <div className="relative">
+                <pre className="rounded-xl bg-secondary text-xs p-3.5 overflow-x-auto text-muted-foreground border border-border/30 pr-12 leading-relaxed">
+{`<script src="${window.location.origin}/widget.js?id=${business.id}"></script>`}
+                </pre>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="absolute top-2 right-2 h-7 w-7 rounded-lg"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`<script src="${window.location.origin}/widget.js?id=${business.id}"></script>`);
+                    toast.success("Code copié !");
+                  }}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Collez ce code juste avant la balise <code className="bg-secondary px-1 rounded">&lt;/body&gt;</code> de votre site.</p>
+            </div>
+          )}
+        </div>
+
         {/* Géolocalisation / Proximité */}
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
           <div className="flex items-center justify-between">
