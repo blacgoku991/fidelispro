@@ -198,14 +198,34 @@ const Dashboard = () => {
     } catch { /* non-blocking */ }
 
     const newStreak = (customer.current_streak || 0) + 1;
+    const newTotalPoints = (customer.total_points || 0) + pointsToAdd;
+    const prevLevel = customer.level || "bronze";
+    const newLevel: "bronze" | "silver" | "gold" =
+      newTotalPoints >= 25 ? "gold" : newTotalPoints >= 10 ? "silver" : "bronze";
+    const levelChanged = newLevel !== prevLevel && (newLevel === "silver" || newLevel === "gold");
+
     await supabase.from("customers").update({
-      total_points: (customer.total_points || 0) + pointsToAdd,
+      total_points: newTotalPoints,
       total_visits: (customer.total_visits || 0) + 1,
       current_streak: newStreak,
       longest_streak: Math.max(newStreak, customer.longest_streak || 0),
       last_visit_at: new Date().toISOString(),
-      level: (customer.total_points || 0) + pointsToAdd >= 50 ? "gold" : (customer.total_points || 0) + pointsToAdd >= 20 ? "silver" : "bronze",
+      level: newLevel,
     }).eq("id", customer.id);
+
+    // Send level-up Apple Wallet notification
+    if (levelChanged) {
+      const levelLabel = newLevel === "gold" ? "Gold ⭐" : "Silver 🥈";
+      const levelMsg = `Félicitations, vous passez au niveau ${levelLabel} chez ${business.name} !`;
+      try {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ business_id: business.id, customer_id: customer.id, action_type: "level_up", change_message: levelMsg }),
+        });
+      } catch { /* non-blocking */ }
+    }
 
     await supabase.from("points_history").insert({
       customer_id: customer.id, business_id: business.id, card_id: card.id,
