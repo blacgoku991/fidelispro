@@ -7,6 +7,9 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { QrCameraScanner } from "@/components/dashboard/QrCameraScanner";
 import { ScanResultPopup } from "@/components/dashboard/ScanResultPopup";
 import { AnalyticsChart } from "@/components/dashboard/AnalyticsChart";
+import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton";
+import { RecentActivityWidget } from "@/components/dashboard/RecentActivityWidget";
+import { ProgramHealthScore } from "@/components/dashboard/ProgramHealthScore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -251,27 +254,43 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-6 rounded-2xl bg-gradient-to-r from-primary/5 to-accent/5 border border-primary/15 p-5 space-y-4"
         >
-          <div>
-            <h2 className="font-display font-bold text-base">Bienvenue ! Configurez votre programme en 4 étapes</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">{onboardingSteps.filter(s => s.done).length}/4 terminé</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-display font-bold text-base">Configurez votre programme en 4 étapes</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{onboardingSteps.filter(s => s.done).length} sur 4 étapes complétées</p>
+            </div>
+            <span className="text-sm font-bold text-primary shrink-0">{Math.round((onboardingSteps.filter(s => s.done).length / 4) * 100)}%</span>
+          </div>
+          {/* Progress bar */}
+          <div className="w-full h-1.5 bg-border/50 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-primary rounded-full transition-all duration-500"
+              style={{ width: `${(onboardingSteps.filter(s => s.done).length / 4) * 100}%` }}
+            />
           </div>
           <div className="grid sm:grid-cols-2 gap-2">
-            {onboardingSteps.map((step, i) => (
-              <Link
-                key={i}
-                to={step.path}
-                className={`flex items-center gap-3 p-3 rounded-xl transition-all ${step.done ? "bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30" : "bg-card border border-border/50 hover:border-primary/30"}`}
-              >
-                {step.done ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                ) : (
-                  <Circle className="w-5 h-5 text-muted-foreground/40 shrink-0" />
-                )}
-                <span className={`text-sm ${step.done ? "line-through text-muted-foreground" : "font-medium"}`}>
-                  {step.label}
-                </span>
-              </Link>
-            ))}
+            {onboardingSteps.map((step, i) => {
+              const StepIcon = step.icon;
+              return (
+                <Link
+                  key={i}
+                  to={step.path}
+                  className={`flex items-center gap-3 p-3 rounded-xl transition-all group ${step.done ? "bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30" : "bg-card border border-border/50 hover:border-primary/30 hover:shadow-sm"}`}
+                >
+                  {step.done ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center shrink-0">
+                      <span className="text-[9px] font-bold text-muted-foreground">{i + 1}</span>
+                    </div>
+                  )}
+                  <StepIcon className={`w-4 h-4 shrink-0 ${step.done ? "text-emerald-500" : "text-muted-foreground group-hover:text-primary transition-colors"}`} />
+                  <span className={`text-sm flex-1 ${step.done ? "line-through text-muted-foreground" : "font-medium group-hover:text-primary transition-colors"}`}>
+                    {step.label}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </motion.div>
       )}
@@ -638,6 +657,17 @@ const Dashboard = () => {
                   <AnalyticsChart businessId={business.id} type="customers" />
                 </div>
               </div>
+              {/* Widgets: activité récente + score de santé */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                <RecentActivityWidget businessId={business.id} />
+                <ProgramHealthScore
+                  totalClients={stats.clients}
+                  returnRate={stats.returnRate}
+                  rewardsGiven={stats.rewardsGiven}
+                  hasCustomized={onboarding.hasCustomized}
+                  hasCampaign={onboarding.hasCampaign}
+                />
+              </div>
             </div>
           )}
         </TabsContent>
@@ -654,13 +684,10 @@ const Dashboard = () => {
         onClose={() => { setPopup((p) => ({ ...p, open: false })); setScannerPaused(false); }}
       />
 
-      {/* Floating scanner button */}
-      <Link
-        to="/dashboard"
-        className="fixed bottom-6 right-6 z-50 lg:hidden flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 transition-opacity font-semibold text-sm"
-      >
-        <Camera className="w-5 h-5" /> Scanner
-      </Link>
+      {/* Floating action button */}
+      <FloatingActionButton onAddClient={() => {
+        // Trigger add client dialog via URL param or simple approach
+      }} />
     </DashboardLayout>
   );
 };
