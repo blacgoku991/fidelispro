@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Star, Crown, Flame, Trash2, Copy, Mail, Phone, Calendar, Award, Download, Send, Filter } from "lucide-react";
+import { Plus, Search, Star, Crown, Flame, Trash2, Copy, Mail, Phone, Calendar, Award, Download, Send, Filter, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -33,7 +34,25 @@ const levelColors: Record<string, string> = {
   gold: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
 };
 
+const avatarColors = [
+  "from-violet-500 to-purple-600",
+  "from-blue-500 to-cyan-600",
+  "from-emerald-500 to-teal-600",
+  "from-amber-500 to-orange-600",
+  "from-pink-500 to-rose-600",
+  "from-indigo-500 to-blue-600",
+];
+
+function getAvatarColor(name: string) {
+  const code = (name || "?").charCodeAt(0);
+  return avatarColors[code % avatarColors.length];
+}
+
 type LevelFilter = "all" | "bronze" | "silver" | "gold";
+type SortKey = "full_name" | "level" | "total_points" | "total_visits" | "last_visit_at";
+type SortDir = "asc" | "desc";
+
+const levelOrder: Record<string, number> = { bronze: 0, silver: 1, gold: 2 };
 
 const ClientsPage = () => {
   const { user, business } = useAuth();
@@ -48,6 +67,8 @@ const ClientsPage = () => {
   const [selected, setSelected] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [clientHistory, setClientHistory] = useState<Record<string, any[]>>({});
+  const [sortKey, setSortKey] = useState<SortKey>("full_name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const fetchCustomers = async () => {
     if (!business) return;
@@ -131,6 +152,35 @@ const ClientsPage = () => {
     return matchSearch && matchLevel;
   });
 
+  const sorted = [...filtered].sort((a, b) => {
+    let valA: any, valB: any;
+    if (sortKey === "level") {
+      valA = levelOrder[a.level || "bronze"] ?? 0;
+      valB = levelOrder[b.level || "bronze"] ?? 0;
+    } else if (sortKey === "last_visit_at") {
+      valA = a.last_visit_at ? new Date(a.last_visit_at).getTime() : 0;
+      valB = b.last_visit_at ? new Date(b.last_visit_at).getTime() : 0;
+    } else {
+      valA = a[sortKey] ?? "";
+      valB = b[sortKey] ?? "";
+    }
+    if (valA < valB) return sortDir === "asc" ? -1 : 1;
+    if (valA > valB) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  };
+
+  function SortIcon({ col }: { col: SortKey }) {
+    if (sortKey !== col) return <ChevronsUpDown className="w-3 h-3 ml-1 opacity-40" />;
+    return sortDir === "asc"
+      ? <ArrowUp className="w-3 h-3 ml-1 text-primary" />
+      : <ArrowDown className="w-3 h-3 ml-1 text-primary" />;
+  }
+
   return (
     <DashboardLayout
       title="Clients"
@@ -160,19 +210,23 @@ const ClientsPage = () => {
       }
     >
       {/* Search + Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un client..." className="pl-10 rounded-xl" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un client..." className="pl-10 rounded-xl h-10" />
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
           {(["all", "bronze", "silver", "gold"] as LevelFilter[]).map(level => (
             <button
               key={level}
               onClick={() => setLevelFilter(level)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${levelFilter === level ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground hover:bg-muted"}`}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap border ${
+                levelFilter === level
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-background text-muted-foreground border-border/60 hover:border-primary/30 hover:text-foreground"
+              }`}
             >
-              {level === "all" ? "Tous" : level === "bronze" ? "🥉 Bronze" : level === "silver" ? "🥈 Silver" : "⭐ Gold"}
+              {level === "all" ? "Tous" : level === "bronze" ? "🥉 Bronze" : level === "silver" ? "🥈 Argent" : "⭐ Or"}
             </button>
           ))}
         </div>
@@ -200,21 +254,45 @@ const ClientsPage = () => {
                   onCheckedChange={toggleSelectAll}
                 />
               </TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead>Niveau</TableHead>
-              <TableHead>Points</TableHead>
-              <TableHead>Visites</TableHead>
+              <TableHead>
+                <button className="flex items-center text-xs font-semibold hover:text-primary transition-colors" onClick={() => handleSort("full_name")}>
+                  Client <SortIcon col="full_name" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button className="flex items-center text-xs font-semibold hover:text-primary transition-colors" onClick={() => handleSort("level")}>
+                  Niveau <SortIcon col="level" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button className="flex items-center text-xs font-semibold hover:text-primary transition-colors" onClick={() => handleSort("total_points")}>
+                  Points <SortIcon col="total_points" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button className="flex items-center text-xs font-semibold hover:text-primary transition-colors" onClick={() => handleSort("total_visits")}>
+                  Visites <SortIcon col="total_visits" />
+                </button>
+              </TableHead>
               {hasStreakData && <TableHead className="hidden sm:table-cell">Streak</TableHead>}
-              <TableHead className="hidden sm:table-cell">Dernière visite</TableHead>
+              <TableHead className="hidden sm:table-cell">
+                <button className="flex items-center text-xs font-semibold hover:text-primary transition-colors" onClick={() => handleSort("last_visit_at")}>
+                  Dernière visite <SortIcon col="last_visit_at" />
+                </button>
+              </TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((customer, i) => {
+            {sorted.map((customer, i) => {
               const LevelIcon = levelIcons[customer.level as keyof typeof levelIcons] || Star;
+              const card = customer.customer_cards?.[0];
+              const currentPts = card?.current_points || 0;
+              const maxPts = card?.max_points || 10;
               return (
+                <Tooltip key={customer.id} delayDuration={400}>
+                <TooltipTrigger asChild>
                 <motion.tr
-                  key={customer.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
@@ -228,8 +306,15 @@ const ClientsPage = () => {
                     />
                   </TableCell>
                   <TableCell>
-                    <p className="font-medium text-sm">{customer.full_name || "Sans nom"}</p>
-                    <p className="text-xs text-muted-foreground">{customer.email || customer.phone || "—"}</p>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getAvatarColor(customer.full_name)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                        {(customer.full_name || "?")[0].toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{customer.full_name || "Sans nom"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{customer.email || customer.phone || "—"}</p>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge className={`gap-1 text-[11px] ${levelColors[customer.level] || ""}`}>
@@ -271,9 +356,17 @@ const ClientsPage = () => {
                     </AlertDialog>
                   </TableCell>
                 </motion.tr>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="p-3 space-y-1.5 max-w-[200px]">
+                  <p className="font-bold text-sm">{customer.full_name}</p>
+                  <p className="text-xs text-muted-foreground">Points actuels : <span className="font-semibold text-foreground">{currentPts}/{maxPts}</span></p>
+                  <p className="text-xs text-muted-foreground">Visites : <span className="font-semibold text-foreground">{customer.total_visits || 0}</span></p>
+                  <p className="text-xs text-muted-foreground">Dernière visite : <span className="font-semibold text-foreground">{customer.last_visit_at ? new Date(customer.last_visit_at).toLocaleDateString("fr-FR") : "Jamais"}</span></p>
+                </TooltipContent>
+                </Tooltip>
               );
             })}
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow><TableCell colSpan={hasStreakData ? 8 : 7} className="text-center py-12 text-muted-foreground">Aucun client trouvé</TableCell></TableRow>
             )}
           </TableBody>
@@ -290,7 +383,15 @@ const ClientsPage = () => {
             return (
               <>
                 <SheetHeader>
-                  <SheetTitle className="text-lg">{selected.full_name || "Client"}</SheetTitle>
+                  <div className="flex items-center gap-4 pb-2">
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getAvatarColor(selected.full_name)} flex items-center justify-center text-white text-xl font-bold shrink-0`}>
+                      {(selected.full_name || "?")[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <SheetTitle className="text-lg">{selected.full_name || "Client"}</SheetTitle>
+                      <p className="text-sm text-muted-foreground capitalize">{selected.level || "bronze"}</p>
+                    </div>
+                  </div>
                 </SheetHeader>
                 <div className="mt-6 space-y-5">
                   <div className="space-y-3">
