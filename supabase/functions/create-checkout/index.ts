@@ -38,7 +38,7 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { plan, ui_mode } = await req.json();
+    const { plan } = await req.json();
 
     // Lire le Price ID depuis site_settings en priorité
     const { data: settingRow } = await supabaseAdmin
@@ -64,38 +64,14 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const origin = req.headers.get("origin") || "https://fidelispro.vercel.app";
-
-    // Embedded mode: return client_secret instead of URL
-    if (ui_mode === "embedded") {
-      const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        customer_email: customerId ? undefined : user.email,
-        line_items: [{ price: priceId, quantity: 1 }],
-        mode: "subscription",
-        ui_mode: "embedded",
-        return_url: `${origin}/setup?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-        payment_method_types: ["card"],
-        subscription_data: {
-          metadata: { user_id: user.id, plan },
-        },
-        metadata: { user_id: user.id, plan },
-      });
-
-      return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-
-    // Default: hosted mode (redirect)
+    // Hosted mode (redirect vers Stripe)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${origin}/dashboard/settings?checkout=success`,
-      cancel_url: `${origin}/dashboard/settings?checkout=canceled`,
+      success_url: "https://fidelispro.vercel.app/setup?checkout=success",
+      cancel_url: "https://fidelispro.vercel.app/payment",
       payment_method_types: ["card"],
       subscription_data: {
         metadata: { user_id: user.id, plan },
