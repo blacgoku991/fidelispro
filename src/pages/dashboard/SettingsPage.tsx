@@ -255,7 +255,10 @@ const SettingsPage = () => {
     else toast.success("URL de vitrine sauvegardée !");
   };
 
-  const vitrineUrl = slug ? `${window.location.origin}/vitrine/${slug}` : "";
+  // Use slug if set, otherwise fall back to business ID (always works without migration)
+  const vitrineUrl = business
+    ? `${window.location.origin}/vitrine/${slug || business.id}`
+    : "";
 
   const radiusLabel = geoRadius >= 1000 ? `${(geoRadius / 1000).toFixed(1)} km` : `${geoRadius} m`;
 

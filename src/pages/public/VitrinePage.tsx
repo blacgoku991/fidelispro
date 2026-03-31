@@ -60,13 +60,31 @@ const VitrinePage = () => {
     const load = async () => {
       if (!slug) return;
       setLoading(true);
-      const { data: biz, error } = await supabase
+
+      // 1. Try fetching by slug (requires migration applied)
+      let biz: any = null;
+      const { data: bySlug, error: slugError } = await supabase
         .from("businesses")
         .select("*")
         .eq("slug", slug)
         .maybeSingle();
 
-      if (error || !biz) {
+      if (!slugError && bySlug) {
+        biz = bySlug;
+      } else {
+        // 2. Fallback: try fetching by business ID (UUID format)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(slug)) {
+          const { data: byId } = await supabase
+            .from("businesses")
+            .select("*")
+            .eq("id", slug)
+            .maybeSingle();
+          if (byId) biz = byId;
+        }
+      }
+
+      if (!biz) {
         setNotFound(true);
         setLoading(false);
         return;
