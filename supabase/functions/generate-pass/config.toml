@@ -1,0 +1,2 @@
+[functions.generate-pass]
+verify_jwt = false
