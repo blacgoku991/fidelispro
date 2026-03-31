@@ -28,6 +28,7 @@ import AdminEmailDigest from "./pages/admin/AdminEmailDigest";
 import Onboarding from "./pages/Onboarding";
 import OnboardingBusiness from "./pages/OnboardingBusiness";
 import SetupWizard from "./pages/SetupWizard";
+import Tarifs from "./pages/Tarifs";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
 import VitrinePage from "./pages/public/VitrinePage";
@@ -78,6 +79,7 @@ const App = () => (
             <Route path="/b/:businessId" element={<BusinessPublicPage />} />
             <Route path="/vitrine/:slug" element={<VitrinePage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />
+            <Route path="/tarifs" element={<Tarifs />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
