@@ -45,7 +45,7 @@ serve(async (req) => {
     const { stripe_public_key, stripe_secret_key, stripe_webhook_secret } = await req.json();
 
     const projectRef = Deno.env.get("SUPABASE_PROJECT_REF") || "piuaelsbocjtpdwzykfe";
-    const accessToken = Deno.env.get("SUPABASE_ACCESS_TOKEN");
+    const accessToken = Deno.env.get("MGMT_ACCESS_TOKEN");
     if (!accessToken) throw new Error("SUPABASE_ACCESS_TOKEN non configuré dans les secrets");
 
     const results: Record<string, string> = {};
