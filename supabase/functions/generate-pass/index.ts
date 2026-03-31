@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import forge from "npm:node-forge@1.3.1";
 import JSZip from "npm:jszip@3.10.1";
 
-const PASS_TYPE_ID = "pass.app.fidelispro";
+const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.fidelispro";
 
 const ICON_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAAgklEQVR4nGPkF9f6z0BnwERvCwfMUhZcEh9eXL1LqeECEtrK2MSx+pQaFuIzhxE9ISErxOVSUi1EN4eJWIWkAmT96D7GGryUWkjInJGTZUYtHbV01NJRS0ctHSSW0rrlgGIpvoqXEgvR61WM5go1LEQG2CryAWk5YPUprcHgSb20BgDttTV1QCPBRwAAAABJRU5ErkJggg==";
@@ -27,6 +27,22 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // ── Startup secret validation ──────────────────────────────────────────────
+  const REQUIRED_SECRETS = ["APPLE_TEAM_ID", "APPLE_PASS_TYPE_ID", "APPLE_P12_BASE64", "APPLE_P12_PASSWORD"];
+  const missingSecrets = REQUIRED_SECRETS.filter((s) => !Deno.env.get(s));
+  if (missingSecrets.length > 0) {
+    console.error("[generate-pass] ❌ MISSING SECRETS:", missingSecrets.join(", "));
+    return new Response(JSON.stringify({
+      error: "Apple Wallet secrets not configured",
+      missing: missingSecrets,
+      hint: "Configure these secrets in the Admin panel under Apple Wallet > Configuration",
+    }), {
+      status: 503,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  console.log("[generate-pass] ✓ Apple Wallet secrets present:", REQUIRED_SECRETS.join(", "));
 
   try {
     const cardCode = await extractCardCode(req);

@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   CreditCard, Info, Loader2, Eye, EyeOff, Save,
-  CheckCircle2, AlertTriangle, KeyRound, Zap,
+  CheckCircle2, AlertTriangle, KeyRound, Zap, Wallet,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { STRIPE_PLANS } from "@/lib/stripePlans";
 import { toast } from "sonner";
 
@@ -49,6 +50,43 @@ const AdminSettings = () => {
   const [showWh,     setShowWh]     = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [saveResult, setSaveResult] = useState<"ok" | "error" | null>(null);
+
+  // Apple Wallet secrets form
+  const [appleTeamId,     setAppleTeamId]     = useState("");
+  const [applePassTypeId, setApplePassTypeId] = useState("pass.app.fidelispro");
+  const [appleP12Base64,  setAppleP12Base64]  = useState("");
+  const [appleP12Password,setAppleP12Password]= useState("");
+  const [showAppleP12,    setShowAppleP12]    = useState(false);
+  const [savingApple,     setSavingApple]     = useState(false);
+  const [appleResult,     setAppleResult]     = useState<"ok" | "error" | null>(null);
+
+  const handleSaveAppleWallet = async () => {
+    if (!appleTeamId && !applePassTypeId && !appleP12Base64 && !appleP12Password) {
+      toast.error("Remplissez au moins un champ");
+      return;
+    }
+    setSavingApple(true);
+    setAppleResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("update-apple-wallet-secrets", {
+        body: {
+          apple_team_id: appleTeamId || undefined,
+          apple_pass_type_id: applePassTypeId || undefined,
+          apple_p12_base64: appleP12Base64 || undefined,
+          apple_p12_password: appleP12Password || undefined,
+        },
+      });
+      if (error || data?.error) throw new Error(error?.message || data?.error);
+      setAppleResult("ok");
+      toast.success("Secrets Apple Wallet mis à jour — fonctions redémarrées");
+      setAppleP12Base64("");
+      setAppleP12Password("");
+    } catch (err: any) {
+      setAppleResult("error");
+      toast.error(err.message || "Erreur lors de la mise à jour");
+    }
+    setSavingApple(false);
+  };
 
   const effectivePk = publicKey || cfg?.stripe_public_key || import.meta.env.VITE_STRIPE_PUBLIC_KEY || "";
   const mode = stripeMode(effectivePk);
@@ -220,6 +258,123 @@ const AdminSettings = () => {
               className="bg-gradient-primary text-primary-foreground rounded-xl gap-2 h-9"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Sauvegarder
+            </Button>
+          </div>
+        </div>
+
+        {/* ── Apple Wallet ─────────────────────────────────────────────── */}
+        <div className="rounded-2xl bg-card border border-border/40 p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display font-semibold flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-primary" /> Apple Wallet
+            </h3>
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">Secrets Supabase</Badge>
+          </div>
+
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 space-y-1">
+            <p className="font-medium">Certificats requis pour générer des passes Apple Wallet</p>
+            <p className="text-amber-600/80 dark:text-amber-500/80">
+              Obtenez votre certificat .p12 dans <strong>Apple Developer → Certificates → Pass Type IDs</strong>.
+              Convertissez-le en base64 : <code className="bg-amber-500/10 px-1 rounded">base64 -i cert.p12 | tr -d '\n'</code>
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {/* APPLE_TEAM_ID */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                APPLE_TEAM_ID
+              </Label>
+              <Input
+                value={appleTeamId}
+                onChange={(e) => setAppleTeamId(e.target.value)}
+                placeholder="Ex: 9642GYNCU9"
+                className="font-mono text-sm rounded-xl"
+              />
+              <p className="text-[11px] text-muted-foreground">10 caractères — visible dans votre compte Apple Developer</p>
+            </div>
+
+            {/* APPLE_PASS_TYPE_ID */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                APPLE_PASS_TYPE_ID
+              </Label>
+              <Input
+                value={applePassTypeId}
+                onChange={(e) => setApplePassTypeId(e.target.value)}
+                placeholder="pass.app.fidelispro"
+                className="font-mono text-sm rounded-xl"
+              />
+              <p className="text-[11px] text-muted-foreground">Identifiant créé dans Apple Developer → Pass Type IDs</p>
+            </div>
+
+            {/* APPLE_P12_BASE64 */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                APPLE_P12_BASE64 (certificat .p12 encodé base64)
+              </Label>
+              <Textarea
+                value={appleP12Base64}
+                onChange={(e) => setAppleP12Base64(e.target.value)}
+                placeholder="MIIKoAIBAzCCCloGCSqGSIb3DQEHA..."
+                rows={3}
+                className="font-mono text-xs rounded-xl resize-none"
+              />
+              <p className="text-[11px] text-muted-foreground">Non visible après envoi</p>
+            </div>
+
+            {/* APPLE_P12_PASSWORD */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                APPLE_P12_PASSWORD
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  type={showAppleP12 ? "text" : "password"}
+                  value={appleP12Password}
+                  onChange={(e) => setAppleP12Password(e.target.value)}
+                  placeholder="Mot de passe du certificat .p12"
+                  className="font-mono text-sm rounded-xl"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-xl shrink-0"
+                  onClick={() => setShowAppleP12((v) => !v)}
+                  type="button"
+                >
+                  {showAppleP12 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Non visible après envoi</p>
+            </div>
+          </div>
+
+          {appleResult === "ok" && (
+            <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-500/10 rounded-xl px-3 py-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              Secrets Apple Wallet mis à jour — fonctions generate-pass et wallet-push redémarrées
+            </div>
+          )}
+          {appleResult === "error" && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              Erreur lors de la mise à jour. Vérifiez que MGMT_ACCESS_TOKEN est configuré.
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-1">
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Zap className="w-3 h-3" />
+              generate-pass et wallet-push sont redémarrés automatiquement
+            </p>
+            <Button
+              onClick={handleSaveAppleWallet}
+              disabled={savingApple}
+              className="bg-gradient-primary text-primary-foreground rounded-xl gap-2 h-9"
+            >
+              {savingApple ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Sauvegarder
             </Button>
           </div>
