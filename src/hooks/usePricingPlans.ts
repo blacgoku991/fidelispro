@@ -17,7 +17,7 @@ function parseFeatures(json: string | undefined, fallback: readonly string[]): s
   try { return JSON.parse(json); } catch { return [...fallback]; }
 }
 
-export function usePricingPlans(): { starter: PricingPlan; pro: PricingPlan; enterprise: PricingPlan; isLoading: boolean } {
+export function usePricingPlans(): { starter: PricingPlan; pro: PricingPlan; isLoading: boolean } {
   const { data: s, isLoading } = useSiteSettings();
 
   const starter: PricingPlan = {
@@ -42,16 +42,5 @@ export function usePricingPlans(): { starter: PricingPlan; pro: PricingPlan; ent
     cta: "Démarrer maintenant",
   };
 
-  const enterprise: PricingPlan = {
-    key: "enterprise",
-    name: STRIPE_PLANS.enterprise.name,
-    price: STRIPE_PLANS.enterprise.price,
-    features: [...STRIPE_PLANS.enterprise.features],
-    price_id: STRIPE_PLANS.enterprise.price_id,
-    product_id: STRIPE_PLANS.enterprise.product_id,
-    popular: false,
-    cta: "Nous contacter",
-  };
-
-  return { starter, pro, enterprise, isLoading };
+  return { starter, pro, isLoading };
 }

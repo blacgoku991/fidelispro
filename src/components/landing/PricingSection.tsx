@@ -4,19 +4,16 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { usePricingPlans } from "@/hooks/usePricingPlans";
 
-const ENTERPRISE_DESCRIPTION = "Pour les chaînes et franchises";
 const PLAN_DESCRIPTIONS: Record<string, string> = {
   starter: "Pour les petits commerces qui débutent",
   pro: "Pour les commerces en croissance",
-  enterprise: ENTERPRISE_DESCRIPTION,
 };
 
 export function PricingSection() {
-  const { starter, pro, enterprise } = usePricingPlans();
+  const { starter, pro } = usePricingPlans();
   const plans = [
     { ...starter, description: PLAN_DESCRIPTIONS.starter },
     { ...pro,     description: PLAN_DESCRIPTIONS.pro },
-    { ...enterprise, description: ENTERPRISE_DESCRIPTION },
   ];
   return (
     <section className="py-24" id="pricing">
@@ -38,7 +35,7 @@ export function PricingSection() {
           </p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto px-2 sm:px-0">
+        <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto px-2 sm:px-0">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}

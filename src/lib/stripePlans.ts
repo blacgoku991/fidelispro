@@ -16,7 +16,7 @@ export const STRIPE_PLANS = {
     product_id: "prod_UEuSxVTVVLAifJ",
     price_id: "price_1TGQdDFQlLT8Im0J7YQ9OWuG",
     name: "Pro",
-    price: 79,
+    price: 59,
     popular: true,
     features: [
       "Tout Starter +",
@@ -26,20 +26,6 @@ export const STRIPE_PLANS = {
       "Scoring client",
       "Campagnes marketing",
       "Clients illimités",
-    ],
-  },
-  enterprise: {
-    product_id: "prod_UEuSC2IkdrsKfV",
-    price_id: "price_1TGQdVFQlLT8Im0JMB3Y4hmT",
-    name: "Enterprise",
-    price: 199,
-    features: [
-      "Tout Pro +",
-      "Géofencing avancé",
-      "Événements spéciaux",
-      "Notifications riches",
-      "Support prioritaire",
-      "API personnalisée",
     ],
   },
 } as const;
