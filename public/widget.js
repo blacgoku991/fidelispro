@@ -7,8 +7,8 @@
   var merchantId = new URL(script.src).searchParams.get("id");
   if (!merchantId) return;
 
-  var SUPABASE_URL = "https://qsnjlzlfnvyjgqtjsmbr.supabase.co";
-  var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzbmpsemlmbnZ5amdxdGpzbWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMzNTgyNDAsImV4cCI6MjA1ODkzNDI0MH0.9ySxhfRTU4MFaK_4LO_sF9y8D-Pj1L_P3-EZ6_hR2pQ";
+  var SUPABASE_URL = "https://piuaelsbocjtpdwzykfe.supabase.co";
+  var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpdWFlbHNib2NqdHBkd3p5a2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NjkyMzcsImV4cCI6MjA5MDU0NTIzN30.utJZqywFyX9FUlBcy-pWqlcY6eK_nwgGfiKts1h3nXs";
 
   function fetchBusiness(id, callback) {
     var xhr = new XMLHttpRequest();
