@@ -39,6 +39,24 @@ serve(async (req) => {
 
   try {
     switch (event.type) {
+      // New subscription created — immediately reflect active/trialing status
+      case "customer.subscription.created": {
+        const sub = event.data.object as Stripe.Subscription;
+        const userId = sub.metadata?.user_id;
+        const plan = sub.metadata?.plan;
+        if (userId) {
+          const mappedStatus = sub.status === "active" ? "active"
+            : sub.status === "trialing" ? "trialing"
+            : "inactive";
+          await supabase.from("businesses").update({
+            subscription_status: mappedStatus,
+            ...(plan ? { subscription_plan: plan } : {}),
+            stripe_subscription_id: sub.id,
+          }).eq("owner_id", userId);
+        }
+        break;
+      }
+
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
         const userId = sub.metadata?.user_id;
