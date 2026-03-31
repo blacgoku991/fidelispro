@@ -39,12 +39,17 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { permissions, requestNotifications, requestGeolocation } = usePermissions();
 
-  // Safety net: if business name is still the default, redirect to onboarding
+  // Safety net: redirect to correct onboarding step based on business state
   useEffect(() => {
     if (!business) return;
     const name = (business as any).name;
+    const status = (business as any).subscription_status;
+    const onboardingCompleted = (business as any).onboarding_completed;
     if (!name || name === "Mon Commerce") {
       navigate("/onboarding-business");
+    } else if (status === "active" && !onboardingCompleted) {
+      // Subscription paid but wizard not done yet (e.g. user navigated directly to /dashboard)
+      navigate("/setup");
     }
   }, [business]);
   const { data: siteSettings } = useSiteSettings();
