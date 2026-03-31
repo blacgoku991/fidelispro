@@ -29,14 +29,20 @@ export function FaqSection() {
     <section className="py-24 bg-background" id="faq">
       <div className="container max-w-3xl">
         <motion.div
-          className="text-center mb-12"
+          className="text-center mb-14"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-3xl lg:text-4xl font-display font-bold">
+          <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold tracking-wide uppercase mb-4">
+            FAQ
+          </span>
+          <h2 className="text-3xl lg:text-4xl font-display font-bold text-balance">
             Questions <span className="text-gradient">fréquentes</span>
           </h2>
+          <p className="mt-4 text-muted-foreground">
+            Tout ce que vous devez savoir avant de démarrer.
+          </p>
         </motion.div>
 
         <motion.div
@@ -45,19 +51,26 @@ export function FaqSection() {
           viewport={{ once: true }}
         >
           <Accordion type="single" collapsible className="space-y-3">
-            {faqItems.map((faq: any) => (
-              <AccordionItem
+            {faqItems.map((faq: any, i: number) => (
+              <motion.div
                 key={faq.id}
-                value={faq.id}
-                className="rounded-xl border border-border/50 bg-card px-5 data-[state=open]:shadow-md transition-shadow"
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
               >
-                <AccordionTrigger className="text-left font-display font-semibold text-[15px] hover:no-underline py-4">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground text-sm leading-relaxed pb-4">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
+                <AccordionItem
+                  value={faq.id}
+                  className="rounded-xl border border-border/50 bg-card px-5 data-[state=open]:border-primary/20 data-[state=open]:shadow-md transition-all"
+                >
+                  <AccordionTrigger className="text-left font-display font-semibold text-[15px] hover:no-underline py-4 hover:text-primary transition-colors">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground text-sm leading-relaxed pb-5">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              </motion.div>
             ))}
           </Accordion>
         </motion.div>

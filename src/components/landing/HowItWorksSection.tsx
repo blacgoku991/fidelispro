@@ -3,9 +3,9 @@ import { UserPlus, Palette, TrendingUp } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const defaultSteps = [
-  { icon: UserPlus, title: "Inscris-toi en 2 minutes", desc: "Crée ton compte gratuitement et configure ta carte de fidélité en quelques clics." },
-  { icon: Palette, title: "Crée ta carte de fidélité", desc: "Personnalise le design, les couleurs et les récompenses. Prête pour Apple & Google Wallet." },
-  { icon: TrendingUp, title: "Tes clients reviennent", desc: "Envoie des notifications ciblées, suis tes stats et regarde ton chiffre grimper." },
+  { icon: UserPlus, title: "Inscris-toi en 2 minutes", desc: "Crée ton compte gratuitement et configure ta carte de fidélité en quelques clics.", color: "from-violet-500 to-purple-600" },
+  { icon: Palette, title: "Crée ta carte de fidélité", desc: "Personnalise le design, les couleurs et les récompenses. Prête pour Apple & Google Wallet.", color: "from-blue-500 to-cyan-600" },
+  { icon: TrendingUp, title: "Tes clients reviennent", desc: "Envoie des notifications ciblées, suis tes stats et regarde ton chiffre grimper.", color: "from-emerald-500 to-teal-600" },
 ];
 
 const icons = [UserPlus, Palette, TrendingUp];
@@ -15,6 +15,7 @@ export function HowItWorksSection() {
 
   const steps = defaultSteps.map((s, i) => ({
     icon: icons[i],
+    color: s.color,
     title: settings?.[`how_step_${i + 1}_title`] || s.title,
     desc: settings?.[`how_step_${i + 1}_desc`] || s.desc,
   }));
@@ -28,32 +29,40 @@ export function HowItWorksSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-3xl lg:text-4xl font-display font-bold">
+          <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold tracking-wide uppercase mb-4">
+            Simple & Rapide
+          </span>
+          <h2 className="text-3xl lg:text-4xl font-display font-bold text-balance">
             Comment ça <span className="text-gradient">marche ?</span>
           </h2>
+          <p className="mt-4 text-muted-foreground text-lg">
+            Lancez votre programme de fidélité en moins de 5 minutes.
+          </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto relative">
+          {/* Connector line */}
+          <div className="hidden md:block absolute top-10 left-[calc(16.67%+1.5rem)] right-[calc(16.67%+1.5rem)] h-px border-t-2 border-dashed border-primary/20 z-0" />
+
           {steps.map((step, i) => (
             <motion.div
               key={i}
-              className="relative text-center"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative text-center z-10"
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.15 }}
             >
-              <div className="relative mx-auto w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mb-5 shadow-glow">
-                <step.icon className="w-7 h-7 text-primary-foreground" />
-                <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-accent text-accent-foreground text-xs font-bold flex items-center justify-center shadow-md">
+              <div className="relative mx-auto w-20 h-20 mb-6">
+                <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center shadow-lg`}>
+                  <step.icon className="w-9 h-9 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-background border-2 border-primary text-primary text-xs font-bold flex items-center justify-center shadow-sm">
                   {i + 1}
                 </div>
               </div>
-              {i < 2 && (
-                <div className="hidden md:block absolute top-8 left-[60%] w-[80%] border-t-2 border-dashed border-primary/20" />
-              )}
               <h3 className="font-display font-semibold text-lg mb-2">{step.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px] mx-auto">{step.desc}</p>
             </motion.div>
           ))}
         </div>
