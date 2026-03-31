@@ -28,7 +28,9 @@ const OnboardingBusiness = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // getSession() lit depuis localStorage sans appel réseau → pas de spinner infini
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user) { navigate("/login"); return; }
 
         const { data: business, error } = await supabase
