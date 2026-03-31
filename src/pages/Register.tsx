@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CreditCard, Eye, EyeOff, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Check, Zap, Shield, Crown } from "lucide-react";
+import { CreditCard, Eye, EyeOff, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Check, Zap, Shield, Crown, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { type PlanKey } from "@/lib/stripePlans";
 import { usePricingPlans } from "@/hooks/usePricingPlans";
@@ -37,6 +37,8 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [sentToEmail, setSentToEmail] = useState("");
 
   const handleGoogleRegister = async () => {
     await supabase.auth.signInWithOAuth({
@@ -75,12 +77,72 @@ const Register = () => {
       toast.success("Compte créé ! Redirection vers le paiement…");
       navigate(`/dashboard/checkout?plan=${selectedPlan}`);
     } else {
-      // Email confirmation required → emailRedirectTo handles the checkout redirect after confirmation
-      toast.success("Compte créé ! Vérifiez votre email pour confirmer puis vous serez redirigé vers le paiement.");
+      // Email confirmation required → show confirmation screen
+      setSentToEmail(email.trim());
+      setEmailSent(true);
     }
   };
 
   const plan = pricingPlans.find(p => p.key === selectedPlan) || pro;
+
+  // ── Écran confirmation email ──────────────────────────────────────────
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full text-center space-y-6"
+        >
+          {/* Icone */}
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Mail className="w-10 h-10 text-primary" />
+          </div>
+
+          {/* Titre */}
+          <div>
+            <h1 className="text-2xl font-display font-bold">Confirmez votre email</h1>
+            <p className="text-muted-foreground mt-2 leading-relaxed">
+              Un lien de confirmation a été envoyé à
+            </p>
+            <p className="font-semibold text-foreground mt-1 text-lg break-all">{sentToEmail}</p>
+          </div>
+
+          {/* Instructions */}
+          <div className="bg-primary/5 border border-primary/15 rounded-2xl p-5 text-sm text-left space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-primary font-bold text-xs">1</span>
+              </div>
+              <p className="text-muted-foreground">Ouvrez votre boîte mail et cherchez l'email de FidéliPro</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-primary font-bold text-xs">2</span>
+              </div>
+              <p className="text-muted-foreground">Cliquez sur le lien de confirmation</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-emerald-600 font-bold text-xs">3</span>
+              </div>
+              <p className="text-muted-foreground">Vous serez redirigé vers la page de paiement pour le plan <span className="font-semibold text-foreground">{plan.name}</span></p>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Pas de mail reçu ?{" "}
+            <button
+              className="text-primary font-medium hover:underline"
+              onClick={() => setEmailSent(false)}
+            >
+              Renvoyer ou corriger l'adresse
+            </button>
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
