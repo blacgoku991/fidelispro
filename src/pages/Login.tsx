@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CreditCard, Eye, EyeOff, Loader2, Star, TrendingUp, Shield, Users } from "lucide-react";
+import { CreditCard, Eye, EyeOff, Loader2, Star, TrendingUp, Shield, Users, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -17,10 +17,25 @@ const benefits = [
 
 const Login = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const location = useLocation();
+  const accountExistsEmail = (location.state as any)?.accountExistsEmail as string | undefined;
+  const [email, setEmail] = useState(accountExistsEmail ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const handleForgotPassword = async () => {
+    const target = email.trim();
+    if (!target) { toast.error("Entrez votre email d'abord"); return; }
+    setResetLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(target, {
+      redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/dashboard`,
+    });
+    setResetLoading(false);
+    if (error) toast.error(error.message);
+    else toast.success("Email de réinitialisation envoyé !");
+  };
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
@@ -141,6 +156,23 @@ const Login = () => {
             </p>
           </div>
 
+          {/* Bannière compte existant (venant de /register) */}
+          {accountExistsEmail && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 flex gap-3"
+            >
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-semibold text-amber-700 dark:text-amber-400">Un compte existe déjà avec cet email.</p>
+                <p className="text-amber-600/80 dark:text-amber-500/80 text-xs mt-1">
+                  Connectez-vous avec Google ou utilisez "Mot de passe oublié" ci-dessous.
+                </p>
+              </div>
+            </motion.div>
+          )}
+
           {/* Google OAuth */}
           <Button
             type="button"
@@ -180,7 +212,17 @@ const Login = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold">Mot de passe</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-semibold">Mot de passe</Label>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading}
+                  className="text-xs text-primary hover:underline disabled:opacity-50"
+                >
+                  {resetLoading ? "Envoi…" : "Mot de passe oublié ?"}
+                </button>
+              </div>
               <div className="relative">
                 <Input
                   id="password"

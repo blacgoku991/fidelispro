@@ -37,7 +37,6 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [sentToEmail, setSentToEmail] = useState("");
-  const [emailAlreadyUsed, setEmailAlreadyUsed] = useState(false);
 
   const handleGoogleRegister = async () => {
     await supabase.auth.signInWithOAuth({
@@ -86,7 +85,7 @@ const Register = () => {
       console.error("[Register] error →", error.message);
       const msg = error.message.toLowerCase();
       if (msg.includes("already") || msg.includes("registered") || msg.includes("exists") || msg.includes("taken")) {
-        setEmailAlreadyUsed(true);
+        navigate("/login", { state: { accountExistsEmail: email.trim() } });
       } else {
         toast.error(error.message);
       }
@@ -96,7 +95,7 @@ const Register = () => {
     // Supabase renvoie user sans erreur mais identities vide = email déjà enregistré
     if (data.user && (data.user.identities?.length ?? 0) === 0) {
       console.log("[Register] silent duplicate detected — identities empty");
-      setEmailAlreadyUsed(true);
+      navigate("/login", { state: { accountExistsEmail: email.trim() } });
       return;
     }
 
@@ -366,8 +365,8 @@ const Register = () => {
                       type="email"
                       placeholder="vous@commerce.com"
                       value={email}
-                      onChange={(e) => { setEmail(e.target.value); setEmailAlreadyUsed(false); }}
-                      className={`h-11 rounded-xl ${emailAlreadyUsed ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-11 rounded-xl"
                       autoComplete="email"
                     />
                   </div>
@@ -388,15 +387,6 @@ const Register = () => {
                       </button>
                     </div>
                   </div>
-                  {emailAlreadyUsed && (
-                    <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/25 text-sm">
-                      <p className="font-semibold text-red-600">Cet email est déjà utilisé.</p>
-                      <p className="text-red-500/80 text-xs mt-1">
-                        <Link to="/login" className="font-bold underline hover:text-red-600">Se connecter</Link>
-                        {" "}ou utilisez une autre adresse email.
-                      </p>
-                    </div>
-                  )}
                   <Button type="submit" disabled={loading} className="w-full h-11 rounded-xl bg-gradient-primary text-primary-foreground hover:opacity-90 font-semibold gap-2">
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Créer et payer <ArrowRight className="w-4 h-4" /></>}
                   </Button>
