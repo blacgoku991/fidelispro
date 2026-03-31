@@ -29,10 +29,10 @@ export function HowItWorksSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold tracking-wide uppercase mb-4">
+          <span className="inline-block px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold tracking-wide uppercase mb-5">
             Simple & Rapide
           </span>
-          <h2 className="text-3xl lg:text-4xl font-display font-bold text-balance">
+          <h2 className="text-3xl lg:text-5xl font-display font-extrabold text-balance">
             Comment ça <span className="text-gradient">marche ?</span>
           </h2>
           <p className="mt-4 text-muted-foreground text-lg">
