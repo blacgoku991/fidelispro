@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -35,23 +35,27 @@ const levelConfig: Record<string, { bg: string; text: string; label: string; emo
 };
 
 const Dashboard = () => {
-  const { user, business } = useAuth();
+  const { user, business, loading } = useAuth();
   const navigate = useNavigate();
   const { permissions, requestNotifications, requestGeolocation } = usePermissions();
+  const hasRedirected = useRef(false);
 
   // Safety net: redirect to correct onboarding step based on business state
   useEffect(() => {
+    if (loading || hasRedirected.current) return;
     if (!business) return;
     const name = (business as any).name;
     const status = (business as any).subscription_status;
     const onboardingCompleted = (business as any).onboarding_completed;
     if (!name || name === "Mon Commerce") {
+      hasRedirected.current = true;
       navigate("/onboarding-business");
-    } else if (status === "active" && !onboardingCompleted) {
+    } else if (status === "active" && onboardingCompleted === false) {
       // Subscription paid but wizard not done yet (e.g. user navigated directly to /dashboard)
+      hasRedirected.current = true;
       navigate("/setup");
     }
-  }, [business]);
+  }, [loading, business]);
   const { data: siteSettings } = useSiteSettings();
   const [permissionsDismissed, setPermissionsDismissed] = useState(false);
   const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0 });

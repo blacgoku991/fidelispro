@@ -63,7 +63,7 @@ const SetupWizard = () => {
         if (error || !biz) { navigate("/dashboard"); return; }
 
         if ((biz as any).onboarding_completed) {
-          navigate("/dashboard");
+          window.location.replace("/dashboard");
           return;
         }
 
