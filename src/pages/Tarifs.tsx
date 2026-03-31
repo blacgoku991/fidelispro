@@ -248,7 +248,7 @@ const Tarifs = () => {
       {/* CTA */}
       <section className="bg-gradient-card py-16 text-center px-4 mb-0">
         <h2 className="text-3xl font-display font-bold text-primary-foreground mb-3">Prêt à fidéliser vos clients ?</h2>
-        <p className="text-primary-foreground/70 mb-6">Commencez dès aujourd'hui, sans engagement.</p>
+        <p className="text-primary-foreground/70 mb-6">Commencez dès aujourd'hui et fidélisez vos clients.</p>
         <Button asChild size="lg" className="bg-white text-primary font-bold rounded-xl gap-2 hover:bg-white/90">
           <Link to="/register">Créer mon compte <ArrowRight className="w-4 h-4" /></Link>
         </Button>

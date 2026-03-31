@@ -11,12 +11,12 @@ export function HeroSection() {
   const headline = settings?.hero_headline || "Vos clients reviennent.";
   const headlineGradient = settings?.hero_headline_gradient || "Encore et encore.";
   const subtitle = settings?.hero_subtitle || "Créez des cartes de fidélité digitales premium, envoyez des notifications intelligentes et boostez votre chiffre d'affaires. Compatible Apple Wallet & Google Wallet.";
-  const ctaPrimary = settings?.hero_cta_primary || "Commencer gratuitement";
+  const ctaPrimary = settings?.hero_cta_primary || "Commencer maintenant";
   const ctaSecondary = settings?.hero_cta_secondary || "Voir les tarifs";
   const badge = settings?.hero_badge || "La fidélité réinventée";
   const stat1 = settings?.hero_stat_1 || "⭐ 4.9/5";
   const stat2 = settings?.hero_stat_2 || "📲 50 000 cartes générées";
-  const stat3 = settings?.hero_stat_3 || "🚀 Sans engagement";
+  const stat3 = settings?.hero_stat_3 || "🚀 Activation immédiate";
   const liveMerchantCount = parseInt((settings as any)?.live_merchant_count) || 247;
 
   return (
@@ -113,7 +113,7 @@ export function HeroSection() {
             <div className="mt-7 flex items-center justify-center sm:justify-start gap-5 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-[10px]">✓</span>
-                Sans engagement
+                Résiliation facile
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-[10px]">✓</span>

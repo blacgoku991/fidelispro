@@ -212,7 +212,7 @@ const Login = () => {
           <p className="text-center text-sm text-muted-foreground mt-8">
             Pas encore de compte ?{" "}
             <Link to="/register" className="text-primary font-semibold hover:underline">
-              Créer un compte gratuitement
+              Créer un compte
             </Link>
           </p>
         </motion.div>
