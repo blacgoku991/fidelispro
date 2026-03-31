@@ -28,32 +28,7 @@ CREATE POLICY "Anon can register wallet device"
     AND authentication_token <> ''
   );
 
--- ── 2. web_push_subscriptions ─────────────────────────────────────────────
--- AVANT : "anon_manage_push_subs" FOR ALL TO anon USING(true) WITH CHECK(true)
--- PROBLÈME : n'importe qui pouvait supprimer ou lire les abonnements push de tous les commerces
--- CORRECTION : anon peut seulement s'abonner (INSERT) et se désabonner par endpoint
-
-DROP POLICY IF EXISTS "anon_manage_push_subs" ON public.web_push_subscriptions;
-
-CREATE POLICY "anon_insert_push_subs"
-  ON public.web_push_subscriptions
-  FOR INSERT
-  TO anon
-  WITH CHECK (
-    business_id IS NOT NULL
-    AND endpoint IS NOT NULL AND endpoint <> ''
-    AND p256dh IS NOT NULL AND p256dh <> ''
-    AND auth IS NOT NULL AND auth <> ''
-  );
-
--- Un client peut se désabonner en connaissant son endpoint (identifiant unique du device)
-CREATE POLICY "anon_delete_push_subs_by_endpoint"
-  ON public.web_push_subscriptions
-  FOR DELETE
-  TO anon
-  USING (endpoint IS NOT NULL AND endpoint <> '');
-
--- ── 3. customer_cards — INSERT anon ──────────────────────────────────────
+-- ── 2. customer_cards — INSERT anon ──────────────────────────────────────
 -- AVANT : WITH CHECK(true) — aucun contrôle du business_id
 -- CORRECTION : vérifier que business_id référence un commerce existant
 
