@@ -123,7 +123,7 @@ const AdminEmailDigest = () => {
         </div>
 
         {/* Businesses table */}
-        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -244,7 +244,7 @@ const AdminEmailDigest = () => {
             <h3 className="font-display font-semibold text-sm flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" /> Historique récent ({logs.length})
             </h3>
-            <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+            <div className="rounded-2xl border border-border/50 bg-card overflow-hidden overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

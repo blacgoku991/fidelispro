@@ -17,6 +17,45 @@ const VitrinePage = () => {
 
   const joinUrl = business ? `${window.location.origin}/b/${business.id}` : "";
 
+  // Dynamic OG meta tags for social sharing
+  useEffect(() => {
+    if (!business) return;
+    const title = `${business.name} — Programme de fidélité`;
+    const description = business.description
+      ? `${business.description} Rejoignez le programme de fidélité de ${business.name}.`
+      : `Rejoignez le programme de fidélité de ${business.name} et cumulez des points à chaque visite.`;
+    const image = business.logo_url || `${window.location.origin}/icon-512.png`;
+    const url = window.location.href;
+
+    document.title = title;
+
+    const setMeta = (selector: string, attr: string, val: string) => {
+      let el = document.querySelector(selector);
+      if (!el) {
+        el = document.createElement("meta");
+        const [attrName, attrVal] = selector.replace("meta[", "").replace("]", "").split("=");
+        (el as HTMLMetaElement).setAttribute(attrName, attrVal.replace(/"/g, ""));
+        document.head.appendChild(el);
+      }
+      el.setAttribute(attr, val);
+    };
+
+    setMeta('meta[property="og:title"]', "content", title);
+    setMeta('meta[property="og:description"]', "content", description);
+    setMeta('meta[property="og:image"]', "content", image);
+    setMeta('meta[property="og:url"]', "content", url);
+    setMeta('meta[property="og:type"]', "content", "website");
+    setMeta('meta[name="twitter:card"]', "content", "summary_large_image");
+    setMeta('meta[name="twitter:title"]', "content", title);
+    setMeta('meta[name="twitter:description"]', "content", description);
+    setMeta('meta[name="twitter:image"]', "content", image);
+    setMeta('meta[name="description"]', "content", description);
+
+    return () => {
+      document.title = "FidéliPro - Cartes de fidélité digitales pour commerçants";
+    };
+  }, [business]);
+
   useEffect(() => {
     const load = async () => {
       if (!slug) return;
