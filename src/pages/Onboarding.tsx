@@ -40,15 +40,24 @@ const Onboarding = () => {
       return;
     }
 
-    // If business already exists, skip onboarding
+    // If business already exists, check if it needs onboarding or payment
     const { data: business } = await supabase
       .from("businesses")
-      .select("id")
+      .select("id, name, subscription_status, subscription_plan")
       .eq("owner_id", user.id)
       .maybeSingle();
 
     if (business) {
-      navigate("/dashboard");
+      const name = (business as any).name;
+      const status = (business as any).subscription_status;
+      if (!name || name === "Mon Commerce") {
+        // Trigger created a default name — collect real business info first
+        navigate(`/onboarding-business?plan=${plan}`);
+      } else if (status === "inactive") {
+        navigate(`/dashboard/checkout?plan=${plan}`);
+      } else {
+        navigate("/dashboard");
+      }
       return;
     }
 
