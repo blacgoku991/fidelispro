@@ -30,7 +30,7 @@ const segmentLabels: Record<Segment, { label: string; desc: string; icon: React.
   inactive: { label: "Inactifs", desc: "Aucune visite depuis 30+ jours", icon: Clock },
   vip: { label: "VIP", desc: "Clients niveau Gold", icon: Crown },
   close_to_reward: { label: "Proches récompense", desc: "À 2 points ou moins", icon: Zap },
-  nearby: { label: "À proximité", desc: "Clients proches géographiquement", icon: MapPin },
+  nearby: { label: "À proximité", desc: "Clients proches géographiquement (via Apple Wallet uniquement)", icon: MapPin },
 };
 
 const MAX_MESSAGE_LENGTH = 100;
