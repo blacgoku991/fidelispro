@@ -7,10 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Price IDs lus depuis les secrets Supabase en priorité, fallback hardcodé
 const PLANS: Record<string, string> = {
-  starter: "price_1TGQcwFQlLT8Im0J1OI53niu",
-  pro: "price_1TGQdDFQlLT8Im0J7YQ9OWuG",
-  enterprise: "price_1TGQdVFQlLT8Im0JMB3Y4hmT",
+  starter: Deno.env.get("STRIPE_PRICE_STARTER") || "price_1TGQcwFQlLT8Im0J1OI53niu",
+  pro:     Deno.env.get("STRIPE_PRICE_PRO")     || "price_1TGQdDFQlLT8Im0J7YQ9OWuG",
+  enterprise: Deno.env.get("STRIPE_PRICE_ENTERPRISE") || "price_1TGQdVFQlLT8Im0JMB3Y4hmT",
 };
 
 serve(async (req) => {

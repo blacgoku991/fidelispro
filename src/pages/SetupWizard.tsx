@@ -243,7 +243,7 @@ const SetupWizard = () => {
                 <Input
                   value={rewardTitle}
                   onChange={e => setRewardTitle(e.target.value)}
-                  placeholder="Ex : Café offert, Remise 10%, Produit gratuit…"
+                  placeholder="Ex : Café offert, Remise 10%, Produit offert…"
                   className="h-11 rounded-xl"
                 />
               </div>

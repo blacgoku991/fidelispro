@@ -130,7 +130,7 @@ export const businessTemplates: BusinessTemplate[] = [
       loyalty_type: "points",
       max_points_per_card: 12,
       points_per_visit: 1,
-      reward_description: "Soin gratuit après 12 visites !",
+      reward_description: "Soin offert après 12 visites !",
       primary_color: "#BE185D",
       secondary_color: "#EC4899",
       card_style: "luxury",
