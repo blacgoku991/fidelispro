@@ -213,10 +213,12 @@ const SettingsPage = () => {
           }
 
           // Send APNs push to all devices
+          const { data: { session: geoSession } } = await supabase.auth.getSession();
+          const geoToken = geoSession?.access_token ?? "";
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${geoToken}` },
             body: JSON.stringify({ business_id: business.id, change_message: "📍 Zone mise à jour" }),
           });
 

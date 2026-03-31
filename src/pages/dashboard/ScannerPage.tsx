@@ -58,10 +58,12 @@ const ScannerPage = () => {
 
     // Wallet push
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           business_id: business.id,
           customer_id: customer.id,

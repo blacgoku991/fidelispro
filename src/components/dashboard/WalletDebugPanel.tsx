@@ -79,12 +79,14 @@ export const WalletDebugPanel = ({ businessId }: WalletDebugPanelProps) => {
     setActiveAction(actionType);
     setLastResult(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
         `https://${projectId}.supabase.co/functions/v1/wallet-push`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             business_id: businessId,
             action_type: actionType,

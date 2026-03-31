@@ -194,10 +194,12 @@ const Dashboard = () => {
     }).eq("id", card.id);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ business_id: business.id, customer_id: customer.id, action_type: "points_increment", change_message: changeMsg }),
       });
     } catch { /* non-blocking */ }
@@ -223,10 +225,12 @@ const Dashboard = () => {
       const levelLabel = newLevel === "gold" ? "Gold ⭐" : "Silver 🥈";
       const levelMsg = `Félicitations, vous passez au niveau ${levelLabel} chez ${business.name} !`;
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token ?? "";
         const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
         await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ business_id: business.id, customer_id: customer.id, action_type: "level_up", change_message: levelMsg }),
         });
       } catch { /* non-blocking */ }

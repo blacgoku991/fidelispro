@@ -103,8 +103,10 @@ const ClientsPage = () => {
     setDeleting(customerId);
     await supabase.from("customer_cards").update({ is_active: false, wallet_change_message: "❌ Cette carte n'est plus valide." }).eq("customer_id", customerId).eq("business_id", business.id);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      await fetch(`${supabaseUrl}/functions/v1/wallet-push`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ business_id: business.id, customer_id: customerId, action_type: "card_deactivated", change_message: "❌ Cette carte n'est plus valide." }) });
+      await fetch(`${supabaseUrl}/functions/v1/wallet-push`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ business_id: business.id, customer_id: customerId, action_type: "card_deactivated", change_message: "❌ Cette carte n'est plus valide." }) });
     } catch { /* non-blocking */ }
     const { error } = await supabase.from("customers").delete().eq("id", customerId).eq("business_id", business.id);
     if (error) toast.error("Erreur lors de la suppression");

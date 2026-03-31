@@ -17,6 +17,17 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const sbUrl = Deno.env.get("SUPABASE_URL")!;
+    const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // ── Auth : service_role (appel interne) ou JWT utilisateur ────────────
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace("Bearer ", "").trim();
+
+    if (!token) return jsonResponse({ error: "Non authentifié" }, 401);
+
+    const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
+
     const body = await req.json();
     const { business_id, campaign_id, change_message, card_ids, test_mode, action_type, customer_id } = body;
 
@@ -24,10 +35,23 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "business_id required" }, 400);
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // Appel interne via service_role → bypass ownership check
+    const isInternal = token === sbKey;
+
+    if (!isInternal) {
+      // Valider le JWT utilisateur et vérifier qu'il possède le business
+      const { data: userData, error: authErr } = await supabase.auth.getUser(token);
+      if (authErr || !userData?.user) return jsonResponse({ error: "Token invalide" }, 401);
+
+      const { data: biz } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("id", business_id)
+        .eq("owner_id", userData.user.id)
+        .maybeSingle();
+
+      if (!biz) return jsonResponse({ error: "Commerce introuvable ou accès refusé" }, 403);
+    }
 
     const act = action_type || "test";
 
