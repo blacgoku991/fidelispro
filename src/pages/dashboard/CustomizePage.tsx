@@ -175,7 +175,10 @@ const CustomizePage = () => {
             <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
               <h2 className="font-display font-semibold text-sm">Identité</h2>
               <div>
-                <Label className="mb-2 block text-xs">Logo</Label>
+                <Label className="mb-2 block text-xs">
+                  Logo
+                  {!logoUrl && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠️ À configurer</Badge>}
+                </Label>
                 {business && <LogoUpload currentUrl={logoUrl} businessId={business.id} onUploaded={(url) => setLogoUrl(url)} />}
               </div>
               <div className="space-y-1.5">
@@ -183,7 +186,10 @@ const CustomizePage = () => {
                 <Input value={form.name} onChange={(e) => update("name", e.target.value)} className="rounded-xl text-sm" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Description</Label>
+                <Label className="text-xs">
+                  Description
+                  {!form.description && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠️ À configurer</Badge>}
+                </Label>
                 <Textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="rounded-xl text-sm" placeholder="Décrivez votre commerce..." rows={2} />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -220,27 +226,66 @@ const CustomizePage = () => {
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
-              <h2 className="font-display font-semibold text-sm">Couleurs</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Principale</Label>
-                  <div className="flex gap-2 items-center">
-                    <input type="color" value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
-                    <Input value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="rounded-xl text-sm" />
+            <div className="space-y-5">
+              <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+                <h2 className="font-display font-semibold text-sm">Couleurs</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">
+                      Principale
+                      {form.primary_color === "#000000" && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠️ À configurer</Badge>}
+                    </Label>
+                    <div className="flex gap-2 items-center">
+                      <input type="color" value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
+                      <Input value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="rounded-xl text-sm" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Secondaire</Label>
+                    <div className="flex gap-2 items-center">
+                      <input type="color" value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
+                      <Input value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="rounded-xl text-sm" />
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Secondaire</Label>
-                  <div className="flex gap-2 items-center">
-                    <input type="color" value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
-                    <Input value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="rounded-xl text-sm" />
-                  </div>
+                  <Label className="text-xs">Website</Label>
+                  <Input value={form.website} onChange={(e) => update("website", e.target.value)} className="rounded-xl text-sm" placeholder="https://..." />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Website</Label>
-                <Input value={form.website} onChange={(e) => update("website", e.target.value)} className="rounded-xl text-sm" placeholder="https://..." />
+
+              {/* Live Apple Wallet Preview */}
+              <div className="p-5 rounded-2xl bg-card border border-border/50">
+                <h2 className="font-display font-semibold text-sm mb-3">Aperçu Apple Wallet</h2>
+                <div className="rounded-2xl overflow-hidden" style={{ background: form.primary_color || "#6B46C1" }}>
+                  <div className="p-4 text-white space-y-3">
+                    <div className="flex items-center gap-3">
+                      {logoUrl ? (
+                        <img src={logoUrl} alt="" className="w-10 h-10 rounded-xl object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xs font-bold">{(form.name || "?").slice(0, 2).toUpperCase()}</div>
+                      )}
+                      <div>
+                        <p className="font-bold text-sm">{form.name || "Mon Commerce"}</p>
+                        <p className="text-[10px] opacity-80">Carte de fidélité</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-white/20">
+                      <div>
+                        <p className="text-[10px] opacity-70 uppercase">Points</p>
+                        <p className="font-bold text-lg">7 / {form.max_points_per_card}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] opacity-70 uppercase">Niveau</p>
+                        <p className="font-bold text-sm">⭐ Gold</p>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-white/20">
+                      <p className="text-[10px] opacity-70 uppercase">Récompense</p>
+                      <p className="text-xs">{form.reward_description || "Récompense offerte !"}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
