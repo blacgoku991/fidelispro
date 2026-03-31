@@ -45,7 +45,7 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const origin = req.headers.get("origin") || "https://fidelispro.lovable.app";
+    const origin = req.headers.get("origin") || "https://fidelispro.vercel.app";
 
     // Embedded mode: return client_secret instead of URL
     if (ui_mode === "embedded") {

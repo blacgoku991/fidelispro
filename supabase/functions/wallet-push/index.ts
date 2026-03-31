@@ -3,7 +3,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const PASS_TYPE_ID = "pass.app.lovable.fidelispro";
+const PASS_TYPE_ID = "pass.app.fidelispro";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

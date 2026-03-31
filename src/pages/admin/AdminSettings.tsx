@@ -40,7 +40,7 @@ const AdminSettings = () => {
           </h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Version</span><span>1.0.0</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Pass Type ID</span><span className="font-mono text-xs">pass.app.lovable.fidelispro</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Pass Type ID</span><span className="font-mono text-xs">pass.app.fidelispro</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Apple Team ID</span><span className="font-mono text-xs">9642GYNCU9</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Mode Stripe</span><span className="font-mono text-xs">Test</span></div>
           </div>

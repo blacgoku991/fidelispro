@@ -96,7 +96,7 @@ serve(async (req) => {
     // Create a JWT for the save link (unsigned - for demo/test purposes)
     // In production, you'd sign this with your Google Cloud service account
     const payload = {
-      iss: "fidelispro@lovable.app",
+      iss: "noreply@fidelispro.fr",
       aud: "google",
       typ: "savetowallet",
       iat: Math.floor(Date.now() / 1000),
@@ -104,7 +104,7 @@ serve(async (req) => {
         loyaltyClasses: [loyaltyClass],
         loyaltyObjects: [loyaltyObject],
       },
-      origins: ["https://fidelispro.lovable.app"],
+      origins: ["https://fidelispro.vercel.app"],
     };
 
     // Base64url encode the JWT parts (unsigned for now)

@@ -206,7 +206,7 @@ const SettingsPage = () => {
           for (const sn of serialNumbers) {
             await supabase.from("wallet_pass_updates").upsert({
               serial_number: sn,
-              pass_type_id: "pass.app.lovable.fidelispro",
+              pass_type_id: "pass.app.fidelispro",
               change_message: "📍 Zone de proximité mise à jour",
               last_updated: new Date().toISOString(),
             }, { onConflict: "serial_number" });
