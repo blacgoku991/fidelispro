@@ -2,59 +2,22 @@ import { motion } from "framer-motion";
 import { Check, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { usePricingPlans } from "@/hooks/usePricingPlans";
 
-const plans = [
-  {
-    key: "starter",
-    name: "Starter",
-    price: "29",
-    description: "Pour les petits commerces qui débutent",
-    features: [
-      "1 point de vente",
-      "100 cartes de fidélité",
-      "Notifications push basiques",
-      "Dashboard simplifié",
-      "Support par email",
-    ],
-    cta: "S'abonner",
-    popular: false,
-  },
-  {
-    key: "pro",
-    name: "Pro",
-    price: "79",
-    description: "Pour les commerces en croissance",
-    features: [
-      "5 points de vente",
-      "Cartes illimitées",
-      "Notifications intelligentes",
-      "Gamification complète",
-      "Dashboard avancé",
-      "Branding personnalisé",
-      "Support prioritaire",
-    ],
-    cta: "Démarrer maintenant",
-    popular: true,
-  },
-  {
-    key: "enterprise",
-    name: "Enterprise",
-    price: "Sur mesure",
-    description: "Pour les chaînes et franchises",
-    features: [
-      "Points de vente illimités",
-      "API complète",
-      "Intégrations caisse",
-      "Manager dédié",
-      "SLA garanti",
-      "Formation équipes",
-    ],
-    cta: "Nous contacter",
-    popular: false,
-  },
-];
+const ENTERPRISE_DESCRIPTION = "Pour les chaînes et franchises";
+const PLAN_DESCRIPTIONS: Record<string, string> = {
+  starter: "Pour les petits commerces qui débutent",
+  pro: "Pour les commerces en croissance",
+  enterprise: ENTERPRISE_DESCRIPTION,
+};
 
 export function PricingSection() {
+  const { starter, pro, enterprise } = usePricingPlans();
+  const plans = [
+    { ...starter, description: PLAN_DESCRIPTIONS.starter },
+    { ...pro,     description: PLAN_DESCRIPTIONS.pro },
+    { ...enterprise, description: ENTERPRISE_DESCRIPTION },
+  ];
   return (
     <section className="py-24" id="pricing">
       <div className="container">
@@ -105,13 +68,13 @@ export function PricingSection() {
               </div>
 
               <div className="mb-7">
-                {plan.price !== "Sur mesure" ? (
+                {plan.price > 0 ? (
                   <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-display font-extrabold">{plan.price}€</span>
                     <span className={`text-sm ${plan.popular ? "text-primary-foreground/60" : "text-muted-foreground"}`}>/mois</span>
                   </div>
                 ) : (
-                  <span className="text-2xl font-display font-bold">{plan.price}</span>
+                  <span className="text-2xl font-display font-bold">Sur mesure</span>
                 )}
               </div>
 

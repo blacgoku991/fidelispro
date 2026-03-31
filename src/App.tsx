@@ -25,6 +25,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminLandingContent from "./pages/admin/AdminLandingContent";
 import AdminEmailDigest from "./pages/admin/AdminEmailDigest";
+import AdminPlans from "./pages/admin/AdminPlans";
 import Onboarding from "./pages/Onboarding";
 import OnboardingBusiness from "./pages/OnboardingBusiness";
 import SetupWizard from "./pages/SetupWizard";
@@ -76,6 +77,7 @@ const App = () => (
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/landing" element={<AdminLandingContent />} />
             <Route path="/admin/digest" element={<AdminEmailDigest />} />
+            <Route path="/admin/plans" element={<AdminPlans />} />
             <Route path="/b/:businessId" element={<BusinessPublicPage />} />
             <Route path="/vitrine/:slug" element={<VitrinePage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />

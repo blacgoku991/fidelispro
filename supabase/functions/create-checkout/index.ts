@@ -7,10 +7,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Price IDs lus depuis les secrets Supabase en priorité, fallback hardcodé
-const PLANS: Record<string, string> = {
-  starter: Deno.env.get("STRIPE_PRICE_STARTER") || "price_1TGQcwFQlLT8Im0J1OI53niu",
-  pro:     Deno.env.get("STRIPE_PRICE_PRO")     || "price_1TGQdDFQlLT8Im0J7YQ9OWuG",
+// Fallback Price IDs (env vars ou hardcodé)
+const FALLBACK_PLANS: Record<string, string> = {
+  starter:    Deno.env.get("STRIPE_PRICE_STARTER")    || "price_1TGQcwFQlLT8Im0J1OI53niu",
+  pro:        Deno.env.get("STRIPE_PRICE_PRO")        || "price_1TGQdDFQlLT8Im0J7YQ9OWuG",
   enterprise: Deno.env.get("STRIPE_PRICE_ENTERPRISE") || "price_1TGQdVFQlLT8Im0JMB3Y4hmT",
 };
 
@@ -24,6 +24,13 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
   );
 
+  // Service role client pour lire site_settings
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
+  );
+
   try {
     const authHeader = req.headers.get("Authorization")!;
     const token = authHeader.replace("Bearer ", "");
@@ -32,7 +39,18 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
 
     const { plan, ui_mode } = await req.json();
-    const priceId = PLANS[plan];
+
+    // Lire le Price ID depuis site_settings en priorité
+    const { data: settingRow } = await supabaseAdmin
+      .from("site_settings")
+      .select("value")
+      .eq("key", `stripe_price_${plan}`)
+      .maybeSingle();
+
+    const priceId = (settingRow?.value && settingRow.value.trim())
+      ? settingRow.value.trim()
+      : FALLBACK_PLANS[plan];
+
     if (!priceId) throw new Error(`Invalid plan: ${plan}`);
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {

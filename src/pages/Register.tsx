@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CreditCard, Eye, EyeOff, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Check, Zap, Shield, Crown } from "lucide-react";
 import { toast } from "sonner";
-import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
+import { type PlanKey } from "@/lib/stripePlans";
+import { usePricingPlans } from "@/hooks/usePricingPlans";
 import { motion, AnimatePresence } from "framer-motion";
 
 const planIcons: Record<PlanKey, React.ElementType> = {
@@ -27,8 +28,10 @@ const Register = () => {
   const [step, setStep] = useState<"plan" | "account">("plan");
   const initialPlan = searchParams.get("plan") as PlanKey;
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>(
-    initialPlan && STRIPE_PLANS[initialPlan] ? initialPlan : "pro"
+    (initialPlan === "starter" || initialPlan === "pro" || initialPlan === "enterprise") ? initialPlan : "pro"
   );
+  const { starter, pro, enterprise } = usePricingPlans();
+  const pricingPlans = [starter, pro, enterprise];
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,7 +80,7 @@ const Register = () => {
     }
   };
 
-  const plan = STRIPE_PLANS[selectedPlan];
+  const plan = pricingPlans.find(p => p.key === selectedPlan) || pro;
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -158,7 +161,8 @@ const Register = () => {
                 <p className="text-sm text-muted-foreground mb-6">Commencez à fidéliser vos clients dès aujourd'hui</p>
 
                 <div className="space-y-3 mb-6">
-                  {(Object.entries(STRIPE_PLANS) as [PlanKey, typeof STRIPE_PLANS.pro][]).map(([key, p]) => {
+                  {pricingPlans.map((p) => {
+                    const key = p.key as PlanKey;
                     const Icon = planIcons[key];
                     const isSelected = selectedPlan === key;
                     return (
@@ -176,7 +180,7 @@ const Register = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="font-display font-bold text-sm">{p.name}</span>
-                              {"popular" in p && p.popular && (
+                              {p.popular && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-semibold">Populaire</span>
                               )}
                             </div>
@@ -185,8 +189,8 @@ const Register = () => {
                             </p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="font-display font-bold text-lg">{p.price}€</p>
-                            <p className="text-[10px] text-muted-foreground">/mois</p>
+                            <p className="font-display font-bold text-lg">{p.price > 0 ? `${p.price}€` : "Sur mesure"}</p>
+                            {p.price > 0 && <p className="text-[10px] text-muted-foreground">/mois</p>}
                           </div>
                           <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 ${isSelected ? "border-primary bg-primary" : "border-border"}`}>
                             {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -201,7 +205,7 @@ const Register = () => {
                   onClick={() => setStep("account")}
                   className="w-full h-11 rounded-xl bg-gradient-primary text-primary-foreground font-semibold gap-2"
                 >
-                  Continuer avec {plan.name} — {plan.price}€/mois
+                  Continuer avec {plan.name}{plan.price > 0 ? ` — ${plan.price}€/mois` : ""}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-center text-xs text-muted-foreground mt-3">
@@ -226,7 +230,7 @@ const Register = () => {
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-sm">Plan {plan.name}</p>
-                    <p className="text-xs text-muted-foreground">{plan.price}€/mois · Paiement immédiat</p>
+                    <p className="text-xs text-muted-foreground">{plan.price > 0 ? `${plan.price}€/mois · Paiement immédiat` : "Sur mesure · Nous vous contacterons"}</p>
                   </div>
                   <button onClick={() => setStep("plan")} className="text-xs text-primary hover:underline">Changer</button>
                 </div>
