@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const PLANS: { key: PlanKey; Icon: React.ElementType; gradient: string }[] = [
   { key: "starter", Icon: Zap,   gradient: "from-violet-500 to-purple-600" },
@@ -35,6 +36,19 @@ const CheckoutPage = () => {
 
   const currentPlan  = (business as any)?.subscription_plan as PlanKey | null;
   const isActive     = (business as any)?.subscription_status === "active";
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const openPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error || !data?.url) throw new Error(error?.message || data?.error || "Impossible d'accéder au portail");
+      window.open(data.url, "_blank");
+    } catch (err: any) {
+      toast.error(err.message || "Erreur portail Stripe");
+    }
+    setPortalLoading(false);
+  };
 
   useEffect(() => {
     if (planParam && STRIPE_PLANS[planParam]) setSelectedPlan(planParam);
@@ -267,11 +281,8 @@ const CheckoutPage = () => {
                           </Button>
                         ) : (
                           <Button
-                            onClick={() => {
-                              supabase.functions.invoke("customer-portal").then(({ data }) => {
-                                if (data?.url) window.open(data.url, "_blank");
-                              });
-                            }}
+                            onClick={openPortal}
+                            disabled={portalLoading}
                             className={`w-full rounded-xl h-11 ${
                               key === "pro"
                                 ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white hover:opacity-90 border-0"
@@ -279,10 +290,13 @@ const CheckoutPage = () => {
                             }`}
                             variant={key === "pro" ? "default" : "outline"}
                           >
-                            {key === "pro"
-                              ? <><span>Passer au plan Pro</span><ArrowRight className="w-4 h-4 ml-2" /></>
-                              : "Réduire au Starter"
-                            }
+                            {portalLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : key === "pro" ? (
+                              <><span>Passer au plan Pro</span><ArrowRight className="w-4 h-4 ml-2" /></>
+                            ) : (
+                              "Réduire au Starter"
+                            )}
                           </Button>
                         )
                       ) : (
