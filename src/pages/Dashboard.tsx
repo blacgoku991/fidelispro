@@ -277,7 +277,7 @@ const Dashboard = () => {
   const onboardingSteps = [
     { done: onboarding.hasCustomized, label: siteSettings?.onboarding_step_1 || "Personnaliser votre carte", path: "/dashboard/customize", icon: Palette },
     { done: onboarding.hasReward, label: siteSettings?.onboarding_step_2 || "Ajouter une récompense", path: "/dashboard/rewards", icon: Gift },
-    { done: onboarding.hasScanned, label: siteSettings?.onboarding_step_3 || "Scanner votre premier client", path: "/dashboard", icon: QrCode },
+    { done: onboarding.hasScanned, label: siteSettings?.onboarding_step_3 || "Scanner votre premier client", path: "/dashboard/scanner", icon: QrCode },
     { done: onboarding.hasCampaign, label: siteSettings?.onboarding_step_4 || "Créer votre première campagne", path: "/dashboard/campaigns", icon: Send },
   ];
 

@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import ClientsPage from "./pages/dashboard/ClientsPage";
 
 import CustomizePage from "./pages/dashboard/CustomizePage";
+import ScannerPage from "./pages/dashboard/ScannerPage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
 import CheckoutPage from "./pages/dashboard/CheckoutPage";
 import RewardsPage from "./pages/dashboard/RewardsPage";
@@ -60,7 +61,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/clients" element={<ClientsPage />} />
             <Route path="/dashboard/rewards" element={<RewardsPage />} />
-            <Route path="/dashboard/scanner" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard/scanner" element={<ScannerPage />} />
             <Route path="/dashboard/campaigns" element={<CampaignsPage />} />
             <Route path="/dashboard/customize" element={<CustomizePage />} />
             <Route path="/dashboard/settings" element={<SettingsPage />} />
