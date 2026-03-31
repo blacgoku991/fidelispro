@@ -49,29 +49,34 @@ const SetupWizard = () => {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/login"); return; }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { navigate("/login"); return; }
 
-      const { data: biz } = await supabase
-        .from("businesses")
-        .select("id, name, primary_color, points_per_visit, max_points_per_card, onboarding_completed")
-        .eq("owner_id", user.id)
-        .maybeSingle();
+        const { data: biz, error } = await supabase
+          .from("businesses")
+          .select("id, name, primary_color, points_per_visit, max_points_per_card, onboarding_completed")
+          .eq("owner_id", user.id)
+          .maybeSingle();
 
-      if (!biz) { navigate("/dashboard"); return; }
+        if (error || !biz) { navigate("/dashboard"); return; }
 
-      if ((biz as any).onboarding_completed) {
+        if ((biz as any).onboarding_completed) {
+          navigate("/dashboard");
+          return;
+        }
+
+        setBusinessId(biz.id);
+        setBusinessName((biz as any).name || "");
+        setCardName((biz as any).name || "");
+        if ((biz as any).primary_color) setPrimaryColor((biz as any).primary_color);
+        if ((biz as any).points_per_visit) setPointsPerVisit((biz as any).points_per_visit);
+        if ((biz as any).max_points_per_card) setMaxPoints((biz as any).max_points_per_card);
+      } catch {
         navigate("/dashboard");
-        return;
+      } finally {
+        setLoading(false);
       }
-
-      setBusinessId(biz.id);
-      setBusinessName((biz as any).name || "");
-      setCardName((biz as any).name || "");
-      if ((biz as any).primary_color) setPrimaryColor((biz as any).primary_color);
-      if ((biz as any).points_per_visit) setPointsPerVisit((biz as any).points_per_visit);
-      if ((biz as any).max_points_per_card) setMaxPoints((biz as any).max_points_per_card);
-      setLoading(false);
     };
     init();
   }, []);
@@ -119,7 +124,8 @@ const SetupWizard = () => {
     await supabase.from("businesses").update({ onboarding_completed: true } as any).eq("id", businessId);
     setSaving(false);
     toast.success("Configuration terminée ! Bienvenue sur FidéliPro 🎉");
-    navigate("/dashboard");
+    // Force reload pour re-fetcher subscription_status à jour depuis Supabase
+    window.location.replace("/dashboard");
   };
 
   if (loading) {
