@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,11 +29,44 @@ const COLOR_PRESETS = [
 
 const SetupWizard = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState("");
+
+  // ── Vérification paiement après redirect Stripe ──────────────────────
+  const [checkingPayment, setCheckingPayment] = useState(searchParams.get("checkout") === "success");
+  const [paymentVerified, setPaymentVerified] = useState(false);
+  const retryCount = useRef(0);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("checkout") !== "success") return;
+
+    const verify = async () => {
+      try {
+        const { data } = await supabase.functions.invoke("check-subscription");
+        if (data?.subscribed === true) {
+          setPaymentVerified(true);
+          setCheckingPayment(false);
+          return;
+        }
+      } catch { /* retry */ }
+
+      retryCount.current += 1;
+      if (retryCount.current < 10) {
+        retryTimer.current = setTimeout(verify, 3000);
+      } else {
+        // Max retries: affiche le wizard quand même
+        setCheckingPayment(false);
+      }
+    };
+
+    verify();
+    return () => { if (retryTimer.current) clearTimeout(retryTimer.current); };
+  }, []);
 
   // Step 1 — card
   const [primaryColor, setPrimaryColor] = useState("#7C3AED");
@@ -133,6 +166,21 @@ const SetupWizard = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Vérification paiement en cours (après redirect Stripe)
+  if (checkingPayment) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-5 p-6">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <div className="text-center">
+          <p className="font-display font-semibold text-lg">Vérification du paiement en cours…</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Synchronisation avec Stripe — tentative {Math.min(retryCount.current + 1, 10)}/10
+          </p>
+        </div>
       </div>
     );
   }
