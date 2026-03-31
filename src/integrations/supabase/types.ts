@@ -752,6 +752,39 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          emoji: string
+          id: string
+          is_visible: boolean
+          name: string
+          points_required: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          emoji?: string
+          id?: string
+          is_visible?: boolean
+          name: string
+          points_required?: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          emoji?: string
+          id?: string
+          is_visible?: boolean
+          name?: string
+          points_required?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
       rewards: {
         Row: {
           business_id: string
