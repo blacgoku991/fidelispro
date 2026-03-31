@@ -13,9 +13,8 @@ const PRODUCT_TO_PLAN: Record<string, string> = {
   prod_UEuSC2IkdrsKfV: "enterprise",
 };
 
-const logStep = (step: string, details?: any) => {
-  console.log(`[CHECK-SUB] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
-};
+const log = (step: string, details?: any) =>
+  console.log(`[CHECK-SUB] ${step}${details ? ` — ${JSON.stringify(details)}` : ""}`);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,54 +39,73 @@ serve(async (req) => {
     if (userError || !userData.user?.email) throw new Error("Auth failed");
 
     const user = userData.user;
-    logStep("User authenticated", { email: user.email });
+    log("User authenticated", { email: user.email });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" as any });
 
-    // Find Stripe customer
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    if (customers.data.length === 0) {
-      logStep("No Stripe customer found");
-      return new Response(JSON.stringify({ subscribed: false }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Lire session_id depuis le body (optionnel)
+    let sessionId: string | null = null;
+    try {
+      const body = await req.json();
+      sessionId = body?.session_id ?? null;
+    } catch { /* pas de body */ }
+
+    let customerId: string | null = null;
+    let activeSub: Stripe.Subscription | null = null;
+    let plan: string | null = null;
+
+    // ── Voie 1 : résolution directe via checkout session_id ───────────────
+    if (sessionId) {
+      log("Looking up checkout session", { sessionId });
+      try {
+        const session = await stripe.checkout.sessions.retrieve(sessionId, {
+          expand: ["subscription"],
+        });
+        customerId = session.customer as string | null;
+        const sub = session.subscription as Stripe.Subscription | null;
+        if (sub && (sub.status === "active" || sub.status === "trialing")) {
+          activeSub = sub;
+          const productId = sub.items.data[0]?.price?.product as string;
+          plan = PRODUCT_TO_PLAN[productId] ?? sub.metadata?.plan ?? "starter";
+          log("Active sub via session", { subId: sub.id, plan, status: sub.status });
+        } else {
+          log("Session sub not active yet", { status: sub?.status });
+        }
+      } catch (err) {
+        log("Session lookup failed", { err: String(err) });
+      }
     }
 
-    const customerId = customers.data[0].id;
-    logStep("Found customer", { customerId });
+    // ── Voie 2 : lookup par email client ─────────────────────────────────
+    if (!activeSub) {
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data.length === 0) {
+        log("No Stripe customer found");
+        return new Response(JSON.stringify({ subscribed: false }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-    // Check active subscriptions
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 1,
-    });
+      customerId = customers.data[0].id;
+      log("Found customer", { customerId });
 
-    // Also check trialing
-    const trialingSubs = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "trialing",
-      limit: 1,
-    });
+      // Vérifier active ET trialing
+      const [activeSubs, trialSubs] = await Promise.all([
+        stripe.subscriptions.list({ customer: customerId, status: "active",   limit: 1 }),
+        stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+      ]);
 
-    const allSubs = [...subscriptions.data, ...trialingSubs.data];
-    const hasActiveSub = allSubs.length > 0;
+      const allSubs = [...activeSubs.data, ...trialSubs.data];
+      if (allSubs.length > 0) {
+        activeSub = allSubs[0];
+        const productId = activeSub.items.data[0]?.price?.product as string;
+        plan = PRODUCT_TO_PLAN[productId] ?? activeSub.metadata?.plan ?? "starter";
+        log("Active sub via customer", { subId: activeSub.id, plan, status: activeSub.status });
+      }
+    }
 
-    let plan = null;
-    let subscriptionEnd = null;
-    let stripeSubId = null;
-    let stripeStatus = null;
-
-    if (hasActiveSub) {
-      const sub = allSubs[0];
-      stripeSubId = sub.id;
-      stripeStatus = sub.status;
-      subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
-      const productId = sub.items.data[0].price.product as string;
-      plan = PRODUCT_TO_PLAN[productId] || "starter";
-      logStep("Active subscription", { subId: sub.id, plan, status: sub.status });
-
-      // Sync to businesses table
+    // ── Si abonnement actif trouvé → sync DB immédiatement ───────────────
+    if (activeSub && customerId) {
       const { data: bizData } = await supabaseAdmin
         .from("businesses")
         .select("id")
@@ -95,34 +113,41 @@ serve(async (req) => {
         .maybeSingle();
 
       if (bizData) {
-        await supabaseAdmin.from("businesses").update({
-          subscription_status: sub.status === "trialing" ? "trialing" : "active",
+        const { error: updateErr } = await supabaseAdmin.from("businesses").update({
+          subscription_status: activeSub.status === "trialing" ? "trialing" : "active",
           subscription_plan: plan,
           stripe_customer_id: customerId,
-          stripe_subscription_id: sub.id,
+          stripe_subscription_id: activeSub.id,
         }).eq("id", bizData.id);
-        logStep("Synced to businesses table");
-      }
-    } else {
-      // Check for past_due or canceled
-      const pastDueSubs = await stripe.subscriptions.list({
-        customer: customerId,
-        status: "past_due",
-        limit: 1,
-      });
 
+        if (updateErr) log("DB update error", { err: updateErr.message });
+        else log("DB synced", { plan, status: activeSub.status });
+      }
+
+      const subscriptionEnd = new Date(activeSub.current_period_end * 1000).toISOString();
+      return new Response(JSON.stringify({
+        subscribed: true,
+        plan,
+        subscription_end: subscriptionEnd,
+        stripe_subscription_id: activeSub.id,
+        stripe_status: activeSub.status,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Pas d'abonnement actif — vérifier past_due ────────────────────────
+    if (customerId) {
+      const pastDueSubs = await stripe.subscriptions.list({
+        customer: customerId, status: "past_due", limit: 1,
+      });
       if (pastDueSubs.data.length > 0) {
-        stripeStatus = "past_due";
         const sub = pastDueSubs.data[0];
-        const productId = sub.items.data[0].price.product as string;
-        plan = PRODUCT_TO_PLAN[productId] || "starter";
+        const productId = sub.items.data[0]?.price?.product as string;
+        const pastPlan = PRODUCT_TO_PLAN[productId] ?? "starter";
 
         const { data: bizData } = await supabaseAdmin
-          .from("businesses")
-          .select("id")
-          .eq("owner_id", user.id)
-          .maybeSingle();
-
+          .from("businesses").select("id").eq("owner_id", user.id).maybeSingle();
         if (bizData) {
           await supabaseAdmin.from("businesses").update({
             subscription_status: "past_due",
@@ -130,21 +155,21 @@ serve(async (req) => {
             stripe_subscription_id: sub.id,
           }).eq("id", bizData.id);
         }
+        log("Subscription past_due");
+        return new Response(JSON.stringify({ subscribed: false, stripe_status: "past_due", plan: pastPlan }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
 
-    return new Response(JSON.stringify({
-      subscribed: hasActiveSub,
-      plan,
-      subscription_end: subscriptionEnd,
-      stripe_subscription_id: stripeSubId,
-      stripe_status: stripeStatus,
-    }), {
+    log("No active subscription");
+    return new Response(JSON.stringify({ subscribed: false }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message: msg });
+    log("ERROR", { message: msg });
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
