@@ -30,44 +30,44 @@ const Onboarding = () => {
   });
 
   useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { navigate("/login"); return; }
+
+        // If business already exists, check if it needs onboarding or payment
+        const { data: business } = await supabase
+          .from("businesses")
+          .select("id, name, subscription_status, subscription_plan")
+          .eq("owner_id", user.id)
+          .maybeSingle();
+
+        if (business) {
+          const name = (business as any).name;
+          const status = (business as any).subscription_status;
+          if (!name || name === "Mon Commerce") {
+            navigate(`/onboarding-business?plan=${plan}`);
+          } else if (status === "inactive") {
+            navigate(`/dashboard/checkout?plan=${(business as any).subscription_plan || plan}`);
+          } else {
+            navigate("/dashboard");
+          }
+          return;
+        }
+
+        // Pre-fill from user metadata if available
+        const meta = user.user_metadata;
+        if (meta?.full_name || meta?.name) {
+          setForm(f => ({ ...f, businessName: meta.full_name || meta.name || "" }));
+        }
+      } catch {
+        navigate("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
     checkUser();
   }, []);
-
-  const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate("/login");
-      return;
-    }
-
-    // If business already exists, check if it needs onboarding or payment
-    const { data: business } = await supabase
-      .from("businesses")
-      .select("id, name, subscription_status, subscription_plan")
-      .eq("owner_id", user.id)
-      .maybeSingle();
-
-    if (business) {
-      const name = (business as any).name;
-      const status = (business as any).subscription_status;
-      if (!name || name === "Mon Commerce") {
-        // Trigger created a default name — collect real business info first
-        navigate(`/onboarding-business?plan=${plan}`);
-      } else if (status === "inactive") {
-        navigate(`/dashboard/checkout?plan=${(business as any).subscription_plan || plan}`);
-      } else {
-        navigate("/dashboard");
-      }
-      return;
-    }
-
-    // Pre-fill from user metadata if available
-    const meta = user.user_metadata;
-    if (meta?.full_name || meta?.name) {
-      setForm(f => ({ ...f, businessName: meta.full_name || meta.name || "" }));
-    }
-    setLoading(false);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
