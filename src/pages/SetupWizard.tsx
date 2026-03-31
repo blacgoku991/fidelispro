@@ -53,6 +53,7 @@ const SetupWizard = () => {
   const sessionId = searchParams.get("session_id");
   const [checkingPayment, setCheckingPayment] = useState(isCheckoutSuccess);
   const [paymentError, setPaymentError] = useState(false);
+  const [pollProgress, setPollProgress] = useState(5);
   const retryCount = useRef(0);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,12 +64,14 @@ const SetupWizard = () => {
         const { data } = await supabase.functions.invoke("check-subscription", {
           body: sessionId ? { session_id: sessionId } : {},
         });
-        if (data?.subscribed === true) {
-          setCheckingPayment(false);
+        if (data?.subscribed === true || data?.active === true) {
+          setPollProgress(100);
+          setTimeout(() => window.location.replace("/dashboard"), 600);
           return;
         }
       } catch { /* retry */ }
       retryCount.current += 1;
+      setPollProgress(Math.min(90, Math.round((retryCount.current / MAX_RETRIES) * 90) + 5));
       if (retryCount.current < MAX_RETRIES) {
         retryTimer.current = setTimeout(verify, 2000);
       } else {
@@ -203,14 +206,29 @@ const SetupWizard = () => {
   // ── Vérification paiement en cours ────────────────────────────────────────
   if (checkingPayment) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-5 p-6">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
-        <div className="text-center">
-          <p className="font-display font-semibold text-lg">Activation de votre abonnement…</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Synchronisation avec Stripe — {Math.min(retryCount.current + 1, MAX_RETRIES)}/{MAX_RETRIES}
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-8 p-6">
+        <div className="relative w-24 h-24">
+          <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" />
+          <div className="relative w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          </div>
+        </div>
+        <div className="text-center space-y-2">
+          <p className="font-display font-semibold text-xl">Vérification du paiement en cours…</p>
+          <p className="text-sm text-muted-foreground">
+            Synchronisation avec Stripe — veuillez patienter
           </p>
         </div>
+        <div className="w-full max-w-xs space-y-2">
+          <div className="w-full h-2 bg-border/40 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${pollProgress}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground text-right tabular-nums">{pollProgress}%</p>
+        </div>
+        <p className="text-xs text-muted-foreground">Cette opération prend généralement moins de 10 secondes</p>
       </div>
     );
   }

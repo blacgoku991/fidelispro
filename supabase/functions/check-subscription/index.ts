@@ -126,6 +126,7 @@ serve(async (req) => {
       const subscriptionEnd = new Date(activeSub.current_period_end * 1000).toISOString();
       return new Response(JSON.stringify({
         subscribed: true,
+        active: true,
         plan,
         subscription_end: subscriptionEnd,
         stripe_subscription_id: activeSub.id,
