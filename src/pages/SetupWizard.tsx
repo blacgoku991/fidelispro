@@ -9,19 +9,29 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Palette, Gift, Settings2, CheckCircle2, ArrowRight, ArrowLeft,
-  Loader2, CreditCard, Check, Sparkles,
+  Sparkles, Store, Palette, Gift, CheckCircle2,
+  ArrowRight, ArrowLeft, Loader2, CreditCard, Check, QrCode, Copy,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 const MAX_RETRIES = 15;
 
 const STEPS = [
-  { id: 1, label: "Votre carte", icon: Palette },
-  { id: 2, label: "Récompense", icon: Gift },
-  { id: 3, label: "Programme", icon: Settings2 },
-  { id: 4, label: "Terminé", icon: CheckCircle2 },
+  { id: 1, label: "Bienvenue",   icon: Sparkles },
+  { id: 2, label: "Commerce",   icon: Store },
+  { id: 3, label: "Apparence",  icon: Palette },
+  { id: 4, label: "Récompense", icon: Gift },
+  { id: 5, label: "Prêt !",     icon: CheckCircle2 },
+];
+
+const CATEGORIES = [
+  "Restaurant", "Boulangerie / Pâtisserie", "Boucherie / Charcuterie",
+  "Café / Bar", "Épicerie / Superette", "Coiffeur / Barbier",
+  "Institut de beauté / Spa", "Pharmacie / Parapharmacie",
+  "Sport & Fitness", "Librairie / Papeterie", "Fleuriste",
+  "Mode & Vêtements", "Autre",
 ];
 
 const COLOR_PRESETS = [
@@ -36,18 +46,18 @@ const SetupWizard = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
-  const [businessName, setBusinessName] = useState("");
+  const [businessSlug, setBusinessSlug] = useState<string | null>(null);
 
-  // ── Vérification paiement après redirect Stripe ──────────────────────
+  // ── Vérification paiement après redirect Stripe ──────────────────────────
   const isCheckoutSuccess = searchParams.get("checkout") === "success";
   const sessionId = searchParams.get("session_id");
   const [checkingPayment, setCheckingPayment] = useState(isCheckoutSuccess);
   const [paymentError, setPaymentError] = useState(false);
   const retryCount = useRef(0);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!isCheckoutSuccess) return;
-
     const verify = async () => {
       try {
         const { data } = await supabase.functions.invoke("check-subscription", {
@@ -58,7 +68,6 @@ const SetupWizard = () => {
           return;
         }
       } catch { /* retry */ }
-
       retryCount.current += 1;
       if (retryCount.current < MAX_RETRIES) {
         retryTimer.current = setTimeout(verify, 2000);
@@ -67,22 +76,22 @@ const SetupWizard = () => {
         setPaymentError(true);
       }
     };
-
     verify();
     return () => { if (retryTimer.current) clearTimeout(retryTimer.current); };
   }, []);
 
-  // Step 1 — card
-  const [primaryColor, setPrimaryColor] = useState("#7C3AED");
-  const [cardName, setCardName] = useState("");
+  // Step 2 — commerce info
+  const [businessName, setBusinessName] = useState("");
+  const [category, setCategory] = useState("");
+  const [city, setCity] = useState("");
 
-  // Step 2 — reward
+  // Step 3 — appearance
+  const [primaryColor, setPrimaryColor] = useState("#7C3AED");
+  const [logoUrl, setLogoUrl] = useState("");
+
+  // Step 4 — reward
   const [rewardTitle, setRewardTitle] = useState("");
   const [rewardPoints, setRewardPoints] = useState(10);
-
-  // Step 3 — program
-  const [pointsPerVisit, setPointsPerVisit] = useState(1);
-  const [maxPoints, setMaxPoints] = useState(10);
 
   useEffect(() => {
     const init = async () => {
@@ -93,23 +102,34 @@ const SetupWizard = () => {
 
         const { data: biz, error } = await supabase
           .from("businesses")
-          .select("id, name, primary_color, points_per_visit, max_points_per_card, onboarding_completed")
+          .select("id, name, category, city, primary_color, logo_url, slug, subscription_status, subscription_plan, onboarding_completed")
           .eq("owner_id", user.id)
           .maybeSingle();
 
         if (error || !biz) { navigate("/dashboard"); return; }
 
+        // Wizard déjà complété → dashboard
         if ((biz as any).onboarding_completed) {
           window.location.replace("/dashboard");
           return;
         }
 
+        // Sécurité : navigation directe sans paiement → redirection checkout
+        if (!isCheckoutSuccess && (biz as any).subscription_status !== "active") {
+          navigate(
+            `/dashboard/checkout?plan=${(biz as any).subscription_plan || "starter"}`,
+            { replace: true }
+          );
+          return;
+        }
+
         setBusinessId(biz.id);
-        setBusinessName((biz as any).name || "");
-        setCardName((biz as any).name || "");
+        setBusinessSlug((biz as any).slug ?? null);
+        setBusinessName((biz as any).name ?? "");
+        setCategory((biz as any).category ?? "");
+        setCity((biz as any).city ?? "");
         if ((biz as any).primary_color) setPrimaryColor((biz as any).primary_color);
-        if ((biz as any).points_per_visit) setPointsPerVisit((biz as any).points_per_visit);
-        if ((biz as any).max_points_per_card) setMaxPoints((biz as any).max_points_per_card);
+        if ((biz as any).logo_url) setLogoUrl((biz as any).logo_url);
       } catch {
         navigate("/dashboard");
       } finally {
@@ -119,18 +139,30 @@ const SetupWizard = () => {
     init();
   }, []);
 
-  const saveStep1 = async () => {
+  const saveStep2 = async () => {
+    if (!businessId) return;
+    setSaving(true);
+    await supabase.from("businesses").update({
+      ...(businessName.trim() ? { name: businessName.trim() } : {}),
+      ...(category ? { category } : {}),
+      ...(city.trim() ? { city: city.trim() } : {}),
+    }).eq("id", businessId);
+    setSaving(false);
+    setStep(3);
+  };
+
+  const saveStep3 = async () => {
     if (!businessId) return;
     setSaving(true);
     await supabase.from("businesses").update({
       primary_color: primaryColor,
-      name: cardName.trim() || businessName,
+      ...(logoUrl.trim() ? { logo_url: logoUrl.trim() } : {}),
     }).eq("id", businessId);
     setSaving(false);
-    setStep(2);
+    setStep(4);
   };
 
-  const saveStep2 = async () => {
+  const saveStep4 = async () => {
     if (!businessId) return;
     if (rewardTitle.trim()) {
       setSaving(true);
@@ -142,18 +174,7 @@ const SetupWizard = () => {
       });
       setSaving(false);
     }
-    setStep(3);
-  };
-
-  const saveStep3 = async () => {
-    if (!businessId) return;
-    setSaving(true);
-    await supabase.from("businesses").update({
-      points_per_visit: pointsPerVisit,
-      max_points_per_card: maxPoints,
-    }).eq("id", businessId);
-    setSaving(false);
-    setStep(4);
+    setStep(5);
   };
 
   const finish = async () => {
@@ -162,10 +183,15 @@ const SetupWizard = () => {
     await supabase.from("businesses").update({ onboarding_completed: true } as any).eq("id", businessId);
     setSaving(false);
     toast.success("Configuration terminée ! Bienvenue sur FidéliPro 🎉");
-    // Force reload pour re-fetcher subscription_status à jour depuis Supabase
     window.location.replace("/dashboard");
   };
 
+  const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+  const qrUrl = businessSlug
+    ? `${appUrl}/vitrine/${businessSlug}`
+    : businessId ? `${appUrl}/b/${businessId}` : "";
+
+  // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -174,7 +200,7 @@ const SetupWizard = () => {
     );
   }
 
-  // Vérification paiement en cours (après redirect Stripe)
+  // ── Vérification paiement en cours ────────────────────────────────────────
   if (checkingPayment) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-5 p-6">
@@ -189,7 +215,7 @@ const SetupWizard = () => {
     );
   }
 
-  // Timeout : paiement non confirmé après 30s
+  // ── Timeout : paiement non confirmé ──────────────────────────────────────
   if (paymentError) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-5 p-6 text-center">
@@ -205,7 +231,9 @@ const SetupWizard = () => {
         </div>
         <div className="flex gap-3 flex-wrap justify-center">
           <button
-            onClick={() => window.location.replace("/setup?checkout=success" + (sessionId ? `&session_id=${sessionId}` : ""))}
+            onClick={() => window.location.replace(
+              "/setup?checkout=success" + (sessionId ? `&session_id=${sessionId}` : "")
+            )}
             className="px-4 py-2 rounded-xl border border-border text-sm hover:bg-muted transition-colors"
           >
             Réessayer
@@ -221,65 +249,146 @@ const SetupWizard = () => {
     );
   }
 
+  // ── Wizard ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       {/* Logo */}
       <div className="flex items-center gap-2.5 mb-10">
         <div className="w-9 h-9 rounded-xl bg-gradient-primary flex items-center justify-center">
-          <CreditCard className="w-4.5 h-4.5 text-primary-foreground" />
+          <CreditCard className="w-4 h-4 text-primary-foreground" />
         </div>
         <span className="text-xl font-display font-bold">FidéliPro</span>
       </div>
 
-      {/* Progress bar */}
-      <div className="w-full max-w-lg mb-8">
-        <div className="flex items-center justify-between mb-2">
-          {STEPS.map((s, i) => {
-            const Icon = s.icon;
-            const done = step > s.id;
-            const active = step === s.id;
-            return (
-              <div key={s.id} className="flex items-center flex-1">
-                <div className={`flex flex-col items-center gap-1 flex-shrink-0 ${i < STEPS.length - 1 ? "flex-1" : ""}`}>
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
-                    done ? "bg-emerald-500 border-emerald-500" :
-                    active ? "bg-primary border-primary" :
-                    "bg-background border-border"
-                  }`}>
-                    {done ? <Check className="w-4 h-4 text-white" /> : <Icon className={`w-4 h-4 ${active ? "text-primary-foreground" : "text-muted-foreground"}`} />}
+      {/* Progress bar — masquée sur l'écran de bienvenue */}
+      {step > 1 && (
+        <div className="w-full max-w-lg mb-8">
+          <div className="flex items-center justify-between">
+            {STEPS.map((s, i) => {
+              const Icon = s.icon;
+              const done = step > s.id;
+              const active = step === s.id;
+              return (
+                <div key={s.id} className="flex items-center flex-1">
+                  <div className={`flex flex-col items-center gap-1 flex-shrink-0`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
+                      done  ? "bg-emerald-500 border-emerald-500" :
+                      active ? "bg-primary border-primary" :
+                               "bg-background border-border"
+                    }`}>
+                      {done
+                        ? <Check className="w-3.5 h-3.5 text-white" />
+                        : <Icon className={`w-3.5 h-3.5 ${active ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                      }
+                    </div>
+                    <span className={`text-[10px] font-medium hidden sm:block ${active ? "text-foreground" : "text-muted-foreground"}`}>
+                      {s.label}
+                    </span>
                   </div>
-                  <span className={`text-[10px] font-medium hidden sm:block ${active ? "text-foreground" : "text-muted-foreground"}`}>{s.label}</span>
+                  {i < STEPS.length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-2 mt-[-18px] transition-all ${done ? "bg-emerald-500" : "bg-border"}`} />
+                  )}
                 </div>
-                {i < STEPS.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-2 mt-[-18px] transition-all ${done ? "bg-emerald-500" : "bg-border"}`} />
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Card */}
+      {/* Steps */}
       <div className="w-full max-w-lg">
         <AnimatePresence mode="wait">
-          {step === 1 && (
-            <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-              className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-5">
-              <div>
-                <h2 className="text-xl font-display font-bold">Personnalisez votre carte</h2>
-                <p className="text-sm text-muted-foreground mt-1">Choisissez la couleur et le nom qui apparaîtront sur vos cartes de fidélité.</p>
-              </div>
 
+          {/* ─ Étape 1 : Bienvenue ───────────────────────────────────────── */}
+          {step === 1 && (
+            <motion.div key="s1"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              className="bg-card border border-border/50 rounded-2xl p-8 shadow-sm text-center space-y-6"
+            >
+              <div className="w-20 h-20 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto">
+                <Sparkles className="w-10 h-10 text-primary-foreground" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-display font-bold">Bienvenue sur FidéliPro ! 🎉</h2>
+                <p className="text-muted-foreground mt-3 text-sm leading-relaxed max-w-sm mx-auto">
+                  Votre abonnement est actif. Configurons ensemble votre programme de fidélité en quelques étapes rapides.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-left">
+                {[
+                  { icon: Store,    text: "Infos de votre commerce" },
+                  { icon: Palette,  text: "Apparence de votre carte" },
+                  { icon: Gift,     text: "Première récompense" },
+                  { icon: QrCode,   text: "Votre QR code caisse" },
+                ].map(({ icon: Icon, text }) => (
+                  <div key={text} className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/50">
+                    <Icon className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-xs text-muted-foreground">{text}</span>
+                  </div>
+                ))}
+              </div>
+              <Button
+                onClick={() => setStep(2)}
+                className="w-full h-12 rounded-xl bg-gradient-primary text-primary-foreground font-bold gap-2"
+              >
+                Commencer la configuration <ArrowRight className="w-4 h-4" />
+              </Button>
+            </motion.div>
+          )}
+
+          {/* ─ Étape 2 : Commerce ────────────────────────────────────────── */}
+          {step === 2 && (
+            <motion.div key="s2"
+              initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-5"
+            >
+              <div>
+                <h2 className="text-xl font-display font-bold">Votre commerce</h2>
+                <p className="text-sm text-muted-foreground mt-1">Confirmez ou complétez les informations de votre établissement.</p>
+              </div>
               <div className="space-y-2">
-                <Label>Nom affiché sur la carte</Label>
+                <Label>Nom du commerce</Label>
                 <Input
-                  value={cardName}
-                  onChange={e => setCardName(e.target.value)}
-                  placeholder={businessName}
+                  value={businessName}
+                  onChange={e => setBusinessName(e.target.value)}
+                  placeholder="Ex : Boulangerie Martin"
                   className="h-11 rounded-xl"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Catégorie</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="h-11 rounded-xl">
+                    <SelectValue placeholder="Sélectionnez une catégorie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Ville</Label>
+                <Input
+                  value={city}
+                  onChange={e => setCity(e.target.value)}
+                  placeholder="Ex : Paris"
+                  className="h-11 rounded-xl"
+                />
+              </div>
+              <StepActions onBack={() => setStep(1)} onSkip={() => setStep(3)} onNext={saveStep2} saving={saving} />
+            </motion.div>
+          )}
 
+          {/* ─ Étape 3 : Apparence ───────────────────────────────────────── */}
+          {step === 3 && (
+            <motion.div key="s3"
+              initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-5"
+            >
+              <div>
+                <h2 className="text-xl font-display font-bold">Apparence de votre carte</h2>
+                <p className="text-sm text-muted-foreground mt-1">Choisissez les couleurs qui représentent votre commerce.</p>
+              </div>
               <div className="space-y-2">
                 <Label>Couleur principale</Label>
                 <div className="flex items-center gap-3 flex-wrap">
@@ -287,7 +396,7 @@ const SetupWizard = () => {
                     <button
                       key={c}
                       onClick={() => setPrimaryColor(c)}
-                      className={`w-8 h-8 rounded-full border-2 transition-all ${primaryColor === c ? "border-foreground scale-110" : "border-transparent"}`}
+                      className={`w-9 h-9 rounded-full border-2 transition-all ${primaryColor === c ? "border-foreground scale-110" : "border-transparent"}`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -295,43 +404,50 @@ const SetupWizard = () => {
                     type="color"
                     value={primaryColor}
                     onChange={e => setPrimaryColor(e.target.value)}
-                    className="w-8 h-8 rounded-full cursor-pointer border border-border"
+                    className="w-9 h-9 rounded-full cursor-pointer border border-border"
                     title="Couleur personnalisée"
                   />
                 </div>
-                <div className="mt-3 h-16 rounded-xl flex items-center justify-center text-white font-display font-bold text-sm transition-all"
-                  style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}99)` }}>
-                  {cardName || businessName} — Carte de fidélité
+                <div
+                  className="mt-3 h-16 rounded-xl flex items-center justify-center text-white font-display font-bold text-sm"
+                  style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}99)` }}
+                >
+                  {businessName || "Votre commerce"} — Carte de fidélité
                 </div>
               </div>
-
-              <StepActions
-                onSkip={() => setStep(2)}
-                onNext={saveStep1}
-                saving={saving}
-                isFirst
-              />
+              <div className="space-y-2">
+                <Label>Logo <span className="text-muted-foreground font-normal">(optionnel — URL)</span></Label>
+                <Input
+                  value={logoUrl}
+                  onChange={e => setLogoUrl(e.target.value)}
+                  placeholder="https://monsite.fr/logo.png"
+                  className="h-11 rounded-xl"
+                />
+                <p className="text-xs text-muted-foreground">Copiez l'URL de votre logo depuis votre site ou réseaux sociaux.</p>
+              </div>
+              <StepActions onBack={() => setStep(2)} onSkip={() => setStep(4)} onNext={saveStep3} saving={saving} />
             </motion.div>
           )}
 
-          {step === 2 && (
-            <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-              className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-5">
+          {/* ─ Étape 4 : Récompense ──────────────────────────────────────── */}
+          {step === 4 && (
+            <motion.div key="s4"
+              initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-5"
+            >
               <div>
                 <h2 className="text-xl font-display font-bold">Créez votre première récompense</h2>
                 <p className="text-sm text-muted-foreground mt-1">Définissez ce que vos clients obtiendront en échange de leurs points.</p>
               </div>
-
               <div className="space-y-2">
-                <Label>Titre de la récompense *</Label>
+                <Label>Titre de la récompense</Label>
                 <Input
                   value={rewardTitle}
                   onChange={e => setRewardTitle(e.target.value)}
-                  placeholder="Ex : Café offert, Remise 10%, Produit offert…"
+                  placeholder="Ex : Café offert, Remise 10%…"
                   className="h-11 rounded-xl"
                 />
               </div>
-
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label>Points nécessaires</Label>
@@ -345,80 +461,46 @@ const SetupWizard = () => {
                 />
                 <p className="text-xs text-muted-foreground">Recommandé : 5–15 points pour encourager la fidélité.</p>
               </div>
-
-              <StepActions
-                onBack={() => setStep(1)}
-                onSkip={() => setStep(3)}
-                onNext={saveStep2}
-                saving={saving}
-              />
+              <StepActions onBack={() => setStep(3)} onSkip={() => setStep(5)} onNext={saveStep4} saving={saving} />
             </motion.div>
           )}
 
-          {step === 3 && (
-            <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-              className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-5">
-              <div>
-                <h2 className="text-xl font-display font-bold">Configurez votre programme</h2>
-                <p className="text-sm text-muted-foreground mt-1">Définissez combien de points vos clients gagnent à chaque visite.</p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Points par visite</Label>
-                  <span className="text-2xl font-display font-bold text-primary">{pointsPerVisit} pt{pointsPerVisit > 1 ? "s" : ""}</span>
-                </div>
-                <Slider
-                  value={[pointsPerVisit]}
-                  onValueChange={([v]) => setPointsPerVisit(v)}
-                  min={1} max={10} step={1}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Maximum de points par carte</Label>
-                  <span className="text-2xl font-display font-bold text-primary">{maxPoints} pts</span>
-                </div>
-                <Slider
-                  value={[maxPoints]}
-                  onValueChange={([v]) => setMaxPoints(v)}
-                  min={5} max={100} step={5}
-                  className="w-full"
-                />
-                <div className="p-3 rounded-xl bg-muted/50 text-xs text-muted-foreground">
-                  Avec ces paramètres, un client atteindra la récompense après <strong>{Math.ceil(maxPoints / pointsPerVisit)} visites</strong>.
-                </div>
-              </div>
-
-              <StepActions
-                onBack={() => setStep(2)}
-                onSkip={() => setStep(4)}
-                onNext={saveStep3}
-                saving={saving}
-              />
-            </motion.div>
-          )}
-
-          {step === 4 && (
-            <motion.div key="s4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              className="bg-card border border-border/50 rounded-2xl p-8 shadow-sm text-center space-y-6">
+          {/* ─ Étape 5 : QR Code & Terminé ───────────────────────────────── */}
+          {step === 5 && (
+            <motion.div key="s5"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              className="bg-card border border-border/50 rounded-2xl p-8 shadow-sm text-center space-y-6"
+            >
               <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto">
                 <Sparkles className="w-8 h-8 text-emerald-500" />
               </div>
               <div>
-                <h2 className="text-2xl font-display font-bold">Votre programme est prêt !</h2>
-                <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                  Tout est configuré. Vous pouvez maintenant scanner vos premiers clients et commencer à les fidéliser.
+                <h2 className="text-2xl font-display font-bold">Vous êtes prêt !</h2>
+                <p className="text-muted-foreground mt-2 text-sm leading-relaxed max-w-sm mx-auto">
+                  Voici votre QR code à afficher en caisse. Vos clients le scannent pour rejoindre votre programme de fidélité.
                 </p>
               </div>
 
+              {qrUrl && (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="p-4 rounded-2xl bg-white border border-border/50 shadow-sm inline-block">
+                    <QRCodeSVG value={qrUrl} size={160} />
+                  </div>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(qrUrl); toast.success("Lien copié !"); }}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Copier le lien
+                  </button>
+                </div>
+              )}
+
               <div className="grid grid-cols-3 gap-3 text-center">
                 {[
-                  { icon: Palette, label: "Carte personnalisée" },
-                  { icon: Gift, label: "Récompense créée" },
-                  { icon: Settings2, label: "Programme configuré" },
+                  { icon: Palette,      label: "Carte personnalisée" },
+                  { icon: Gift,         label: "Récompense créée" },
+                  { icon: CheckCircle2, label: "Programme prêt" },
                 ].map(({ icon: Icon, label }) => (
                   <div key={label} className="p-3 rounded-xl bg-muted/50 space-y-1">
                     <Icon className="w-5 h-5 text-primary mx-auto" />
@@ -436,33 +518,34 @@ const SetupWizard = () => {
               </Button>
             </motion.div>
           )}
+
         </AnimatePresence>
       </div>
 
-      {/* Step counter */}
-      <p className="text-xs text-muted-foreground mt-6">Étape {step} sur {STEPS.length}</p>
+      {step > 1 && (
+        <p className="text-xs text-muted-foreground mt-6">Étape {step} sur {STEPS.length}</p>
+      )}
     </div>
   );
 };
 
 function StepActions({
-  onBack, onSkip, onNext, saving, isFirst,
+  onBack, onSkip, onNext, saving,
 }: {
   onBack?: () => void;
   onSkip: () => void;
   onNext: () => void;
   saving: boolean;
-  isFirst?: boolean;
 }) {
   return (
     <div className="flex items-center gap-3 pt-2">
-      {!isFirst && onBack && (
+      {onBack && (
         <Button variant="outline" onClick={onBack} className="gap-1.5 rounded-xl">
           <ArrowLeft className="w-4 h-4" /> Précédent
         </Button>
       )}
       <Button variant="ghost" onClick={onSkip} className="text-muted-foreground rounded-xl ml-auto">
-        Faire plus tard
+        Passer cette étape
       </Button>
       <Button onClick={onNext} disabled={saving} className="bg-gradient-primary text-primary-foreground rounded-xl gap-1.5">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Suivant <ArrowRight className="w-4 h-4" /></>}

@@ -10,7 +10,6 @@ const corsHeaders = {
 const PRODUCT_TO_PLAN: Record<string, string> = {
   prod_UEuRDMQSWVTnoL: "starter",
   prod_UEuSxVTVVLAifJ: "pro",
-  prod_UEuSC2IkdrsKfV: "enterprise",
 };
 
 const log = (step: string, details?: any) =>
