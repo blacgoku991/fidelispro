@@ -23,7 +23,6 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminBusinesses from "./pages/admin/AdminBusinesses";
 import AdminBusinessDetail from "./pages/admin/AdminBusinessDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
-import AdminSettings from "./pages/admin/AdminSettings";
 import AdminLandingContent from "./pages/admin/AdminLandingContent";
 import AdminEmailDigest from "./pages/admin/AdminEmailDigest";
 import AdminPlans from "./pages/admin/AdminPlans";
@@ -77,7 +76,6 @@ const App = () => (
             <Route path="/admin/businesses" element={<AdminBusinesses />} />
             <Route path="/admin/businesses/:businessId" element={<AdminBusinessDetail />} />
             <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/landing" element={<AdminLandingContent />} />
             <Route path="/admin/digest" element={<AdminEmailDigest />} />
             <Route path="/admin/plans" element={<AdminPlans />} />
