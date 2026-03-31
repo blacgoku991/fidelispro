@@ -62,6 +62,7 @@ const App = () => (
             <Route path="/admin/businesses/:businessId" element={<AdminBusinessDetail />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/landing" element={<AdminLandingContent />} />
             <Route path="/b/:businessId" element={<BusinessPublicPage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />
             <Route path="*" element={<NotFound />} />
