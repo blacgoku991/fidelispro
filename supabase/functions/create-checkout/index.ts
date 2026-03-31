@@ -70,8 +70,8 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: "https://fidelispro.vercel.app/setup?checkout=success&session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "https://fidelispro.vercel.app/payment",
+      success_url: "https://fidelispro.vercel.app/dashboard/checkout?checkout=success&session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "https://fidelispro.vercel.app/dashboard/checkout",
       payment_method_types: ["card"],
       subscription_data: {
         metadata: { user_id: user.id, plan },

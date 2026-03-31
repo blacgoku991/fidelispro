@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, CheckCircle, Loader2, Zap, Crown, Check,
-  ArrowRight, LayoutDashboard, RefreshCw,
+  ArrowRight, LayoutDashboard, RefreshCw, AlertCircle,
 } from "lucide-react";
 import { type PlanKey } from "@/lib/stripePlans";
 import { usePricingPlans } from "@/hooks/usePricingPlans";
@@ -28,6 +28,7 @@ const CheckoutPage = () => {
 
   const planParam = searchParams.get("plan") as PlanKey | null;
   const checkoutSuccess = searchParams.get("checkout");
+  const sessionId = searchParams.get("session_id");
 
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>(
     planParam && pricingPlans[planParam] ? planParam : "pro"
@@ -36,6 +37,46 @@ const CheckoutPage = () => {
   const [redirecting, setRedirecting] = useState<PlanKey | null>(null);
   const [checkoutStarted, setCheckoutStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Polling post-paiement ────────────────────────────────────────────────
+  const [activationProgress, setActivationProgress] = useState(0);
+  const [activationDone, setActivationDone] = useState(false);
+  const [activationError, setActivationError] = useState(false);
+
+  useEffect(() => {
+    if (checkoutSuccess !== "success") return;
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 15; // 15 × 2s = 30s
+    let timerId: ReturnType<typeof setTimeout>;
+
+    const poll = async () => {
+      attempts++;
+      // Progress: 5% → 90% during polling, 100% on success
+      setActivationProgress(Math.min(90, Math.round((attempts / MAX_ATTEMPTS) * 90) + 5));
+
+      try {
+        const { data } = await supabase.functions.invoke("check-subscription", {
+          body: sessionId ? { session_id: sessionId } : {},
+        });
+        if (data?.subscribed) {
+          setActivationProgress(100);
+          setActivationDone(true);
+          setTimeout(() => window.location.replace("/dashboard"), 700);
+          return;
+        }
+      } catch { /* continuer */ }
+
+      if (attempts >= MAX_ATTEMPTS) {
+        setActivationError(true);
+        return;
+      }
+      timerId = setTimeout(poll, 2000);
+    };
+
+    timerId = setTimeout(poll, 800);
+    return () => clearTimeout(timerId);
+  }, [checkoutSuccess]);
 
   const currentPlan  = (business as any)?.subscription_plan as PlanKey | null;
   const isActive     = (business as any)?.subscription_status === "active";
@@ -100,32 +141,113 @@ const CheckoutPage = () => {
     }
   };
 
-  // ── Écran succès ────────────────────────────────────────────────────────
+  // ── Écran activation post-paiement (polling) ───────────────────────────
   if (checkoutSuccess === "success") {
     return (
-      <DashboardLayout title="Paiement réussi" subtitle="Votre abonnement est activé">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md mx-auto text-center py-16 space-y-6"
-        >
-          <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
-            <CheckCircle className="w-10 h-10 text-emerald-500" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-display font-bold">Merci ! 🎉</h2>
-            <p className="text-muted-foreground mt-2">
-              Votre abonnement est maintenant actif. Profitez de toutes les fonctionnalités.
-            </p>
-          </div>
-          <Button
-            onClick={() => window.location.replace("/dashboard")}
-            className="bg-gradient-primary text-primary-foreground rounded-xl gap-2"
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            Accéder au tableau de bord
-          </Button>
-        </motion.div>
+      <DashboardLayout title="Paiement reçu" subtitle="Activation de votre abonnement…">
+        <div className="max-w-md mx-auto py-16">
+          <AnimatePresence mode="wait">
+
+            {/* Erreur timeout */}
+            {activationError && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center space-y-5"
+              >
+                <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+                  <AlertCircle className="w-10 h-10 text-destructive" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-display font-bold">Une erreur est survenue</h2>
+                  <p className="text-muted-foreground mt-2 text-sm">
+                    L'activation a pris trop de temps. Votre paiement a bien été reçu — contactez le support si votre abonnement n'est pas actif.
+                  </p>
+                </div>
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.reload()}
+                    className="rounded-xl gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" /> Réessayer
+                  </Button>
+                  <Button
+                    onClick={() => window.location.replace("/dashboard")}
+                    className="bg-gradient-primary text-primary-foreground rounded-xl gap-2"
+                  >
+                    <LayoutDashboard className="w-4 h-4" /> Dashboard
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Succès */}
+            {activationDone && !activationError && (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center space-y-5"
+              >
+                <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+                  <CheckCircle className="w-10 h-10 text-emerald-500" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-display font-bold">Abonnement activé ! 🎉</h2>
+                  <p className="text-muted-foreground mt-2">Redirection vers le tableau de bord…</p>
+                </div>
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto" />
+              </motion.div>
+            )}
+
+            {/* Chargement */}
+            {!activationDone && !activationError && (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center space-y-8"
+              >
+                {/* Icône animée */}
+                <div className="relative w-24 h-24 mx-auto">
+                  <div className="absolute inset-0 rounded-full bg-violet-500/10 animate-ping" />
+                  <div className="relative w-24 h-24 rounded-full bg-violet-500/10 flex items-center justify-center">
+                    <Loader2 className="w-10 h-10 animate-spin text-violet-500" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-xl font-display font-bold">Activation de votre abonnement en cours…</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Paiement reçu — synchronisation avec Stripe en cours
+                  </p>
+                </div>
+
+                {/* Barre de progression */}
+                <div className="space-y-2">
+                  <div className="w-full h-2 bg-border/40 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full"
+                      initial={{ width: "5%" }}
+                      animate={{ width: `${activationProgress}%` }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground text-right tabular-nums">
+                    {activationProgress}%
+                  </p>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Cette opération prend généralement moins de 10 secondes
+                </p>
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+        </div>
       </DashboardLayout>
     );
   }
