@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,9 +20,21 @@ const planLabels: Record<string, string> = {
   pro: "Pro — 59€/mois",
 };
 
+type SectionKey = "vitrine" | "widget" | "geofencing" | "automatisations" | "abonnement" | "compte";
+
+const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
+  { key: "vitrine",         label: "Vitrine",          Icon: Store },
+  { key: "widget",          label: "Widget",           Icon: QrCode },
+  { key: "geofencing",      label: "Proximité",        Icon: Radar },
+  { key: "automatisations", label: "Automatisations",  Icon: Zap },
+  { key: "abonnement",      label: "Abonnement",       Icon: Crown },
+  { key: "compte",          label: "Compte",           Icon: Shield },
+];
+
 const SettingsPage = () => {
   const { user, business } = useAuth();
   const [searchParams] = useSearchParams();
+  const [activeSection, setActiveSection] = useState<SectionKey>("vitrine");
 
   useEffect(() => {
     if (searchParams.get("checkout") === "success") {
@@ -273,8 +285,50 @@ const SettingsPage = () => {
 
   return (
     <DashboardLayout title="Paramètres" subtitle="Gérez votre compte, géolocalisation et abonnement">
-      <div className="space-y-4 max-w-xl">
+      <div className="max-w-5xl">
+
+        {/* Mobile tabs */}
+        <div className="flex lg:hidden gap-2 overflow-x-auto pb-3 mb-5 -mx-1 px-1 snap-x scrollbar-hide">
+          {SECTIONS.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => setActiveSection(s.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap snap-start transition-all ${
+                activeSection === s.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card border border-border/50 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <s.Icon className="w-3.5 h-3.5" />
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-6 items-start">
+          {/* Desktop sidebar */}
+          <nav className="hidden lg:flex flex-col gap-0.5 w-52 shrink-0 sticky top-4">
+            {SECTIONS.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setActiveSection(s.key)}
+                className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-left w-full transition-all ${
+                  activeSection === s.key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
+              >
+                <s.Icon className="w-4 h-4 shrink-0" />
+                {s.label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Content panel */}
+          <div className="flex-1 min-w-0">
+
         {/* Compte */}
+        {activeSection === "compte" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
           <h2 className="font-display font-semibold text-sm flex items-center gap-2">
             <Shield className="w-4 h-4 text-primary" /> Compte
@@ -289,8 +343,10 @@ const SettingsPage = () => {
           </div>
           <Button onClick={handleUpdatePassword} size="sm" className="rounded-xl">Mettre à jour</Button>
         </div>
+        )}
 
         {/* Vitrine publique */}
+        {activeSection === "vitrine" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
           <h2 className="font-display font-semibold text-sm flex items-center gap-2">
             <Store className="w-4 h-4 text-primary" /> Vitrine publique
@@ -400,8 +456,10 @@ const SettingsPage = () => {
             </div>
           )}
         </div>
+        )}
 
         {/* Widget intégrable */}
+        {activeSection === "widget" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
           <h2 className="font-display font-semibold text-sm flex items-center gap-2">
             <QrCode className="w-4 h-4 text-primary" /> Widget pour votre site web
@@ -454,8 +512,10 @@ const SettingsPage = () => {
             </div>
           )}
         </div>
+        )}
 
         {/* Géolocalisation / Proximité */}
+        {activeSection === "geofencing" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="font-display font-semibold text-sm flex items-center gap-2">
@@ -652,8 +712,10 @@ const SettingsPage = () => {
             {savingGeo ? "Sauvegarde..." : "Sauvegarder"}
           </Button>
         </div>
+        )}
 
         {/* Automatisations & Engagement */}
+        {activeSection === "automatisations" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
           <h2 className="font-display font-semibold text-sm flex items-center gap-2">
             <Zap className="w-4 h-4 text-primary" /> Automatisations & Engagement
@@ -764,8 +826,10 @@ const SettingsPage = () => {
             {savingAuto ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />Sauvegarde...</> : <><Check className="w-3.5 h-3.5 mr-2" />Sauvegarder les automatisations</>}
           </Button>
         </div>
+        )}
 
         {/* Abonnement */}
+        {activeSection === "abonnement" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
           <h2 className="font-display font-semibold text-sm flex items-center gap-2">
             <Crown className="w-4 h-4 text-accent" /> Abonnement
@@ -812,7 +876,11 @@ const SettingsPage = () => {
             <ManageSubscriptionButton />
           )}
         </div>
-      </div>
+        )}
+
+          </div>{/* end content panel */}
+        </div>{/* end flex gap-6 */}
+      </div>{/* end max-w-5xl */}
     </DashboardLayout>
   );
 };
