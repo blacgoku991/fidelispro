@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { Crown, Flame, Star, Trophy, Sparkles } from "lucide-react";
+import { Crown, Flame, Star, Trophy, Zap } from "lucide-react";
 
 interface LoyaltyCardProps {
   businessName: string;
@@ -14,6 +14,7 @@ interface LoyaltyCardProps {
   secondaryColor?: string;
   rewardDescription?: string;
   rewardsEarned?: number;
+  promoText?: string;
   showQr?: boolean;
   showPoints?: boolean;
   showCustomerName?: boolean;
@@ -29,39 +30,39 @@ const levelConfig = {
     icon: Star,
     label: "BRONZE",
     emoji: "🥉",
-    fallbackBg: "linear-gradient(135deg, #92400E, #78350F)",
+    fallbackGradient: "135deg, #92400E 0%, #78350F 50%, #451a03 100%",
+    accentLight: "rgba(251,191,36,0.25)",
   },
   silver: {
     icon: Crown,
     label: "SILVER",
     emoji: "🥈",
-    fallbackBg: "linear-gradient(135deg, #64748B, #475569)",
+    fallbackGradient: "135deg, #475569 0%, #334155 50%, #1e293b 100%",
+    accentLight: "rgba(148,163,184,0.25)",
   },
   gold: {
     icon: Crown,
     label: "GOLD",
     emoji: "⭐",
-    fallbackBg: "linear-gradient(135deg, #B48214, #92400E)",
+    fallbackGradient: "135deg, #b45309 0%, #92400e 50%, #78350f 100%",
+    accentLight: "rgba(251,191,36,0.3)",
   },
 };
 
-// Style presets that change the visual appearance
+// Card style presets
 const stylePresets: Record<string, {
   borderRadius: string;
   overlay?: string;
-  fontClass?: string;
   badgeStyle?: string;
   glowEffect?: boolean;
   pattern?: string;
 }> = {
-  classic: {
-    borderRadius: "rounded-2xl",
-  },
+  classic: { borderRadius: "rounded-2xl" },
   luxury: {
     borderRadius: "rounded-3xl",
     overlay: "bg-gradient-to-br from-yellow-400/10 via-transparent to-yellow-600/10",
     badgeStyle: "bg-yellow-500/20 border border-yellow-400/30",
-    pattern: "radial-gradient(circle at 20% 80%, rgba(255,215,0,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,215,0,0.06) 0%, transparent 50%)",
+    pattern: "radial-gradient(circle at 15% 85%, rgba(255,215,0,0.12) 0%, transparent 50%), radial-gradient(circle at 85% 15%, rgba(255,215,0,0.08) 0%, transparent 50%)",
   },
   coffee: {
     borderRadius: "rounded-2xl",
@@ -98,6 +99,7 @@ export function LoyaltyCard({
   secondaryColor,
   rewardDescription,
   rewardsEarned = 0,
+  promoText,
   showQr = true,
   showPoints = true,
   showCustomerName = true,
@@ -113,189 +115,202 @@ export function LoyaltyCard({
   const pointsToReward = maxPoints - points;
   const preset = stylePresets[cardStyle] || stylePresets.classic;
 
-  // Build background based on bgType
+  // Background
   const getBgStyle = () => {
     if (cardBgType === "image" && cardBgImageUrl) {
-      return {
-        backgroundImage: `url(${cardBgImageUrl})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      };
+      return { backgroundImage: `url(${cardBgImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" };
     }
     if (cardBgType === "solid" && accentColor) {
       return { background: accentColor };
     }
-    // Default: gradient
     if (accentColor) {
       return {
         background: secondaryColor
-          ? `linear-gradient(135deg, ${accentColor}, ${secondaryColor})`
-          : `linear-gradient(135deg, ${accentColor}, ${darken(accentColor, 30)})`,
+          ? `linear-gradient(${config.fallbackGradient.split(",")[0].replace("135deg", "150deg")}, ${accentColor}, ${secondaryColor})`
+          : `linear-gradient(150deg, ${accentColor}, ${darken(accentColor, 40)})`,
       };
     }
-    return { background: config.fallbackBg };
+    return { background: `linear-gradient(${config.fallbackGradient})` };
   };
 
-  const bgStyle = getBgStyle();
-
-  // Neon glow box shadow
   const glowShadow = preset.glowEffect && accentColor
-    ? `0 0 30px ${accentColor}44, 0 0 60px ${accentColor}22, 0 25px 50px -12px rgba(0,0,0,0.4)`
-    : "0 25px 50px -12px rgba(0,0,0,0.4)";
+    ? `0 0 30px ${accentColor}44, 0 0 60px ${accentColor}22, 0 20px 40px -8px rgba(0,0,0,0.5)`
+    : "0 20px 40px -8px rgba(0,0,0,0.45), 0 8px 20px -4px rgba(0,0,0,0.3)";
 
   return (
     <motion.div
-      className={`relative w-full max-w-[400px] aspect-[1.586/1] ${preset.borderRadius} p-5 card-shine cursor-pointer select-none overflow-hidden`}
-      whileHover={{ scale: 1.02, rotateY: 5, rotateX: -2 }}
-      transition={{ type: "spring", stiffness: 300 }}
+      className={`relative w-full max-w-[400px] ${preset.borderRadius} overflow-hidden cursor-pointer select-none card-shine`}
       style={{
-        ...bgStyle,
-        transformStyle: "preserve-3d",
+        ...getBgStyle(),
+        aspectRatio: "1.586 / 1",
         boxShadow: glowShadow,
+        transformStyle: "preserve-3d",
       }}
+      whileHover={{ scale: 1.025, rotateY: 3, rotateX: -1.5 }}
+      transition={{ type: "spring", stiffness: 280, damping: 20 }}
     >
-      {/* Style-specific pattern overlay */}
+      {/* Pattern overlay */}
       {preset.pattern && (
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: preset.pattern, borderRadius: "inherit" }}
-        />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: preset.pattern }} />
       )}
 
-      {/* Style-specific color overlay */}
+      {/* Diagonal texture (Apple Wallet style) */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.04]"
+        style={{
+          backgroundImage: "repeating-linear-gradient(-45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)",
+          backgroundSize: "8px 8px",
+        }}
+      />
+
+      {/* Color overlay */}
       {preset.overlay && (
-        <div className={`absolute inset-0 ${preset.overlay} pointer-events-none`} style={{ borderRadius: "inherit" }} />
+        <div className={`absolute inset-0 ${preset.overlay} pointer-events-none`} />
       )}
 
       {/* Image overlay for readability */}
       {cardBgType === "image" && cardBgImageUrl && (
-        <div className="absolute inset-0 bg-black/40 pointer-events-none" style={{ borderRadius: "inherit" }} />
+        <div className="absolute inset-0 bg-black/45 pointer-events-none" />
       )}
-
-      {/* Noise texture overlay */}
-      <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNhKSIgb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')]" style={{ borderRadius: "inherit" }} />
 
       {/* Neon border glow */}
       {preset.glowEffect && accentColor && (
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            borderRadius: "inherit",
-            border: `1px solid ${accentColor}66`,
-            boxShadow: `inset 0 0 20px ${accentColor}15`,
-          }}
-        />
+        <div className="absolute inset-0 pointer-events-none" style={{
+          border: `1px solid ${accentColor}55`,
+          boxShadow: `inset 0 0 24px ${accentColor}12`,
+          borderRadius: "inherit",
+        }} />
       )}
 
-      {/* Header — logo + business name + level badge */}
-      <div className="relative z-10 flex items-start justify-between">
-        <div className="flex items-center gap-2.5">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={businessName}
-              className="w-10 h-10 rounded-xl object-cover border border-white/20"
-            />
-          ) : null}
-          <div>
-            <h3 className="text-base font-display font-bold text-white tracking-tight leading-tight">
-              {businessName}
-            </h3>
-            {showCustomerName && customerName && (
-              <p className="text-[11px] text-white/70 mt-0.5">{customerName}</p>
+      {/* Subtle top highlight */}
+      <div
+        className="absolute inset-x-0 top-0 h-px pointer-events-none"
+        style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)" }}
+      />
+
+      {/* ── CONTENT ── */}
+      <div className="relative z-10 h-full flex flex-col p-5">
+
+        {/* HEADER: Logo + business name + level badge */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {logoUrl ? (
+              <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20 shrink-0 bg-white/10">
+                <img src={logoUrl} alt={businessName} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 shrink-0 flex items-center justify-center">
+                <span className="text-white font-bold text-sm">{(businessName || "?")[0].toUpperCase()}</span>
+              </div>
             )}
+            <div className="min-w-0">
+              <h3 className="text-sm font-display font-bold text-white tracking-tight leading-tight truncate">{businessName}</h3>
+              {showCustomerName && customerName && (
+                <p className="text-[11px] text-white/65 mt-0.5 truncate">{customerName}</p>
+              )}
+            </div>
+          </div>
+
+          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full backdrop-blur-sm shrink-0 ${preset.badgeStyle || "bg-white/15 border border-white/10"}`}>
+            <span className="text-[11px]">{config.emoji}</span>
+            <span className="text-[10px] font-bold text-white tracking-widest">{config.label}</span>
           </div>
         </div>
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-sm ${preset.badgeStyle || "bg-white/15"}`}>
-          <span className="text-xs">{config.emoji}</span>
-          <span className="text-[11px] font-bold text-white tracking-wide">{config.label}</span>
-        </div>
-      </div>
 
-      {/* Middle — Stats row */}
-      <div className="relative z-10 mt-3 flex justify-between">
-        <div>
-          <p className="text-[10px] text-white/50 uppercase tracking-widest font-medium">Statut</p>
-          <p className="text-sm font-semibold text-white">{config.emoji} {config.label}</p>
-        </div>
-        {showPoints && (
-          <div className="text-right">
-            <p className="text-[10px] text-white/50 uppercase tracking-widest font-medium">Progression</p>
-            <p className="text-sm font-semibold text-white">{points} / {maxPoints}</p>
+        {/* MIDDLE: Customer name large (Apple Wallet style) */}
+        {showCustomerName && customerName && (
+          <div className="mt-3">
+            <p className="text-[10px] text-white/45 uppercase tracking-widest font-medium mb-0.5">Client</p>
+            <p className="text-2xl font-display font-bold text-white tracking-tight leading-none truncate">
+              {customerName}
+            </p>
           </div>
         )}
-      </div>
 
-      {/* Bottom — Points + QR + progress */}
-      <div className="relative z-10 mt-auto pt-2">
-        <div className="flex items-end justify-between">
-          <div>
-            {showPoints && (
-              <>
-                <p className="text-[10px] text-white/50 uppercase tracking-widest font-medium">Points</p>
-                <p className="text-3xl font-display font-bold text-white leading-none">
-                  {points}
-                </p>
-              </>
-            )}
-            {/* Auxiliary info */}
-            <div className="flex gap-4 mt-1.5">
-              {showRewardsPreview && (
+        {/* PROMO text (Offre du jour) */}
+        {promoText && (
+          <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/10 inline-block self-start">
+            <p className="text-[11px] text-white/90 font-semibold flex items-center gap-1">
+              <Zap className="w-3 h-3 text-yellow-300" />
+              {promoText}
+            </p>
+          </div>
+        )}
+
+        {/* SPACER */}
+        <div className="flex-1" />
+
+        {/* BOTTOM SECTION */}
+        <div>
+          {/* Stats row */}
+          <div className="flex items-end justify-between mb-3">
+            <div className="flex gap-4">
+              {showPoints && (
                 <div>
-                  <p className="text-[9px] text-white/40 uppercase tracking-wider">Récompenses</p>
-                  <p className="text-xs font-semibold text-white/80">{rewardsEarned} obtenues</p>
+                  <p className="text-[9px] text-white/45 uppercase tracking-widest font-medium">Points</p>
+                  <p className="text-2xl font-display font-bold text-white leading-none">{points}</p>
                 </div>
               )}
               {showRewardsPreview && (
                 <div>
-                  <p className="text-[9px] text-white/40 uppercase tracking-wider">Prochaine</p>
-                  <p className="text-xs font-semibold text-white/80">
-                    {pointsToReward > 0 ? `${pointsToReward} pts` : "🎁 Dispo !"}
+                  <p className="text-[9px] text-white/45 uppercase tracking-widest font-medium">Prochaine</p>
+                  <p className="text-sm font-bold text-white/90 leading-none mt-0.5">
+                    {pointsToReward > 0 ? `−${pointsToReward} pts` : <span className="text-yellow-300">🎁 Dispo !</span>}
                   </p>
+                </div>
+              )}
+              {rewardsEarned > 0 && showRewardsPreview && (
+                <div>
+                  <p className="text-[9px] text-white/45 uppercase tracking-widest font-medium">Obtenues</p>
+                  <p className="text-sm font-bold text-white/90 leading-none mt-0.5">{rewardsEarned} <Trophy className="w-3 h-3 inline" /></p>
                 </div>
               )}
               {showExpiration && (
                 <div>
-                  <p className="text-[9px] text-white/40 uppercase tracking-wider">Expire</p>
-                  <p className="text-xs font-semibold text-white/80">31/12/2026</p>
+                  <p className="text-[9px] text-white/45 uppercase tracking-widest font-medium">Expire</p>
+                  <p className="text-sm font-bold text-white/90 leading-none mt-0.5">31/12/26</p>
                 </div>
               )}
             </div>
+
+            {/* QR Code */}
+            {showQr && cardId && (
+              <div className="w-14 h-14 rounded-xl bg-white flex items-center justify-center p-1.5 shadow-lg shrink-0">
+                <QRCodeSVG
+                  value={cardId}
+                  size={42}
+                  bgColor="white"
+                  fgColor="#1a1a2e"
+                  level="M"
+                />
+              </div>
+            )}
           </div>
-          {showQr && cardId && (
-            <div className="w-14 h-14 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center p-1">
-              <QRCodeSVG
-                value={cardId}
-                size={44}
-                bgColor="transparent"
-                fgColor="rgba(255,255,255,0.9)"
-                level="M"
-              />
+
+          {/* Progress bar */}
+          {showPoints && (
+            <div className="space-y-1">
+              <div className="w-full h-1.5 rounded-full bg-white/15 overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{
+                    background: preset.glowEffect && accentColor
+                      ? `linear-gradient(90deg, ${accentColor}, ${secondaryColor || "#fff"})`
+                      : "linear-gradient(90deg, rgba(255,255,255,0.7), rgba(255,255,255,0.95))",
+                  }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
+                />
+              </div>
+              {progress >= 80 && pointsToReward > 0 && (
+                <p className="text-[10px] text-white/60 flex items-center gap-1">
+                  <Flame className="w-3 h-3 text-orange-300" /> Plus que {pointsToReward} point{pointsToReward > 1 ? "s" : ""} !
+                </p>
+              )}
             </div>
           )}
         </div>
-
-        {/* Progress bar */}
-        {showPoints && (
-          <div className="mt-2.5 w-full h-1.5 rounded-full bg-white/15 overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{
-                background: preset.glowEffect && accentColor
-                  ? `linear-gradient(90deg, ${accentColor}, ${secondaryColor || "#fff"})`
-                  : "rgba(255,255,255,0.8)",
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
-            />
-          </div>
-        )}
-        {progress >= 80 && pointsToReward > 0 && (
-          <p className="text-[11px] mt-1 text-white/60 flex items-center gap-1">
-            <Flame className="w-3 h-3" /> Plus que {pointsToReward} points !
-          </p>
-        )}
       </div>
     </motion.div>
   );
