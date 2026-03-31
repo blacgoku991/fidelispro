@@ -41,10 +41,12 @@ const CheckoutPage = () => {
   const isActive     = (business as any)?.subscription_status === "active";
   const [portalLoading, setPortalLoading] = useState(false);
 
-  const openPortal = async () => {
+  const openPortal = async (flow?: string) => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
+      const { data, error } = await supabase.functions.invoke("customer-portal", {
+        body: flow ? { flow } : undefined,
+      });
       if (error || !data?.url) throw new Error(error?.message || data?.error || "Impossible d'accéder au portail");
       window.open(data.url, "_blank");
     } catch (err: any) {
@@ -306,7 +308,7 @@ const CheckoutPage = () => {
                           </Button>
                         ) : (
                           <Button
-                            onClick={openPortal}
+                            onClick={() => openPortal(key === "pro" ? "subscription_update" : undefined)}
                             disabled={portalLoading}
                             className={`w-full rounded-xl h-11 ${
                               key === "pro"

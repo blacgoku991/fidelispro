@@ -33,11 +33,25 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ email: userData.user.email, limit: 1 });
     if (customers.data.length === 0) throw new Error("No Stripe customer found");
 
+    // Optional flow_data for subscription upgrade/downgrade
+    let flow: string | undefined;
+    try {
+      const body = await req.json();
+      flow = body?.flow;
+    } catch { /* no body */ }
+
     const origin = req.headers.get("origin") || "https://fidelispro.vercel.app";
-    const portalSession = await stripe.billingPortal.sessions.create({
+    const sessionParams: any = {
       customer: customers.data[0].id,
       return_url: `${origin}/dashboard/settings`,
-    });
+    };
+    if (flow === "subscription_update") {
+      sessionParams.flow_data = {
+        type: "subscription_update",
+        subscription_update: { default_allowed_updates: ["price"] },
+      };
+    }
+    const portalSession = await stripe.billingPortal.sessions.create(sessionParams);
 
     return new Response(JSON.stringify({ url: portalSession.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
