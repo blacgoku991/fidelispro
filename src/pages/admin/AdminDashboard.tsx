@@ -5,10 +5,9 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, TrendingUp, Crown, CreditCard, Download, BarChart3 } from "lucide-react";
+import { Building2, Users, TrendingUp, Crown, CreditCard, Download, BarChart3, CalendarDays } from "lucide-react";
 import { motion } from "framer-motion";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Area, AreaChart } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Area, AreaChart } from "recharts";
 import { STRIPE_PLANS } from "@/lib/stripePlans";
 
 const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
@@ -16,19 +15,17 @@ const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--c
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-    businesses: 0, customers: 0, scansToday: 0, scansWeek: 0,
+    businesses: 0, customers: 0, scansToday: 0, scansWeek: 0, scansMonth: 0,
     activeSubscriptions: 0, trialSubscriptions: 0, expiredSubscriptions: 0,
-    totalCards: 0, walletInstalls: 0,
+    totalCards: 0, walletInstalls: 0, newBizThisMonth: 0,
   });
   const [recentBusinesses, setRecentBusinesses] = useState<any[]>([]);
   const [topBusinesses, setTopBusinesses] = useState<any[]>([]);
   const [planBreakdown, setPlanBreakdown] = useState<Record<string, number>>({});
-  const [growthData, setGrowthData] = useState<any[]>([]);
   const [scansTrend, setScansTrend] = useState<any[]>([]);
+  const [monthlyGrowth, setMonthlyGrowth] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
     const [bizRes, custRes, cardsRes, scansRes, bizListRes, walletRes] = await Promise.all([
@@ -44,25 +41,34 @@ const AdminDashboard = () => {
     const allBiz = bizListRes.data || [];
     const plans: Record<string, number> = {};
     let active = 0, trial = 0, expired = 0;
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    let newBizThisMonth = 0;
+
     allBiz.forEach((b: any) => {
       const plan = b.subscription_plan || "starter";
       plans[plan] = (plans[plan] || 0) + 1;
       if (b.subscription_status === "active") active++;
       else if (b.subscription_status === "trialing") trial++;
       else expired++;
+      if (new Date(b.created_at) >= monthStart) newBizThisMonth++;
     });
 
     setPlanBreakdown(plans);
     setRecentBusinesses(allBiz.slice(0, 8));
 
-    // Growth data (last 30 days)
-    const growth: Record<string, number> = {};
-    allBiz.forEach((b: any) => {
-      const day = new Date(b.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
-      growth[day] = (growth[day] || 0) + 1;
-    });
-    const growthArr = Object.entries(growth).slice(-14).map(([date, count]) => ({ date, inscriptions: count }));
-    setGrowthData(growthArr);
+    // 12-month growth data
+    const monthlyData: any[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const label = d.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
+      const count = allBiz.filter((b: any) => {
+        const bd = new Date(b.created_at);
+        return bd.getMonth() === d.getMonth() && bd.getFullYear() === d.getFullYear();
+      }).length;
+      monthlyData.push({ date: label, inscriptions: count });
+    }
+    setMonthlyGrowth(monthlyData);
 
     // Scans trend (last 7 days)
     const scansArr: any[] = [];
@@ -92,11 +98,15 @@ const AdminDashboard = () => {
     const { count: weekScans } = await supabase.from("points_history")
       .select("*", { count: "exact", head: true }).gte("created_at", weekAgo.toISOString());
 
+    const { count: monthScans } = await supabase.from("points_history")
+      .select("*", { count: "exact", head: true }).gte("created_at", monthStart.toISOString());
+
     setStats({
       businesses: bizRes.count || 0, customers: custRes.count || 0,
-      scansToday: scansRes.count || 0, scansWeek: weekScans || 0,
+      scansToday: scansRes.count || 0, scansWeek: weekScans || 0, scansMonth: monthScans || 0,
       activeSubscriptions: active, trialSubscriptions: trial, expiredSubscriptions: expired,
       totalCards: cardsRes.count || 0, walletInstalls: walletRes.count || 0,
+      newBizThisMonth,
     });
   };
 
@@ -127,7 +137,7 @@ const AdminDashboard = () => {
   const statCards = [
     { label: "Entreprises", value: stats.businesses, icon: Building2 },
     { label: "Clients totaux", value: stats.customers, icon: Users },
-    { label: "Scans aujourd'hui", value: stats.scansToday, icon: TrendingUp },
+    { label: "Scans ce mois", value: stats.scansMonth, icon: TrendingUp },
     { label: "Cartes actives", value: stats.totalCards, icon: Crown },
   ];
 
@@ -150,7 +160,7 @@ const AdminDashboard = () => {
           className="rounded-2xl bg-card border border-border/40 p-6 shadow-sm">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">MRR estimé</p>
           <p className="text-3xl font-display font-bold">{mrrEstimate.toLocaleString("fr-FR")}€</p>
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-3 flex-wrap">
             <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]">
               {stats.activeSubscriptions} actifs
             </Badge>
@@ -162,23 +172,23 @@ const AdminDashboard = () => {
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
           className="rounded-2xl bg-card border border-border/40 p-6 shadow-sm">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Abonnements</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Ce mois-ci</p>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm">Actifs</span>
-              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">{stats.activeSubscriptions}</Badge>
+              <span className="text-sm flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" /> Nouveaux marchands</span>
+              <Badge className="bg-primary/10 text-primary">{stats.newBizThisMonth}</Badge>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm">Essai</span>
-              <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">{stats.trialSubscriptions}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Expirés/Annulés</span>
-              <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">{stats.expiredSubscriptions}</Badge>
+              <span className="text-sm">Scans plateforme</span>
+              <Badge variant="outline">{stats.scansMonth}</Badge>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm">Wallet installs</span>
               <Badge variant="outline">{stats.walletInstalls}</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Expirés / Annulés</span>
+              <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px]">{stats.expiredSubscriptions}</Badge>
             </div>
           </div>
         </motion.div>
@@ -203,7 +213,7 @@ const AdminDashboard = () => {
           ) : (
             <p className="text-sm text-muted-foreground">Aucune donnée</p>
           )}
-          <div className="flex gap-3 mt-2 justify-center">
+          <div className="flex gap-3 mt-2 justify-center flex-wrap">
             {pieData.map((d, i) => (
               <div key={d.name} className="flex items-center gap-1.5 text-[10px]">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
@@ -241,16 +251,16 @@ const AdminDashboard = () => {
           </div>
         </motion.div>
 
-        {/* Growth */}
+        {/* 12-month Growth */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
           className="rounded-2xl bg-card border border-border/40 p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-4 h-4 text-primary" />
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Inscriptions entreprises</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Croissance marchands — 12 mois</p>
           </div>
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={growthData}>
+              <BarChart data={monthlyGrowth}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />

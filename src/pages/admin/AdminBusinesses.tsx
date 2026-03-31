@@ -14,35 +14,63 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Eye, Ban, CheckCircle, Clock, Users, QrCode, Gift, ExternalLink, Download } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, Eye, Ban, CheckCircle, Clock, Users, QrCode, Gift, ExternalLink, Download, LogIn, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const AdminBusinesses = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [businesses, setBusinesses] = useState<any[]>([]);
+  const [customerCounts, setCustomerCounts] = useState<Record<string, number>>({});
+  const [scanCounts, setScanCounts] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
   const [selectedBiz, setSelectedBiz] = useState<any>(null);
   const [bizStats, setBizStats] = useState<any>(null);
+  const [suspendTarget, setSuspendTarget] = useState<any>(null);
+  const [impersonating, setImpersonating] = useState<string | null>(null);
 
-  useEffect(() => { fetchBusinesses(); }, []);
+  useEffect(() => { fetchAll(); }, []);
 
-  const fetchBusinesses = async () => {
-    const { data } = await supabase.from("businesses").select("*").order("created_at", { ascending: false });
-    if (data) setBusinesses(data);
+  // Check for impersonation in localStorage
+  useEffect(() => {
+    const imp = localStorage.getItem("impersonating_business");
+    if (imp) setImpersonating(imp);
+  }, []);
+
+  const fetchAll = async () => {
+    const { data: bizData } = await supabase.from("businesses").select("*").order("created_at", { ascending: false });
+    if (bizData) setBusinesses(bizData);
+
+    // Fetch customer counts
+    const { data: custData } = await supabase.from("customers").select("business_id");
+    const custCounts: Record<string, number> = {};
+    (custData || []).forEach((c: any) => { custCounts[c.business_id] = (custCounts[c.business_id] || 0) + 1; });
+    setCustomerCounts(custCounts);
+
+    // Fetch scan counts
+    const { data: scanData } = await supabase.from("points_history").select("business_id");
+    const sCounts: Record<string, number> = {};
+    (scanData || []).forEach((s: any) => { sCounts[s.business_id] = (sCounts[s.business_id] || 0) + 1; });
+    setScanCounts(sCounts);
   };
 
   const updatePlan = async (id: string, plan: string) => {
     await supabase.from("businesses").update({ subscription_plan: plan as any }).eq("id", id);
     toast.success("Plan mis à jour");
-    fetchBusinesses();
+    fetchAll();
   };
 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from("businesses").update({ subscription_status: status as any }).eq("id", id);
     toast.success("Statut mis à jour");
-    fetchBusinesses();
+    fetchAll();
   };
 
   const extendTrial = async (id: string, days: number) => {
@@ -52,7 +80,30 @@ const AdminBusinesses = () => {
       subscription_status: "trialing" as any,
     }).eq("id", id);
     toast.success(`Essai prolongé de ${days} jours`);
-    fetchBusinesses();
+    fetchAll();
+  };
+
+  const suspendBusiness = async (biz: any) => {
+    const newStatus = biz.subscription_status === "inactive" ? "active" : "inactive";
+    await supabase.from("businesses").update({ subscription_status: newStatus as any }).eq("id", biz.id);
+    toast.success(newStatus === "inactive" ? "Compte suspendu" : "Compte réactivé");
+    setSuspendTarget(null);
+    fetchAll();
+  };
+
+  const startImpersonation = (biz: any) => {
+    localStorage.setItem("impersonating_business", biz.id);
+    localStorage.setItem("impersonating_business_name", biz.name);
+    setImpersonating(biz.id);
+    toast.success(`Mode impersonation activé : ${biz.name}`);
+    navigate("/dashboard");
+  };
+
+  const stopImpersonation = () => {
+    localStorage.removeItem("impersonating_business");
+    localStorage.removeItem("impersonating_business_name");
+    setImpersonating(null);
+    toast.success("Mode impersonation désactivé");
   };
 
   const viewBizDetails = async (biz: any) => {
@@ -66,12 +117,13 @@ const AdminBusinesses = () => {
   };
 
   const exportCSV = () => {
-    const headers = ["Nom", "Catégorie", "Ville", "Plan", "Statut", "Géofencing", "Créé le"];
+    const headers = ["Nom", "Catégorie", "Ville", "Plan", "Statut", "Clients", "Scans", "Créé le"];
     const rows = filtered.map((b) => [
       b.name, b.category, b.city || "", b.subscription_plan, b.subscription_status,
-      b.geofence_enabled ? "Oui" : "Non", new Date(b.created_at).toLocaleDateString("fr-FR"),
+      customerCounts[b.id] || 0, scanCounts[b.id] || 0,
+      new Date(b.created_at).toLocaleDateString("fr-FR"),
     ]);
-    const csv = [headers.join(","), ...rows.map((r: string[]) => r.map(v => `"${v}"`).join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map((r: any[]) => r.map(v => `"${v}"`).join(","))].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
     link.download = `entreprises_${new Date().toISOString().split("T")[0]}.csv`; link.click();
@@ -92,6 +144,17 @@ const AdminBusinesses = () => {
           <Download className="w-4 h-4" /> Export CSV
         </Button>
       }>
+
+      {/* Impersonation banner */}
+      {impersonating && (
+        <div className="mb-4 flex items-center justify-between rounded-xl bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 px-4 py-2">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-sm font-medium">Mode impersonation actif : {localStorage.getItem("impersonating_business_name")}</span>
+          </div>
+          <Button size="sm" variant="outline" className="text-xs" onClick={stopImpersonation}>Arrêter</Button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
@@ -122,22 +185,23 @@ const AdminBusinesses = () => {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm">
+      <div className="rounded-2xl border border-border/40 bg-card overflow-x-auto shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Entreprise</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Statut</TableHead>
+              <TableHead className="text-center">Clients</TableHead>
+              <TableHead className="text-center">Scans</TableHead>
               <TableHead>Essai</TableHead>
-              <TableHead>Stripe</TableHead>
-              <TableHead>Créée le</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((biz) => {
               const trialDaysLeft = biz.trial_ends_at ? Math.max(0, Math.ceil((new Date(biz.trial_ends_at).getTime() - Date.now()) / 86400000)) : 0;
+              const isActive = biz.subscription_status === "active" || biz.subscription_status === "trialing";
               return (
                 <TableRow key={biz.id} className="group">
                   <TableCell>
@@ -166,17 +230,14 @@ const AdminBusinesses = () => {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Select value={biz.subscription_status} onValueChange={(v) => updateStatus(biz.id, v)}>
-                      <SelectTrigger className="w-28 rounded-lg h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Actif</SelectItem>
-                        <SelectItem value="trialing">Essai</SelectItem>
-                        <SelectItem value="inactive">Inactif</SelectItem>
-                        <SelectItem value="past_due">Impayé</SelectItem>
-                        <SelectItem value="canceled">Annulé</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Badge className={
+                      biz.subscription_status === "active" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]" :
+                      biz.subscription_status === "trialing" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]" :
+                      "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px]"
+                    }>{biz.subscription_status}</Badge>
                   </TableCell>
+                  <TableCell className="text-center font-medium text-sm">{customerCounts[biz.id] || 0}</TableCell>
+                  <TableCell className="text-center font-medium text-sm">{scanCounts[biz.id] || 0}</TableCell>
                   <TableCell>
                     {biz.subscription_status === "trialing" ? (
                       <div className="flex items-center gap-2">
@@ -188,22 +249,19 @@ const AdminBusinesses = () => {
                       </div>
                     ) : <span className="text-xs text-muted-foreground">—</span>}
                   </TableCell>
-                  <TableCell>
-                    {biz.stripe_subscription_id ? (
-                      <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]">Lié</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-[10px]">Non lié</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(biz.created_at).toLocaleDateString("fr-FR")}
-                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => viewBizDetails(biz)}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Aperçu rapide" onClick={() => viewBizDetails(biz)}>
                         <Eye className="w-4 h-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => navigate(`/admin/businesses/${biz.id}`)}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Impersonifier" onClick={() => startImpersonation(biz)}>
+                        <LogIn className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title={isActive ? "Suspendre" : "Réactiver"}
+                        onClick={() => setSuspendTarget(biz)}>
+                        {isActive ? <Ban className="w-4 h-4 text-destructive" /> : <CheckCircle className="w-4 h-4 text-emerald-600" />}
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Détails" onClick={() => navigate(`/admin/businesses/${biz.id}`)}>
                         <ExternalLink className="w-4 h-4" />
                       </Button>
                     </div>
@@ -214,6 +272,28 @@ const AdminBusinesses = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Suspend/Reactivate confirmation */}
+      <AlertDialog open={!!suspendTarget} onOpenChange={() => setSuspendTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {suspendTarget?.subscription_status === "inactive" ? "Réactiver" : "Suspendre"} {suspendTarget?.name} ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {suspendTarget?.subscription_status === "inactive"
+                ? "Le marchand pourra de nouveau accéder à son dashboard."
+                : "Le marchand ne pourra plus accéder à son dashboard tant que le compte est suspendu."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={() => suspendTarget && suspendBusiness(suspendTarget)}>
+              {suspendTarget?.subscription_status === "inactive" ? "Réactiver" : "Suspendre"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Quick view Dialog */}
       <Dialog open={!!selectedBiz} onOpenChange={() => { setSelectedBiz(null); setBizStats(null); }}>
@@ -254,17 +334,10 @@ const AdminBusinesses = () => {
                   onClick={() => { setSelectedBiz(null); navigate(`/admin/businesses/${selectedBiz.id}`); }}>
                   Voir en détail
                 </Button>
-                {selectedBiz.subscription_status !== "active" ? (
-                  <Button className="flex-1 rounded-xl text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
-                    onClick={() => { updateStatus(selectedBiz.id, "active"); setSelectedBiz(null); }}>
-                    <CheckCircle className="w-3 h-3" /> Réactiver
-                  </Button>
-                ) : (
-                  <Button variant="destructive" className="flex-1 rounded-xl text-xs gap-1"
-                    onClick={() => { updateStatus(selectedBiz.id, "inactive"); setSelectedBiz(null); }}>
-                    <Ban className="w-3 h-3" /> Suspendre
-                  </Button>
-                )}
+                <Button variant="outline" className="flex-1 rounded-xl text-xs gap-1"
+                  onClick={() => { setSelectedBiz(null); startImpersonation(selectedBiz); }}>
+                  <LogIn className="w-3 h-3" /> Impersonifier
+                </Button>
               </div>
             </div>
           )}
