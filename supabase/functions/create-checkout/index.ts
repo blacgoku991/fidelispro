@@ -55,7 +55,7 @@ serve(async (req) => {
         line_items: [{ price: priceId, quantity: 1 }],
         mode: "subscription",
         ui_mode: "embedded",
-        return_url: `${origin}/dashboard/settings?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        return_url: `${origin}/setup?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
         subscription_data: {
           metadata: { user_id: user.id, plan },
         },

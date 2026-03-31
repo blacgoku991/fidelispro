@@ -26,6 +26,7 @@ import AdminLandingContent from "./pages/admin/AdminLandingContent";
 import AdminEmailDigest from "./pages/admin/AdminEmailDigest";
 import Onboarding from "./pages/Onboarding";
 import OnboardingBusiness from "./pages/OnboardingBusiness";
+import SetupWizard from "./pages/SetupWizard";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
 import VitrinePage from "./pages/public/VitrinePage";
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/onboarding-business" element={<OnboardingBusiness />} />
+            <Route path="/setup" element={<SetupWizard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/clients" element={<ClientsPage />} />
             <Route path="/dashboard/rewards" element={<RewardsPage />} />
