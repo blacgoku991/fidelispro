@@ -17,23 +17,30 @@ serve(async (req) => {
   );
 
   try {
+    console.log("[manage-stripe-plans] START — method:", req.method);
+
     // ── Auth : vérifier que l'appelant est super_admin ─────────────────
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "").trim();
+    console.log("[manage-stripe-plans] token présent:", !!token, "longueur:", token.length);
     if (!token) throw new Error("Non authentifié — token manquant");
 
     const { data: userData, error: authErr } = await supabase.auth.getUser(token);
+    console.log("[manage-stripe-plans] getUser error:", authErr?.message ?? null, "user_id:", userData?.user?.id ?? null);
     if (authErr || !userData?.user) throw new Error("Non authentifié");
 
-    const { data: roleRow } = await supabase
+    const { data: roleRow, error: roleErr } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userData.user.id)
+      .eq("role", "super_admin")
       .maybeSingle();
+    console.log("[manage-stripe-plans] roleRow:", JSON.stringify(roleRow), "roleErr:", roleErr?.message ?? null);
     if (roleRow?.role !== "super_admin") throw new Error("Accès réservé aux super admins");
 
     // ── Stripe ─────────────────────────────────────────────────────────
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+    console.log("[manage-stripe-plans] STRIPE_SECRET_KEY présent:", !!stripeKey);
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY non configuré dans les secrets Supabase");
 
     const stripe = new Stripe(stripeKey, {
@@ -42,6 +49,7 @@ serve(async (req) => {
 
     const body = await req.json();
     const { action } = body;
+    console.log("[manage-stripe-plans] action reçue:", action);
 
     // ── Lire les settings actuels ──────────────────────────────────────
     const { data: rows, error: settingsErr } = await supabase
@@ -54,6 +62,7 @@ serve(async (req) => {
         "stripe_price_starter",   "stripe_price_pro",
       ]);
 
+    console.log("[manage-stripe-plans] site_settings lues:", rows?.length ?? 0, "rows, settingsErr:", settingsErr?.message ?? null);
     if (settingsErr) throw new Error(`Erreur lecture site_settings: ${settingsErr.message}`);
 
     const cfg: Record<string, string> = {};
@@ -157,11 +166,12 @@ serve(async (req) => {
       });
     }
 
+    console.log("[manage-stripe-plans] action inconnue:", action);
     throw new Error(`Action inconnue : ${action}`);
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("manage-stripe-plans error:", msg);
+    console.error("[manage-stripe-plans] ERREUR 400:", msg);
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
