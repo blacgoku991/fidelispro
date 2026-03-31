@@ -9,6 +9,7 @@ import { FeatureToggles } from "@/components/dashboard/FeatureToggles";
 import { defaultConfig, type BusinessConfig, type BusinessTemplate } from "@/lib/businessTemplates";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
