@@ -9,17 +9,16 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  CreditCard, ExternalLink, AlertTriangle, RefreshCw, Zap, Crown, Shield, Check, Loader2,
+  CreditCard, ExternalLink, AlertTriangle, RefreshCw, Zap, Crown, Check, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
 import { motion } from "framer-motion";
 
-const planIcons: Record<string, React.ElementType> = { starter: Zap, pro: Crown, enterprise: Shield };
+const planIcons: Record<string, React.ElementType> = { starter: Zap, pro: Crown };
 const planColors: Record<string, string> = {
   starter: "from-blue-500 to-cyan-500",
   pro: "from-violet-500 to-purple-600",
-  enterprise: "from-amber-500 to-orange-500",
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {

@@ -126,8 +126,7 @@ const AdminDashboard = () => {
   };
 
   const mrrEstimate = (planBreakdown["starter"] || 0) * STRIPE_PLANS.starter.price
-    + (planBreakdown["pro"] || 0) * STRIPE_PLANS.pro.price
-    + (planBreakdown["enterprise"] || 0) * STRIPE_PLANS.enterprise.price;
+    + (planBreakdown["pro"] || 0) * STRIPE_PLANS.pro.price;
 
   const pieData = Object.entries(planBreakdown).map(([plan, count]) => ({
     name: plan.charAt(0).toUpperCase() + plan.slice(1), value: count,

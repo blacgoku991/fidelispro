@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Zap, Crown, Shield, ArrowRight, ChevronDown } from "lucide-react";
+import { Check, X, Zap, Crown, ArrowRight, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Navbar } from "@/components/landing/Navbar";
@@ -27,7 +27,7 @@ const plans = [
   {
     key: "pro",
     name: "Pro",
-    price: 79,
+    price: 59,
     icon: Crown,
     color: "from-violet-500 to-purple-600",
     popular: true,
@@ -44,43 +44,21 @@ const plans = [
       "Support prioritaire",
     ],
   },
-  {
-    key: "enterprise",
-    name: "Enterprise",
-    price: 199,
-    icon: Shield,
-    color: "from-amber-500 to-orange-500",
-    description: "Pour les chaînes et franchises avec besoins spécifiques.",
-    features: [
-      "Tout Pro +",
-      "Multi-établissements",
-      "Événements spéciaux",
-      "Notifications riches (images)",
-      "API personnalisée",
-      "Onboarding dédié",
-      "SLA garanti",
-      "Support téléphonique",
-    ],
-  },
 ];
 
 const comparison = [
-  { feature: "Clients", starter: "200", pro: "Illimités", enterprise: "Illimités" },
-  { feature: "Scanner QR code", starter: true, pro: true, enterprise: true },
-  { feature: "Cartes de fidélité digitales", starter: true, pro: true, enterprise: true },
-  { feature: "Gestion récompenses", starter: true, pro: true, enterprise: true },
-  { feature: "Apple Wallet", starter: false, pro: true, enterprise: true },
-  { feature: "Google Wallet", starter: false, pro: true, enterprise: true },
-  { feature: "Notifications push", starter: false, pro: true, enterprise: true },
-  { feature: "Analytics avancés", starter: false, pro: true, enterprise: true },
-  { feature: "Scoring client", starter: false, pro: true, enterprise: true },
-  { feature: "Campagnes marketing", starter: false, pro: true, enterprise: true },
-  { feature: "Géofencing", starter: false, pro: true, enterprise: true },
-  { feature: "Événements spéciaux", starter: false, pro: false, enterprise: true },
-  { feature: "Notifications riches", starter: false, pro: false, enterprise: true },
-  { feature: "API personnalisée", starter: false, pro: false, enterprise: true },
-  { feature: "Multi-établissements", starter: false, pro: false, enterprise: true },
-  { feature: "Support", starter: "Email", pro: "Prioritaire", enterprise: "Téléphone + SLA" },
+  { feature: "Clients", starter: "200", pro: "Illimités" },
+  { feature: "Scanner QR code", starter: true, pro: true },
+  { feature: "Cartes de fidélité digitales", starter: true, pro: true },
+  { feature: "Gestion récompenses", starter: true, pro: true },
+  { feature: "Apple Wallet", starter: false, pro: true },
+  { feature: "Google Wallet", starter: false, pro: true },
+  { feature: "Notifications push", starter: false, pro: true },
+  { feature: "Analytics avancés", starter: false, pro: true },
+  { feature: "Scoring client", starter: false, pro: true },
+  { feature: "Campagnes marketing", starter: false, pro: true },
+  { feature: "Géofencing", starter: false, pro: true },
+  { feature: "Support", starter: "Email", pro: "Prioritaire" },
 ];
 
 const faqs = [
@@ -156,7 +134,7 @@ const Tarifs = () => {
 
       {/* Plan cards */}
       <section className="max-w-5xl mx-auto px-4 pb-20">
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {plans.map((plan, i) => {
             const Icon = plan.icon;
             return (
@@ -229,7 +207,6 @@ const Tarifs = () => {
                   <td className="p-4 text-muted-foreground">{row.feature}</td>
                   <td className="p-4 text-center"><Cell value={row.starter} /></td>
                   <td className={`p-4 text-center ${plans[1].popular ? "bg-primary/5" : ""}`}><Cell value={row.pro} /></td>
-                  <td className="p-4 text-center"><Cell value={row.enterprise} /></td>
                 </tr>
               ))}
             </tbody>

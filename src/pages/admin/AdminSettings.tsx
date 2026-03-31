@@ -13,7 +13,7 @@ import {
 import { STRIPE_PLANS } from "@/lib/stripePlans";
 import { toast } from "sonner";
 
-const PLAN_KEYS = ["starter", "pro", "enterprise"] as const;
+const PLAN_KEYS = ["starter", "pro"] as const;
 
 async function fetchSettings(): Promise<Record<string, string>> {
   const { data } = await supabase.from("site_settings").select("key, value").in("key", [
@@ -239,11 +239,11 @@ const AdminSettings = () => {
             <div className="space-y-3">
               {PLAN_KEYS.map((key) => {
                 const fallback = STRIPE_PLANS[key];
-                const name    = (key !== "enterprise" && cfg?.[`plan_${key}_name`])      || fallback.name;
-                const price   = (key !== "enterprise" && cfg?.[`plan_${key}_price`])     || String(fallback.price);
-                const priceId = (key !== "enterprise" && cfg?.[`stripe_price_${key}`])   || fallback.price_id;
-                const prodId  = (key !== "enterprise" && cfg?.[`stripe_product_${key}`]) || fallback.product_id;
-                const isFromDb = key !== "enterprise" && !!cfg?.[`stripe_price_${key}`];
+                const name    = cfg?.[`plan_${key}_name`]      || fallback.name;
+                const price   = cfg?.[`plan_${key}_price`]     || String(fallback.price);
+                const priceId = cfg?.[`stripe_price_${key}`]   || fallback.price_id;
+                const prodId  = cfg?.[`stripe_product_${key}`] || fallback.product_id;
+                const isFromDb = !!cfg?.[`stripe_price_${key}`];
 
                 return (
                   <div key={key} className="p-4 rounded-xl bg-secondary/30 border border-border/20 space-y-2">

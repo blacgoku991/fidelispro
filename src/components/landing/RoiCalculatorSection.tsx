@@ -19,7 +19,7 @@ export function RoiCalculatorSection() {
   const extraVisitsPerClient = frequency * upliftRate;
   const extraRevenuePerClient = extraVisitsPerClient * basket;
   const totalExtraRevenue = Math.round(extraRevenuePerClient * clients);
-  const monthlyFideli = 79; // plan Pro
+  const monthlyFideli = 59; // plan Pro
   const roi = Math.round((totalExtraRevenue / monthlyFideli) * 10) / 10;
 
   return (

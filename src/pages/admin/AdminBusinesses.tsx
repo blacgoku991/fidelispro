@@ -169,7 +169,6 @@ const AdminBusinesses = () => {
             <SelectItem value="all">Tous les plans</SelectItem>
             <SelectItem value="starter">Starter</SelectItem>
             <SelectItem value="pro">Pro</SelectItem>
-            <SelectItem value="enterprise">Enterprise</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -213,8 +212,7 @@ const AdminBusinesses = () => {
                       <SelectContent>
                         <SelectItem value="starter">Starter</SelectItem>
                         <SelectItem value="pro">Pro</SelectItem>
-                        <SelectItem value="enterprise">Enterprise</SelectItem>
-                      </SelectContent>
+                                  </SelectContent>
                     </Select>
                   </TableCell>
                   <TableCell>

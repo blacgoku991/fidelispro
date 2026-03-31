@@ -17,8 +17,7 @@ import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
 
 const planLabels: Record<string, string> = {
   starter: "Starter — 29€/mois",
-  pro: "Pro — 79€/mois",
-  enterprise: "Enterprise — Sur devis",
+  pro: "Pro — 59€/mois",
 };
 
 const SettingsPage = () => {
