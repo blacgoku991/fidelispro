@@ -78,6 +78,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(rolesRes.data?.[0]?.role ?? null);
       setBusiness(bizRes.data ?? null);
       setLoading(false);
+
+      // Subscription gate: redirect unpaid users to checkout
+      const biz = bizRes.data;
+      const path = window.location.pathname;
+      if (
+        biz &&
+        biz.subscription_status === "inactive" &&
+        path.startsWith("/dashboard") &&
+        !path.startsWith("/dashboard/checkout")
+      ) {
+        navigate(`/dashboard/checkout?plan=${biz.subscription_plan || "starter"}`, { replace: true });
+      }
     };
 
     loadUserContext();

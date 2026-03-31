@@ -25,7 +25,7 @@ const Login = () => {
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: { redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/onboarding` },
     });
   };
 

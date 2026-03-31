@@ -54,7 +54,7 @@ const Onboarding = () => {
         // Trigger created a default name — collect real business info first
         navigate(`/onboarding-business?plan=${plan}`);
       } else if (status === "inactive") {
-        navigate(`/dashboard/checkout?plan=${plan}`);
+        navigate(`/dashboard/checkout?plan=${(business as any).subscription_plan || plan}`);
       } else {
         navigate("/dashboard");
       }

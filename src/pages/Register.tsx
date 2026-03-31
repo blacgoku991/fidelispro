@@ -52,12 +52,12 @@ const Register = () => {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
         data: { business_name: businessName.trim() },
-        emailRedirectTo: `${window.location.origin}/dashboard/checkout?plan=${selectedPlan}`,
+        emailRedirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/dashboard/checkout?plan=${selectedPlan}`,
       },
     });
     setLoading(false);
