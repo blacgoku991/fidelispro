@@ -63,9 +63,13 @@ const Register = () => {
     setLoading(false);
     if (error) {
       toast.error(error.message);
-    } else {
-      toast.success("Compte créé ! Vérifiez votre email puis vous serez redirigé vers le paiement.");
+    } else if (data.session) {
+      // Email confirmation disabled → user is authenticated immediately
+      toast.success("Compte créé ! Redirection vers le paiement…");
       navigate(`/dashboard/checkout?plan=${selectedPlan}`);
+    } else {
+      // Email confirmation required → emailRedirectTo handles the checkout redirect after confirmation
+      toast.success("Compte créé ! Vérifiez votre email pour confirmer puis vous serez redirigé vers le paiement.");
     }
   };
 
