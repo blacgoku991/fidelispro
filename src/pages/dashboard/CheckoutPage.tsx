@@ -12,7 +12,10 @@ import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
 import { motion } from "framer-motion";
 
-const stripePromise = loadStripe("pk_test_51TFvKzFQlLT8Im0JFlVZADj2QIjmXQGFQVmWXt4uLlsO7cjrwI1rv8wbZVEzo7HRNjf40I664nDV2vOKZhnTIXjb00s1qkdukH");
+const stripePromise = loadStripe(
+  import.meta.env.VITE_STRIPE_PUBLIC_KEY ||
+  "pk_test_51TFvKzFQlLT8Im0JFlVZADj2QIjmXQGFQVmWXt4uLlsO7cjrwI1rv8wbZVEzo7HRNjf40I664nDV2vOKZhnTIXjb00s1qkdukH"
+);
 
 const CheckoutPage = () => {
   const [searchParams] = useSearchParams();
