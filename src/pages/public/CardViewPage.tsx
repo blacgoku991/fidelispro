@@ -31,26 +31,11 @@ const CardViewPage = () => {
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
   const isAndroidDevice = /Android/.test(navigator.userAgent);
 
-  const handleAddToWallet = async () => {
+  const handleAddToWallet = () => {
     if (!cardCode) return;
     setWalletLoading(true);
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const walletUrl = `${supabaseUrl}/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
-      const res = await fetch(walletUrl);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `Erreur ${res.status}` }));
-        throw new Error(err.error || `Erreur serveur ${res.status}`);
-      }
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      window.location.href = blobUrl;
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e.message || "Impossible de générer la carte Wallet");
-    } finally {
-      setWalletLoading(false);
-    }
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    window.location.href = `${supabaseUrl}/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
   };
 
   const handleAddToGoogleWallet = async () => {
