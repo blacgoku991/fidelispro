@@ -63,7 +63,8 @@ serve(async (req) => {
         const sub = event.data.object as Stripe.Subscription;
         const userId = sub.metadata?.user_id;
         const plan = sub.metadata?.plan;
-        const status = sub.status; // active | past_due | canceled | trialing | ...
+        const status = sub.status;
+        const customerId = sub.customer as string;
 
         if (userId) {
           await supabase.from("businesses").update({
@@ -74,6 +75,7 @@ serve(async (req) => {
               : "inactive",
             ...(plan ? { subscription_plan: plan } : {}),
             stripe_subscription_id: sub.id,
+            stripe_customer_id: customerId,
           }).eq("owner_id", userId);
         }
         break;
