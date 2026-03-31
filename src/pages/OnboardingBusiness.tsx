@@ -27,32 +27,37 @@ const OnboardingBusiness = () => {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/login"); return; }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { navigate("/login"); return; }
 
-      const { data: business } = await supabase
-        .from("businesses")
-        .select("id, name, category, subscription_status, subscription_plan")
-        .eq("owner_id", user.id)
-        .maybeSingle();
+        const { data: business, error } = await supabase
+          .from("businesses")
+          .select("id, name, category, subscription_status, subscription_plan")
+          .eq("owner_id", user.id)
+          .maybeSingle();
 
-      if (!business) { navigate("/login"); return; }
+        if (error || !business) { navigate("/login"); return; }
 
-      const name = (business as any).name;
-      const status = (business as any).subscription_status;
+        const name = (business as any).name;
+        const status = (business as any).subscription_status;
 
-      // Already onboarded, skip
-      if (name && name !== "Mon Commerce") {
-        if (status === "inactive") {
-          navigate(`/dashboard/checkout?plan=${plan || (business as any).subscription_plan || "pro"}`);
-        } else {
-          navigate("/dashboard");
+        // Already onboarded, skip
+        if (name && name !== "Mon Commerce") {
+          if (status === "inactive") {
+            navigate(`/dashboard/checkout?plan=${plan || (business as any).subscription_plan || "pro"}`);
+          } else {
+            navigate("/dashboard");
+          }
+          return;
         }
-        return;
-      }
 
-      setBusinessId(business.id);
-      setLoading(false);
+        setBusinessId(business.id);
+      } catch {
+        navigate("/login");
+      } finally {
+        setLoading(false);
+      }
     };
     init();
   }, []);
