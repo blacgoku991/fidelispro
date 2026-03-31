@@ -23,6 +23,7 @@ import AdminBusinessDetail from "./pages/admin/AdminBusinessDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminLandingContent from "./pages/admin/AdminLandingContent";
+import AdminEmailDigest from "./pages/admin/AdminEmailDigest";
 import Onboarding from "./pages/Onboarding";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
@@ -67,6 +68,7 @@ const App = () => (
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/landing" element={<AdminLandingContent />} />
+            <Route path="/admin/digest" element={<AdminEmailDigest />} />
             <Route path="/b/:businessId" element={<BusinessPublicPage />} />
             <Route path="/vitrine/:slug" element={<VitrinePage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />

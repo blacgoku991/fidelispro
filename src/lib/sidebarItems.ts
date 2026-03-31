@@ -1,6 +1,6 @@
 import {
   BarChart3, Users, Settings, Palette, Gift, Send,
-  LayoutDashboard, Building2, Shield, FileText, Globe,
+  LayoutDashboard, Building2, Shield, FileText, Globe, Mail,
 } from "lucide-react";
 
 export const businessSidebarItems = [
@@ -18,4 +18,5 @@ export const adminSidebarItems = [
   { icon: Users, label: "Utilisateurs", path: "/admin/users" },
   { icon: Globe, label: "Contenu du site", path: "/admin/landing" },
   { icon: Settings, label: "Configuration", path: "/admin/settings" },
+  { icon: Mail, label: "Emails programmés", path: "/admin/digest" },
 ];
