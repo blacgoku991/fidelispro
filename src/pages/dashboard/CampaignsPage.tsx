@@ -255,10 +255,12 @@ const CampaignsPage = () => {
     if (error) { toast.error("Erreur d'envoi"); setSending(false); return; }
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(`https://${projectId}.supabase.co/functions/v1/send-notifications`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           business_id: business.id,
           title: form.title.trim() || business.name,
