@@ -72,7 +72,7 @@ export function Footer() {
             <h4 className="font-display font-semibold text-sm mb-5 text-foreground">Entreprise</h4>
             <ul className="space-y-3">
               <li><a href={contactUrl} className="text-sm text-muted-foreground hover:text-primary transition-colors">Contact</a></li>
-              <li><a href="/register" className="text-sm text-muted-foreground hover:text-primary transition-colors">Démarrer l'essai</a></li>
+              <li><a href="/register" className="text-sm text-muted-foreground hover:text-primary transition-colors">S'inscrire</a></li>
               <li><a href="/login" className="text-sm text-muted-foreground hover:text-primary transition-colors">Se connecter</a></li>
             </ul>
           </div>

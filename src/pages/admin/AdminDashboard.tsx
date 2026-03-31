@@ -306,7 +306,6 @@ const AdminDashboard = () => {
                 <Badge variant="outline" className="text-[10px] shrink-0">{biz.subscription_plan}</Badge>
                 <Badge className={
                   biz.subscription_status === "active" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]" :
-                  biz.subscription_status === "trialing" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]" :
                   "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px]"
                 }>{biz.subscription_status}</Badge>
               </div>

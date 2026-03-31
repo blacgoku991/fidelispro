@@ -32,33 +32,6 @@ const AdminSettings = () => {
           </div>
         </div>
 
-        {/* Trial settings */}
-        <div className="rounded-2xl bg-card border border-border/40 p-6 shadow-sm space-y-4">
-          <h3 className="font-display font-semibold flex items-center gap-2">
-            <Settings2 className="w-4 h-4 text-primary" /> Période d'essai
-          </h3>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Durée par défaut</p>
-              <p className="text-xs text-muted-foreground">Appliquée aux nouvelles inscriptions</p>
-            </div>
-            <p className="font-display font-bold">14 jours</p>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Renouvellement automatique</p>
-              <p className="text-xs text-muted-foreground">Géré par Stripe Subscriptions</p>
-            </div>
-            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">Activé</Badge>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Relance avant expiration</p>
-              <p className="text-xs text-muted-foreground">Email automatique Stripe 3j avant</p>
-            </div>
-            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">Activé</Badge>
-          </div>
-        </div>
 
         {/* Platform info */}
         <div className="rounded-2xl bg-card border border-border/40 p-6 shadow-sm space-y-4">

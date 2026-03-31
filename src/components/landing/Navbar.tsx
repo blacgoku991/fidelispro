@@ -48,7 +48,7 @@ export function Navbar() {
           <Button asChild size="sm" className="bg-gradient-primary text-primary-foreground rounded-lg hover:opacity-90 shadow-sm gap-1.5 font-semibold">
             <Link to="/register">
               <Zap className="w-3.5 h-3.5" />
-              Essai gratuit
+              S'inscrire
             </Link>
           </Button>
         </div>
@@ -88,7 +88,7 @@ export function Navbar() {
                   <Button asChild className="w-full justify-center bg-gradient-primary text-primary-foreground rounded-xl h-11 gap-1.5 font-semibold">
                     <Link to="/register">
                       <Zap className="w-4 h-4" />
-                      Essai gratuit 14 jours
+                      S'inscrire
                     </Link>
                   </Button>
                 </div>
