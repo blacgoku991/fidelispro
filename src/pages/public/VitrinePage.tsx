@@ -59,48 +59,52 @@ const VitrinePage = () => {
 
   useEffect(() => {
     const load = async () => {
-      if (!slug) return;
+      if (!slug) { setLoading(false); return; }
       setLoading(true);
 
-      // 1. Try fetching by slug (requires migration applied)
-      let biz: any = null;
-      const { data: bySlug, error: slugError } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("slug", slug)
-        .maybeSingle();
+      try {
+        // 1. Try fetching by slug (requires migration applied)
+        let biz: any = null;
+        const { data: bySlug, error: slugError } = await supabase
+          .from("businesses")
+          .select("*")
+          .eq("slug", slug)
+          .maybeSingle();
 
-      if (!slugError && bySlug) {
-        biz = bySlug;
-      } else {
-        // 2. Fallback: try fetching by business ID (UUID format)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(slug)) {
-          const { data: byId } = await supabase
-            .from("businesses")
-            .select("*")
-            .eq("id", slug)
-            .maybeSingle();
-          if (byId) biz = byId;
+        if (!slugError && bySlug) {
+          biz = bySlug;
+        } else {
+          // 2. Fallback: try fetching by business ID (UUID format)
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (uuidRegex.test(slug)) {
+            const { data: byId } = await supabase
+              .from("businesses")
+              .select("*")
+              .eq("id", slug)
+              .maybeSingle();
+            if (byId) biz = byId;
+          }
         }
-      }
 
-      if (!biz) {
+        if (!biz) {
+          setNotFound(true);
+          return;
+        }
+        setBusiness(biz);
+
+        const { data: rw } = await supabase
+          .from("rewards")
+          .select("*")
+          .eq("business_id", biz.id)
+          .eq("is_active", true)
+          .order("points_required", { ascending: true });
+
+        setRewards(rw || []);
+      } catch {
         setNotFound(true);
+      } finally {
         setLoading(false);
-        return;
       }
-      setBusiness(biz);
-
-      const { data: rw } = await supabase
-        .from("rewards")
-        .select("*")
-        .eq("business_id", biz.id)
-        .eq("is_active", true)
-        .order("points_required", { ascending: true });
-
-      setRewards(rw || []);
-      setLoading(false);
     };
     load();
   }, [slug]);
