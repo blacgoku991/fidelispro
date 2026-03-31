@@ -73,15 +73,7 @@ const OnboardingBusiness = () => {
       city: form.city.trim() || null,
     };
 
-    if (!plan) {
-      // No plan chosen → 14-day free trial
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + 14);
-      updateData.subscription_status = "trialing";
-      updateData.trial_ends_at = trialEnd.toISOString();
-    } else {
-      updateData.subscription_plan = plan;
-    }
+    updateData.subscription_plan = plan || "starter";
 
     const { error } = await supabase
       .from("businesses")
@@ -94,13 +86,8 @@ const OnboardingBusiness = () => {
       return;
     }
 
-    if (plan) {
-      toast.success("Commerce configuré ! Finalisons votre abonnement…");
-      navigate(`/dashboard/checkout?plan=${plan}`);
-    } else {
-      toast.success("Commerce configuré ! Votre essai gratuit de 14 jours commence maintenant.");
-      navigate("/dashboard");
-    }
+    toast.success("Commerce configuré ! Finalisons votre abonnement…");
+    navigate(`/dashboard/checkout?plan=${plan || "starter"}`);
   };
 
   if (loading) {
@@ -134,7 +121,7 @@ const OnboardingBusiness = () => {
           <div className="mt-8 p-4 rounded-2xl bg-primary-foreground/5 border border-primary-foreground/10">
             <p className="text-sm text-primary-foreground/80 font-medium mb-2">✓ Compte Google connecté</p>
             <p className="text-xs text-primary-foreground/50">
-              {plan ? "Après cette étape, vous serez redirigé vers le paiement." : "Après cette étape, votre essai gratuit de 14 jours démarre."}
+              Après cette étape, vous serez redirigé vers le paiement.
             </p>
           </div>
         </div>
@@ -210,10 +197,8 @@ const OnboardingBusiness = () => {
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
-              ) : plan ? (
-                <>Continuer vers le paiement <ArrowRight className="w-4 h-4" /></>
               ) : (
-                <>Démarrer l'essai gratuit <ArrowRight className="w-4 h-4" /></>
+                <>Continuer vers le paiement <ArrowRight className="w-4 h-4" /></>
               )}
             </Button>
           </form>
