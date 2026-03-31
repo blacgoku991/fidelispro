@@ -73,15 +73,6 @@ const AdminBusinesses = () => {
     fetchAll();
   };
 
-  const extendTrial = async (id: string, days: number) => {
-    const newDate = new Date(); newDate.setDate(newDate.getDate() + days);
-    await supabase.from("businesses").update({
-      trial_ends_at: newDate.toISOString(),
-      subscription_status: "trialing" as any,
-    }).eq("id", id);
-    toast.success(`Essai prolongé de ${days} jours`);
-    fetchAll();
-  };
 
   const suspendBusiness = async (biz: any) => {
     const newStatus = biz.subscription_status === "inactive" ? "active" : "inactive";
@@ -167,7 +158,6 @@ const AdminBusinesses = () => {
           <SelectContent>
             <SelectItem value="all">Tous les statuts</SelectItem>
             <SelectItem value="active">Actif</SelectItem>
-            <SelectItem value="trialing">Essai</SelectItem>
             <SelectItem value="inactive">Inactif</SelectItem>
             <SelectItem value="past_due">Impayé</SelectItem>
             <SelectItem value="canceled">Annulé</SelectItem>
@@ -194,14 +184,12 @@ const AdminBusinesses = () => {
               <TableHead>Statut</TableHead>
               <TableHead className="text-center">Clients</TableHead>
               <TableHead className="text-center">Scans</TableHead>
-              <TableHead>Essai</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((biz) => {
-              const trialDaysLeft = biz.trial_ends_at ? Math.max(0, Math.ceil((new Date(biz.trial_ends_at).getTime() - Date.now()) / 86400000)) : 0;
-              const isActive = biz.subscription_status === "active" || biz.subscription_status === "trialing";
+              const isActive = biz.subscription_status === "active";
               return (
                 <TableRow key={biz.id} className="group">
                   <TableCell>
@@ -232,22 +220,12 @@ const AdminBusinesses = () => {
                   <TableCell>
                     <Badge className={
                       biz.subscription_status === "active" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]" :
-                      biz.subscription_status === "trialing" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]" :
                       "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px]"
                     }>{biz.subscription_status}</Badge>
                   </TableCell>
                   <TableCell className="text-center font-medium text-sm">{customerCounts[biz.id] || 0}</TableCell>
                   <TableCell className="text-center font-medium text-sm">{scanCounts[biz.id] || 0}</TableCell>
                   <TableCell>
-                    {biz.subscription_status === "trialing" ? (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px]">
-                          <Clock className="w-3 h-3 mr-1" /> {trialDaysLeft}j
-                        </Badge>
-                        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => extendTrial(biz.id, 7)}>+7j</Button>
-                        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => extendTrial(biz.id, 30)}>+30j</Button>
-                      </div>
-                    ) : <span className="text-xs text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -23,6 +23,13 @@ const planLabels: Record<string, string> = {
 
 const SettingsPage = () => {
   const { user, business } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("checkout") === "success") {
+      toast.success("Paiement réussi ! Votre abonnement est maintenant actif. 🎉");
+    }
+  }, []);
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -763,14 +770,9 @@ const SettingsPage = () => {
           </h2>
           <div className="flex items-center gap-2">
             <Badge className="bg-primary/10 text-primary text-xs">{business?.subscription_plan || "starter"}</Badge>
-            <Badge variant="outline" className="text-xs">{business?.subscription_status || "trialing"}</Badge>
+            <Badge variant="outline" className="text-xs">{business?.subscription_status || "inactive"}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">{planLabels[business?.subscription_plan || "starter"]}</p>
-          {business?.trial_ends_at && business?.subscription_status === "trialing" && (
-            <p className="text-xs text-muted-foreground">
-              Essai gratuit jusqu'au {new Date(business.trial_ends_at).toLocaleDateString("fr-FR")}
-            </p>
-          )}
 
           {/* Plan cards */}
           <div className="grid gap-3 pt-2">

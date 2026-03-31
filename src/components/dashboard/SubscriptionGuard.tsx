@@ -1,23 +1,20 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const { business } = useAuth();
+  const navigate = useNavigate();
 
   if (!business) return <>{children}</>;
 
   const status = business.subscription_status;
   const isBlocked = status === "canceled" || status === "inactive" || status === "past_due";
 
-  // Check trial expiration
-  const trialExpired = status === "trialing" && business.trial_ends_at && new Date(business.trial_ends_at) < new Date();
+  if (!isBlocked) return <>{children}</>;
 
-  if (!isBlocked && !trialExpired) return <>{children}</>;
-
-  const message = trialExpired
-    ? "Votre période d'essai est terminée. Souscrivez à un abonnement pour continuer."
-    : status === "past_due"
+  const message = status === "past_due"
     ? "Votre paiement est en retard. Mettez à jour vos informations de paiement."
     : status === "canceled"
     ? "Votre abonnement a été annulé. Réabonnez-vous pour réactiver votre compte."
@@ -42,7 +39,10 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
             <li>• Personnalisation des cartes</li>
           </ul>
         </div>
-        <Button className="bg-gradient-primary text-primary-foreground rounded-xl gap-2 w-full">
+        <Button
+          onClick={() => navigate(`/dashboard/checkout?plan=${business?.subscription_plan || "pro"}`)}
+          className="bg-gradient-primary text-primary-foreground rounded-xl gap-2 w-full"
+        >
           <CreditCard className="w-4 h-4" /> Gérer mon abonnement
         </Button>
         <p className="text-[11px] text-muted-foreground">

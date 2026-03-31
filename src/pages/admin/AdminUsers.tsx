@@ -142,7 +142,6 @@ const AdminUsers = () => {
                   {u.business ? (
                     <Badge className={
                       u.business.subscription_status === "active" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]" :
-                      u.business.subscription_status === "trialing" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]" :
                       "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px]"
                     }>{u.business.subscription_status}</Badge>
                   ) : "—"}

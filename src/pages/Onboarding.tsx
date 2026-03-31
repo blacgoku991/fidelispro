@@ -48,7 +48,7 @@ const Onboarding = () => {
       .maybeSingle();
 
     if (business) {
-      navigate(`/dashboard/checkout?plan=${plan}`);
+      navigate("/dashboard");
       return;
     }
 

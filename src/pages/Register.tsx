@@ -277,7 +277,7 @@ const Register = () => {
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Créer et payer <ArrowRight className="w-4 h-4" /></>}
                   </Button>
                   <p className="text-[11px] text-center text-muted-foreground">
-                    En créant votre compte, vous acceptez nos <a href="/legal" className="underline hover:text-primary">CGU</a> et notre <a href="/privacy" className="underline hover:text-primary">politique de confidentialité</a>.
+                    En créant votre compte, vous acceptez nos <a href="/#legal" className="underline hover:text-primary">CGU</a> et notre <a href="/#privacy" className="underline hover:text-primary">politique de confidentialité</a>.
                   </p>
                 </form>
               </motion.div>

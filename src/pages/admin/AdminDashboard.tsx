@@ -16,7 +16,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     businesses: 0, customers: 0, scansToday: 0, scansWeek: 0, scansMonth: 0,
-    activeSubscriptions: 0, trialSubscriptions: 0, expiredSubscriptions: 0,
+    activeSubscriptions: 0, expiredSubscriptions: 0,
     totalCards: 0, walletInstalls: 0, newBizThisMonth: 0,
   });
   const [recentBusinesses, setRecentBusinesses] = useState<any[]>([]);
@@ -40,7 +40,7 @@ const AdminDashboard = () => {
 
     const allBiz = bizListRes.data || [];
     const plans: Record<string, number> = {};
-    let active = 0, trial = 0, expired = 0;
+    let active = 0, expired = 0;
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     let newBizThisMonth = 0;
 
@@ -48,7 +48,6 @@ const AdminDashboard = () => {
       const plan = b.subscription_plan || "starter";
       plans[plan] = (plans[plan] || 0) + 1;
       if (b.subscription_status === "active") active++;
-      else if (b.subscription_status === "trialing") trial++;
       else expired++;
       if (new Date(b.created_at) >= monthStart) newBizThisMonth++;
     });
@@ -104,7 +103,7 @@ const AdminDashboard = () => {
     setStats({
       businesses: bizRes.count || 0, customers: custRes.count || 0,
       scansToday: scansRes.count || 0, scansWeek: weekScans || 0, scansMonth: monthScans || 0,
-      activeSubscriptions: active, trialSubscriptions: trial, expiredSubscriptions: expired,
+      activeSubscriptions: active, expiredSubscriptions: expired,
       totalCards: cardsRes.count || 0, walletInstalls: walletRes.count || 0,
       newBizThisMonth,
     });
@@ -163,9 +162,6 @@ const AdminDashboard = () => {
           <div className="flex gap-2 mt-3 flex-wrap">
             <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]">
               {stats.activeSubscriptions} actifs
-            </Badge>
-            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]">
-              {stats.trialSubscriptions} essai
             </Badge>
           </div>
         </motion.div>

@@ -126,7 +126,6 @@ const AdminBusinessDetail = () => {
           <div className="flex gap-2 mt-1">
             <Badge className={
               business.subscription_status === "active" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400" :
-              business.subscription_status === "trialing" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" :
               "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
             }>{business.subscription_status}</Badge>
             <Badge variant="outline">{business.subscription_plan}</Badge>
@@ -150,7 +149,6 @@ const AdminBusinessDetail = () => {
             <SelectTrigger className="w-28 rounded-xl h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="active">Actif</SelectItem>
-              <SelectItem value="trialing">Essai</SelectItem>
               <SelectItem value="inactive">Inactif</SelectItem>
               <SelectItem value="past_due">Impayé</SelectItem>
               <SelectItem value="canceled">Annulé</SelectItem>
@@ -204,13 +202,6 @@ const AdminBusinessDetail = () => {
             <div className="flex justify-between"><span className="text-muted-foreground">Site web</span><span>{business.website || "—"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Type fidélité</span><span className="capitalize">{business.loyalty_type}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Max points</span><span>{business.max_points_per_card}</span></div>
-            {business.trial_ends_at && (
-              <div className="flex items-center gap-2 text-sm pt-2 border-t border-border/30">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Fin d'essai :</span>
-                <span className="font-medium">{new Date(business.trial_ends_at).toLocaleDateString("fr-FR")}</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
