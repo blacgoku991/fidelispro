@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,12 @@ const planColors: Record<PlanKey, string> = {
 
 const Register = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<"plan" | "account">("plan");
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>("pro");
+  const initialPlan = searchParams.get("plan") as PlanKey;
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey>(
+    initialPlan && STRIPE_PLANS[initialPlan] ? initialPlan : "pro"
+  );
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

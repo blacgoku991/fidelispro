@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 
 const plans = [
   {
+    key: "starter",
     name: "Starter",
     price: "29",
     description: "Pour les petits commerces qui débutent",
@@ -15,10 +16,11 @@ const plans = [
       "Dashboard simplifié",
       "Support par email",
     ],
-    cta: "Commencer",
+    cta: "S'abonner",
     popular: false,
   },
   {
+    key: "pro",
     name: "Pro",
     price: "79",
     description: "Pour les commerces en croissance",
@@ -35,6 +37,7 @@ const plans = [
     popular: true,
   },
   {
+    key: "enterprise",
     name: "Enterprise",
     price: "Sur mesure",
     description: "Pour les chaînes et franchises",
@@ -133,7 +136,7 @@ export function PricingSection() {
                     : "bg-gradient-primary text-primary-foreground hover:opacity-90"
                 }`}
               >
-                <Link to="/register">{plan.cta}</Link>
+                <Link to={`/register?plan=${plan.key}`}>{plan.cta}</Link>
               </Button>
             </motion.div>
           ))}
