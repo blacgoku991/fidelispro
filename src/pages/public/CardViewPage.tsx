@@ -37,7 +37,14 @@ const CardViewPage = () => {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const walletUrl = `${supabaseUrl}/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
-      window.location.assign(walletUrl);
+      const res = await fetch(walletUrl);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `Erreur ${res.status}` }));
+        throw new Error(err.error || `Erreur serveur ${res.status}`);
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.location.href = blobUrl;
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Impossible de générer la carte Wallet");

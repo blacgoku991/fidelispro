@@ -30,17 +30,24 @@ const BusinessPublicPage = () => {
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
 
-  const handleAddToWallet = (cardCode: string) => {
+  const handleAddToWallet = async (cardCode: string) => {
     setWalletLoading(true);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const walletUrl = `https://${projectId}.supabase.co/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
-      window.location.assign(walletUrl);
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const walletUrl = `${supabaseUrl}/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
+      const res = await fetch(walletUrl);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `Erreur ${res.status}` }));
+        throw new Error(err.error || `Erreur serveur ${res.status}`);
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.location.href = blobUrl;
     } catch (e: any) {
       console.error("Wallet error:", e);
       toast.error(e.message || "Impossible de générer la carte Wallet");
     } finally {
-      setTimeout(() => setWalletLoading(false), 3000);
+      setWalletLoading(false);
     }
   };
 
