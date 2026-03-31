@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X, Zap, Crown, Shield, ArrowRight, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import Navbar from "@/components/landing/Navbar";
-import Footer from "@/components/landing/Footer";
+import { Navbar } from "@/components/landing/Navbar";
+import { Footer } from "@/components/landing/Footer";
 
 const plans = [
   {
