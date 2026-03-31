@@ -15,6 +15,8 @@ import {
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
+const MAX_RETRIES = 15;
+
 const STEPS = [
   { id: 1, label: "Votre carte", icon: Palette },
   { id: 2, label: "Récompense", icon: Gift },
@@ -37,30 +39,32 @@ const SetupWizard = () => {
   const [businessName, setBusinessName] = useState("");
 
   // ── Vérification paiement après redirect Stripe ──────────────────────
-  const [checkingPayment, setCheckingPayment] = useState(searchParams.get("checkout") === "success");
-  const [paymentVerified, setPaymentVerified] = useState(false);
+  const isCheckoutSuccess = searchParams.get("checkout") === "success";
+  const sessionId = searchParams.get("session_id");
+  const [checkingPayment, setCheckingPayment] = useState(isCheckoutSuccess);
+  const [paymentError, setPaymentError] = useState(false);
   const retryCount = useRef(0);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
-    if (searchParams.get("checkout") !== "success") return;
+    if (!isCheckoutSuccess) return;
 
     const verify = async () => {
       try {
-        const { data } = await supabase.functions.invoke("check-subscription");
+        const { data } = await supabase.functions.invoke("check-subscription", {
+          body: sessionId ? { session_id: sessionId } : {},
+        });
         if (data?.subscribed === true) {
-          setPaymentVerified(true);
           setCheckingPayment(false);
           return;
         }
       } catch { /* retry */ }
 
       retryCount.current += 1;
-      if (retryCount.current < 10) {
-        retryTimer.current = setTimeout(verify, 3000);
+      if (retryCount.current < MAX_RETRIES) {
+        retryTimer.current = setTimeout(verify, 2000);
       } else {
-        // Max retries: affiche le wizard quand même
         setCheckingPayment(false);
+        setPaymentError(true);
       }
     };
 
@@ -176,10 +180,42 @@ const SetupWizard = () => {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-5 p-6">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
         <div className="text-center">
-          <p className="font-display font-semibold text-lg">Vérification du paiement en cours…</p>
+          <p className="font-display font-semibold text-lg">Activation de votre abonnement…</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Synchronisation avec Stripe — tentative {Math.min(retryCount.current + 1, 10)}/10
+            Synchronisation avec Stripe — {Math.min(retryCount.current + 1, MAX_RETRIES)}/{MAX_RETRIES}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Timeout : paiement non confirmé après 30s
+  if (paymentError) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-5 p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+          <CreditCard className="w-8 h-8 text-destructive" />
+        </div>
+        <div>
+          <p className="font-display font-semibold text-xl">Impossible de confirmer le paiement</p>
+          <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+            Votre paiement a peut-être été traité mais nous n'avons pas pu le confirmer dans les délais.
+            Vérifiez votre email ou contactez le support.
+          </p>
+        </div>
+        <div className="flex gap-3 flex-wrap justify-center">
+          <button
+            onClick={() => window.location.replace("/setup?checkout=success" + (sessionId ? `&session_id=${sessionId}` : ""))}
+            className="px-4 py-2 rounded-xl border border-border text-sm hover:bg-muted transition-colors"
+          >
+            Réessayer
+          </button>
+          <a
+            href="mailto:support@fidelispro.fr"
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity"
+          >
+            Contacter le support
+          </a>
         </div>
       </div>
     );
