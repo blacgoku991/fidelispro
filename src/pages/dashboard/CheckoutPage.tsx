@@ -37,10 +37,10 @@ const CheckoutPage = () => {
             <p className="text-muted-foreground mt-2">Votre abonnement est maintenant actif. Profitez de toutes les fonctionnalités.</p>
           </div>
           <Button
-            onClick={() => navigate("/dashboard/settings")}
+            onClick={() => { window.location.replace("/dashboard"); }}
             className="bg-gradient-primary text-primary-foreground rounded-xl"
           >
-            Retour aux paramètres
+            Accéder au tableau de bord
           </Button>
         </motion.div>
       </DashboardLayout>
