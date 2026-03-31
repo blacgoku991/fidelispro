@@ -33,6 +33,37 @@ const cardStyles = [
   { value: "neon", label: "Néon" },
 ];
 
+const presetThemes = [
+  {
+    label: "Dark",
+    emoji: "🌑",
+    primary: "#1a1a2e",
+    secondary: "#e94560",
+    style: "neon",
+  },
+  {
+    label: "Gold",
+    emoji: "✨",
+    primary: "#92400e",
+    secondary: "#F59E0B",
+    style: "luxury",
+  },
+  {
+    label: "Pastel",
+    emoji: "🌸",
+    primary: "#7c3aed",
+    secondary: "#f9a8d4",
+    style: "classic",
+  },
+  {
+    label: "Coloré",
+    emoji: "🎨",
+    primary: "#059669",
+    secondary: "#3b82f6",
+    style: "restaurant",
+  },
+];
+
 const CustomizePage = () => {
   const { user, business } = useAuth();
   const [form, setForm] = useState<BusinessConfig & { name: string; description: string; address: string; city: string; phone: string; website: string; latitude: number | null; longitude: number | null; geofence_message: string }>(
@@ -294,6 +325,31 @@ const CustomizePage = () => {
 
         {/* === CARD === */}
         <TabsContent value="card">
+          {/* Preset themes */}
+          <div className="mb-5 p-5 rounded-2xl bg-card border border-border/50">
+            <h2 className="font-display font-semibold text-sm mb-3">Thèmes prédéfinis</h2>
+            <div className="grid grid-cols-4 gap-3">
+              {presetThemes.map((theme) => (
+                <button
+                  key={theme.label}
+                  onClick={() => {
+                    update("primary_color", theme.primary);
+                    update("secondary_color", theme.secondary);
+                    update("card_style", theme.style as any);
+                    toast.success(`Thème "${theme.label}" appliqué !`);
+                  }}
+                  className="group flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:shadow-md transition-all"
+                >
+                  <div
+                    className="w-full h-12 rounded-lg shadow-sm group-hover:scale-105 transition-transform"
+                    style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` }}
+                  />
+                  <span className="text-xs font-semibold">{theme.emoji} {theme.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid lg:grid-cols-2 gap-5">
             <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
               <h2 className="font-display font-semibold text-sm">Design de la carte</h2>
@@ -334,29 +390,89 @@ const CustomizePage = () => {
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-card border border-border/50">
-              <h2 className="font-display font-semibold text-sm mb-4">Aperçu</h2>
-              <div className="flex justify-center">
-                <LoyaltyCard
-                  businessName={form.name || "Mon Commerce"}
-                  customerName="Client exemple"
-                  points={7}
-                  maxPoints={form.max_points_per_card}
-                  level="gold"
-                  cardId={`preview-${user?.id?.slice(0, 8) || "demo"}`}
-                  logoUrl={logoUrl || undefined}
-                  accentColor={form.primary_color}
-                  secondaryColor={form.secondary_color}
-                  rewardDescription={form.reward_description}
-                  rewardsEarned={2}
-                  showQr={form.show_qr_code}
-                  showPoints={form.show_points}
-                  showCustomerName={form.show_customer_name}
-                  showExpiration={form.show_expiration}
-                  showRewardsPreview={form.show_rewards_preview}
-                  cardStyle={form.card_style}
-                  cardBgType={form.card_bg_type}
-                />
+            <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
+              {/* Apple Wallet preview */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-base">🍎</span>
+                  <h2 className="font-display font-semibold text-sm">Apple Wallet</h2>
+                </div>
+                <div className="flex justify-center">
+                  <LoyaltyCard
+                    businessName={form.name || "Mon Commerce"}
+                    customerName="Client exemple"
+                    points={7}
+                    maxPoints={form.max_points_per_card}
+                    level="gold"
+                    cardId={`preview-${user?.id?.slice(0, 8) || "demo"}`}
+                    logoUrl={logoUrl || undefined}
+                    accentColor={form.primary_color}
+                    secondaryColor={form.secondary_color}
+                    rewardDescription={form.reward_description}
+                    rewardsEarned={2}
+                    showQr={form.show_qr_code}
+                    showPoints={form.show_points}
+                    showCustomerName={form.show_customer_name}
+                    showExpiration={form.show_expiration}
+                    showRewardsPreview={form.show_rewards_preview}
+                    cardStyle={form.card_style}
+                    cardBgType={form.card_bg_type}
+                  />
+                </div>
+              </div>
+
+              {/* Google Wallet preview */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-base">🤖</span>
+                  <h2 className="font-display font-semibold text-sm">Google Wallet</h2>
+                  <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full">Aperçu simulé</span>
+                </div>
+                <div
+                  className="rounded-2xl overflow-hidden shadow-md"
+                  style={{ background: `linear-gradient(145deg, ${form.primary_color}dd, ${form.secondary_color || form.primary_color}bb)` }}
+                >
+                  <div className="p-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        {logoUrl ? (
+                          <img src={logoUrl} alt="" className="w-8 h-8 rounded-lg object-cover bg-white/20" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white text-[10px] font-bold">
+                            {(form.name || "MC").slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-white text-xs font-bold">{form.name || "Mon Commerce"}</p>
+                          <p className="text-white/60 text-[10px]">Carte de fidélité</p>
+                        </div>
+                      </div>
+                      <span className="text-white/60 text-[10px]">Google Wallet</span>
+                    </div>
+                    {/* Content */}
+                    <div className="bg-white/10 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white/70 text-[10px] uppercase tracking-wide">Titulaire</p>
+                          <p className="text-white text-sm font-semibold">Client Exemple</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white/70 text-[10px] uppercase tracking-wide">Points</p>
+                          <p className="text-white text-sm font-bold">7 / {form.max_points_per_card}</p>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                        <div className="h-full bg-white/80 rounded-full" style={{ width: `${Math.min((7 / form.max_points_per_card) * 100, 100)}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Bottom bar (Material style) */}
+                  <div className="bg-black/20 px-4 py-2 flex items-center justify-between">
+                    <span className="text-white/60 text-[10px]">⭐ Gold</span>
+                    <span className="text-white/60 text-[10px]">{form.reward_description || "Récompense offerte"}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
