@@ -21,6 +21,7 @@ import AdminBusinesses from "./pages/admin/AdminBusinesses";
 import AdminBusinessDetail from "./pages/admin/AdminBusinessDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminLandingContent from "./pages/admin/AdminLandingContent";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
 
