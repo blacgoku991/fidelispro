@@ -44,6 +44,7 @@ serve(async (req) => {
         const sub = event.data.object as Stripe.Subscription;
         const userId = sub.metadata?.user_id;
         const plan = sub.metadata?.plan;
+        const customerId = sub.customer as string;
         if (userId) {
           const mappedStatus = sub.status === "active" ? "active"
             : sub.status === "trialing" ? "trialing"
@@ -52,6 +53,7 @@ serve(async (req) => {
             subscription_status: mappedStatus,
             ...(plan ? { subscription_plan: plan } : {}),
             stripe_subscription_id: sub.id,
+            stripe_customer_id: customerId,
           }).eq("owner_id", userId);
         }
         break;

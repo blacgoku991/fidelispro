@@ -75,6 +75,7 @@ serve(async (req) => {
         mode: "subscription",
         ui_mode: "embedded",
         return_url: `${origin}/setup?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        payment_method_types: ["card"],
         subscription_data: {
           metadata: { user_id: user.id, plan },
         },
@@ -95,6 +96,7 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${origin}/dashboard/settings?checkout=success`,
       cancel_url: `${origin}/dashboard/settings?checkout=canceled`,
+      payment_method_types: ["card"],
       subscription_data: {
         metadata: { user_id: user.id, plan },
       },
