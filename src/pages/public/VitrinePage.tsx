@@ -287,7 +287,7 @@ const VitrinePage = () => {
               className="rounded-xl gap-2 font-semibold w-full"
               style={{ backgroundColor: accentColor, color: "#fff" }}
             >
-              S'inscrire gratuitement <ArrowRight className="w-4 h-4" />
+              Rejoindre le programme <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
         </div>

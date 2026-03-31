@@ -90,7 +90,7 @@ const faqs = [
   },
   {
     q: "Y a-t-il un engagement minimum ?",
-    a: "Non. Tous nos plans sont sans engagement, facturés mensuellement. Vous pouvez annuler à tout moment.",
+    a: "Non. Tous nos plans sont facturés mensuellement. Vous pouvez annuler à tout moment depuis votre espace abonnement.",
   },
   {
     q: "Les cartes Apple Wallet fonctionnent-elles sur tous les iPhone ?",
@@ -149,7 +149,7 @@ const Tarifs = () => {
             Un plan pour chaque commerçant
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            Sans engagement, sans frais cachés. Changez de plan à tout moment.
+            Facturation mensuelle, sans frais cachés. Changez de plan à tout moment.
           </p>
         </motion.div>
       </section>

@@ -645,7 +645,7 @@ const CustomizePage = () => {
                 {[
                   { step: "1", emoji: "🖨️", title: "Imprimez ou affichez le QR", desc: "Vitrine, comptoir, menu, flyer..." },
                   { step: "2", emoji: "📱", title: "Le client scanne", desc: "Appareil photo ou application QR" },
-                  { step: "3", emoji: "🎉", title: "Carte créée en 10 sec", desc: "Inscription instantanée et gratuite" },
+                  { step: "3", emoji: "🎉", title: "Carte créée en 10 sec", desc: "Inscription instantanée" },
                 ].map((s) => (
                   <div key={s.step} className="flex gap-3 items-start">
                     <span className="text-xl">{s.emoji}</span>

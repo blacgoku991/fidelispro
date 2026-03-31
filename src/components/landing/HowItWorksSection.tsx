@@ -3,7 +3,7 @@ import { UserPlus, Palette, TrendingUp } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const defaultSteps = [
-  { icon: UserPlus, title: "Inscris-toi en 2 minutes", desc: "Crée ton compte gratuitement et configure ta carte de fidélité en quelques clics.", color: "from-violet-500 to-purple-600" },
+  { icon: UserPlus, title: "Inscris-toi en 2 minutes", desc: "Crée ton compte et configure ta carte de fidélité en quelques clics.", color: "from-violet-500 to-purple-600" },
   { icon: Palette, title: "Crée ta carte de fidélité", desc: "Personnalise le design, les couleurs et les récompenses. Prête pour Apple & Google Wallet.", color: "from-blue-500 to-cyan-600" },
   { icon: TrendingUp, title: "Tes clients reviennent", desc: "Envoie des notifications ciblées, suis tes stats et regarde ton chiffre grimper.", color: "from-emerald-500 to-teal-600" },
 ];

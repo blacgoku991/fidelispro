@@ -314,7 +314,7 @@ const BusinessPublicPage = () => {
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <CreditCard className="w-4 h-4 text-primary" />
-                <span>Carte de fidélité digitale gratuite</span>
+                <span>Carte de fidélité digitale</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Sparkles className="w-4 h-4 text-accent" />
@@ -342,7 +342,7 @@ const BusinessPublicPage = () => {
           >
             <div className="text-center">
               <h2 className="text-2xl font-display font-bold">Inscrivez-vous</h2>
-              <p className="text-muted-foreground text-sm mt-1">Rapide et gratuit — 10 secondes</p>
+              <p className="text-muted-foreground text-sm mt-1">Rapide — 10 secondes</p>
             </div>
             <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-4">
               <div className="space-y-2">
