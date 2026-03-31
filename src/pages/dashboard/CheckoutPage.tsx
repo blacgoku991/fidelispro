@@ -9,7 +9,8 @@ import {
   ArrowLeft, CheckCircle, Loader2, Zap, Crown, Check,
   ArrowRight, LayoutDashboard, RefreshCw,
 } from "lucide-react";
-import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
+import { type PlanKey } from "@/lib/stripePlans";
+import { usePricingPlans } from "@/hooks/usePricingPlans";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -22,12 +23,14 @@ const CheckoutPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { business, loading: authLoading } = useAuth();
+  const { starter, pro } = usePricingPlans();
+  const pricingPlans: Record<PlanKey, ReturnType<typeof usePricingPlans>["starter"]> = { starter, pro };
 
   const planParam = searchParams.get("plan") as PlanKey | null;
   const checkoutSuccess = searchParams.get("checkout");
 
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>(
-    planParam && STRIPE_PLANS[planParam] ? planParam : "pro"
+    planParam && pricingPlans[planParam] ? planParam : "pro"
   );
   // null = sélecteur visible | string = redirection en cours vers Stripe
   const [redirecting, setRedirecting] = useState<PlanKey | null>(null);
@@ -51,8 +54,30 @@ const CheckoutPage = () => {
   };
 
   useEffect(() => {
-    if (planParam && STRIPE_PLANS[planParam]) setSelectedPlan(planParam);
+    if (planParam && pricingPlans[planParam]) setSelectedPlan(planParam);
   }, [planParam]);
+
+  // FIX 1 — Retour depuis Stripe via bfcache : réafficher les plans
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setCheckoutStarted(false);
+        setRedirecting(null);
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  // FIX 1 — Fallback 5s : si toujours sur la page après redirection → réafficher les plans
+  useEffect(() => {
+    if (!checkoutStarted) return;
+    const timer = setTimeout(() => {
+      setCheckoutStarted(false);
+      setRedirecting(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [checkoutStarted]);
 
   // ── Lancer le checkout Stripe hosted ───────────────────────────────────
   const startCheckout = async (plan: PlanKey) => {
@@ -146,7 +171,7 @@ const CheckoutPage = () => {
               <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
               <p className="text-sm font-medium">
                 Vous êtes déjà abonné au plan{" "}
-                <span className="font-bold">{currentPlan ? STRIPE_PLANS[currentPlan]?.name : "actif"}</span>.
+                <span className="font-bold">{currentPlan ? pricingPlans[currentPlan]?.name : "actif"}</span>.
                 Pour modifier votre abonnement, utilisez le portail Stripe.
               </p>
             </div>
@@ -177,7 +202,7 @@ const CheckoutPage = () => {
                   Redirection vers Stripe…
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Plan {STRIPE_PLANS[selectedPlan].name} — {STRIPE_PLANS[selectedPlan].price}€/mois
+                  Plan {pricingPlans[selectedPlan].name} — {pricingPlans[selectedPlan].price}€/mois
                 </p>
               </div>
             </motion.div>
@@ -199,7 +224,7 @@ const CheckoutPage = () => {
 
               <div className="grid md:grid-cols-2 gap-5">
                 {PLANS.map(({ key, Icon, gradient }) => {
-                  const plan    = STRIPE_PLANS[key];
+                  const plan    = pricingPlans[key];
                   const isCurrent  = isActive && currentPlan === key;
                   const isSelected = selectedPlan === key;
 
