@@ -1,6 +1,6 @@
 import {
   BarChart3, Users, Settings, Palette, Gift, Send,
-  LayoutDashboard, Building2, Shield, FileText, Globe, Mail,
+  LayoutDashboard, Building2, Shield, Globe, Mail, CreditCard,
 } from "lucide-react";
 
 export const businessSidebarItems = [
@@ -9,6 +9,7 @@ export const businessSidebarItems = [
   { icon: Gift, label: "Récompenses", path: "/dashboard/rewards" },
   { icon: Send, label: "Campagnes", path: "/dashboard/campaigns" },
   { icon: Palette, label: "Personnalisation", path: "/dashboard/customize" },
+  { icon: CreditCard, label: "Abonnement", path: "/dashboard/abonnement" },
   { icon: Settings, label: "Paramètres", path: "/dashboard/settings" },
 ];
 

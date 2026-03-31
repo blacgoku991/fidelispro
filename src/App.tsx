@@ -17,6 +17,7 @@ import SettingsPage from "./pages/dashboard/SettingsPage";
 import CheckoutPage from "./pages/dashboard/CheckoutPage";
 import RewardsPage from "./pages/dashboard/RewardsPage";
 import CampaignsPage from "./pages/dashboard/CampaignsPage";
+import AbonnementPage from "./pages/dashboard/AbonnementPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminBusinesses from "./pages/admin/AdminBusinesses";
 import AdminBusinessDetail from "./pages/admin/AdminBusinessDetail";
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/dashboard/customize" element={<CustomizePage />} />
             <Route path="/dashboard/settings" element={<SettingsPage />} />
             <Route path="/dashboard/checkout" element={<CheckoutPage />} />
+            <Route path="/dashboard/abonnement" element={<AbonnementPage />} />
             {/* Redirects for removed pages */}
             <Route path="/dashboard/cards" element={<Navigate to="/dashboard/clients" replace />} />
             <Route path="/dashboard/qrcode" element={<Navigate to="/dashboard/customize" replace />} />
