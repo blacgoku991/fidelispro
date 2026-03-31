@@ -82,7 +82,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Subscription gate: redirect unpaid users to checkout
       const biz = bizRes.data;
       const path = window.location.pathname;
-      const isExempt = path.startsWith("/dashboard/checkout") || path.startsWith("/dashboard/abonnement");
+      const isExempt =
+        path.startsWith("/dashboard/checkout") ||
+        path.startsWith("/dashboard/abonnement") ||
+        path.startsWith("/admin") ||
+        path.startsWith("/setup");
       if (
         biz &&
         biz.subscription_status === "inactive" &&
