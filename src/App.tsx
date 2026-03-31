@@ -23,8 +23,10 @@ import AdminBusinessDetail from "./pages/admin/AdminBusinessDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminLandingContent from "./pages/admin/AdminLandingContent";
+import Onboarding from "./pages/Onboarding";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
+import VitrinePage from "./pages/public/VitrinePage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +48,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/clients" element={<ClientsPage />} />
             <Route path="/dashboard/rewards" element={<RewardsPage />} />
@@ -65,6 +68,7 @@ const App = () => (
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/landing" element={<AdminLandingContent />} />
             <Route path="/b/:businessId" element={<BusinessPublicPage />} />
+            <Route path="/vitrine/:slug" element={<VitrinePage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

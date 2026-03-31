@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2 } from "lucide-react";
+import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2, Sparkles, Gift, PartyPopper, Zap, Store, QrCode, ExternalLink, Copy, Printer } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import GeofenceMap from "@/components/dashboard/GeofenceMap";
 import { toast } from "sonner";
 import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
@@ -24,6 +25,20 @@ const SettingsPage = () => {
   const { user, business } = useAuth();
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  // Vitrine / slug
+  const [slug, setSlug] = useState("");
+  const [savingSlug, setSavingSlug] = useState(false);
+  const [showVitrineQr, setShowVitrineQr] = useState(false);
+
+  // Automation settings
+  const [birthdayEnabled, setBirthdayEnabled] = useState(false);
+  const [birthdayMessage, setBirthdayMessage] = useState("Joyeux anniversaire ! Un cadeau vous attend 🎂");
+  const [welcomePushEnabled, setWelcomePushEnabled] = useState(true);
+  const [welcomePushMessage, setWelcomePushMessage] = useState("Bienvenue ! Votre carte de fidélité est prête 🎉");
+  const [vipAutoEnabled, setVipAutoEnabled] = useState(false);
+  const [vipAutoThreshold, setVipAutoThreshold] = useState(50);
+  const [savingAuto, setSavingAuto] = useState(false);
 
   // Geofencing
   const [geoEnabled, setGeoEnabled] = useState(false);
@@ -57,6 +72,23 @@ const SettingsPage = () => {
   useEffect(() => {
     if (user) setEmail(user.email || "");
   }, [user]);
+
+  useEffect(() => {
+    if (business) {
+      setSlug((business as any).slug || "");
+    }
+  }, [business]);
+
+  useEffect(() => {
+    if (business) {
+      setBirthdayEnabled((business as any).birthday_notif_enabled || false);
+      setBirthdayMessage((business as any).birthday_notif_message || "Joyeux anniversaire ! Un cadeau vous attend 🎂");
+      setWelcomePushEnabled((business as any).welcome_push_enabled ?? true);
+      setWelcomePushMessage((business as any).welcome_push_message || "Bienvenue ! Votre carte de fidélité est prête 🎉");
+      setVipAutoEnabled((business as any).vip_auto_enabled || false);
+      setVipAutoThreshold((business as any).vip_auto_threshold || 50);
+    }
+  }, [business]);
 
   useEffect(() => {
     if (business) {
@@ -190,6 +222,41 @@ const SettingsPage = () => {
     setSavingGeo(false);
   };
 
+  const handleSaveAutomation = async () => {
+    if (!business) return;
+    setSavingAuto(true);
+    const { error } = await supabase.from("businesses").update({
+      birthday_notif_enabled: birthdayEnabled,
+      birthday_notif_message: birthdayMessage,
+      welcome_push_enabled: welcomePushEnabled,
+      welcome_push_message: welcomePushMessage,
+      vip_auto_enabled: vipAutoEnabled,
+      vip_auto_threshold: vipAutoThreshold,
+    } as any).eq("id", business.id);
+    setSavingAuto(false);
+    if (error) toast.error("Erreur de sauvegarde");
+    else toast.success("Automatisations sauvegardées !");
+  };
+
+  const generateSlugFromName = (name: string) =>
+    name.toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+  const handleSaveSlug = async () => {
+    if (!business || !slug.trim()) return;
+    setSavingSlug(true);
+    const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/^-|-$/g, "");
+    setSlug(cleanSlug);
+    const { error } = await supabase.from("businesses").update({ slug: cleanSlug } as any).eq("id", business.id);
+    setSavingSlug(false);
+    if (error) toast.error(error.message.includes("unique") ? "Ce slug est déjà utilisé" : "Erreur de sauvegarde");
+    else toast.success("URL de vitrine sauvegardée !");
+  };
+
+  const vitrineUrl = slug ? `${window.location.origin}/vitrine/${slug}` : "";
+
   const radiusLabel = geoRadius >= 1000 ? `${(geoRadius / 1000).toFixed(1)} km` : `${geoRadius} m`;
 
   return (
@@ -209,6 +276,117 @@ const SettingsPage = () => {
             <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 caractères" className="rounded-xl text-sm" />
           </div>
           <Button onClick={handleUpdatePassword} size="sm" className="rounded-xl">Mettre à jour</Button>
+        </div>
+
+        {/* Vitrine publique */}
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+          <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+            <Store className="w-4 h-4 text-primary" /> Vitrine publique
+          </h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Partagez votre vitrine publique avec vos clients — ils y verront vos récompenses et pourront rejoindre votre programme.
+          </p>
+
+          <div className="space-y-2">
+            <Label className="text-xs">URL de votre vitrine</Label>
+            <div className="flex gap-2">
+              <div className="flex-1 flex items-center rounded-xl border border-input bg-secondary text-sm overflow-hidden">
+                <span className="px-3 text-muted-foreground text-xs whitespace-nowrap border-r border-border/50 pr-3 py-2.5">
+                  {window.location.origin}/vitrine/
+                </span>
+                <input
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                  placeholder="mon-commerce"
+                  className="flex-1 px-2 py-2.5 bg-transparent outline-none text-sm"
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="rounded-xl text-xs shrink-0"
+                onClick={() => {
+                  if (business?.name) setSlug(generateSlugFromName(business.name));
+                }}
+              >
+                Auto
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              size="sm"
+              onClick={handleSaveSlug}
+              disabled={savingSlug || !slug}
+              className="rounded-xl bg-gradient-primary text-primary-foreground"
+            >
+              {savingSlug ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Check className="w-3.5 h-3.5 mr-1" />}
+              Sauvegarder
+            </Button>
+            {vitrineUrl && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl gap-1.5"
+                  onClick={() => window.open(vitrineUrl, "_blank")}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Voir ma vitrine
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl gap-1.5"
+                  onClick={() => setShowVitrineQr((v) => !v)}
+                >
+                  <QrCode className="w-3.5 h-3.5" /> QR Code
+                </Button>
+              </>
+            )}
+          </div>
+
+          {showVitrineQr && vitrineUrl && (
+            <div className="animate-in slide-in-from-top-2 duration-200">
+              <div className="flex items-start gap-5 p-4 rounded-xl bg-secondary/50 border border-border/30">
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-border/20">
+                  <QRCodeSVG value={vitrineUrl} size={120} fgColor="#1a1a1a" level="H" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <p className="text-xs font-medium">QR code de votre vitrine</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Affichez ce QR code en caisse ou sur vos supports de communication.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl gap-1.5 text-xs"
+                    onClick={() => {
+                      const svg = document.querySelector(".vitrine-qr svg") as SVGElement;
+                      if (!svg) { window.print(); return; }
+                      const blob = new Blob([svg.outerHTML], { type: "image/svg+xml" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `vitrine-qr-${slug}.svg`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Printer className="w-3 h-3" /> Télécharger le QR
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-xl gap-1.5 text-xs"
+                    onClick={() => { navigator.clipboard.writeText(vitrineUrl); toast.success("URL copiée !"); }}
+                  >
+                    <Copy className="w-3 h-3" /> Copier l'URL
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Géolocalisation / Proximité */}
@@ -406,6 +584,118 @@ const SettingsPage = () => {
             className="rounded-xl bg-gradient-primary text-primary-foreground"
           >
             {savingGeo ? "Sauvegarde..." : "Sauvegarder"}
+          </Button>
+        </div>
+
+        {/* Automatisations & Engagement */}
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
+          <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+            <Zap className="w-4 h-4 text-primary" /> Automatisations & Engagement
+          </h2>
+
+          {/* Birthday notification */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PartyPopper className="w-4 h-4 text-pink-500" />
+                <div>
+                  <p className="text-sm font-medium">Notification anniversaire</p>
+                  <p className="text-[11px] text-muted-foreground">Envoyez automatiquement un message le jour J</p>
+                </div>
+              </div>
+              <Switch checked={birthdayEnabled} onCheckedChange={setBirthdayEnabled} />
+            </div>
+            {birthdayEnabled && (
+              <div className="space-y-2 pl-6 animate-in slide-in-from-top-2 duration-200">
+                <Label className="text-xs">Message d'anniversaire</Label>
+                <div className="relative">
+                  <textarea
+                    value={birthdayMessage}
+                    onChange={(e) => { if (e.target.value.length <= 120) setBirthdayMessage(e.target.value); }}
+                    placeholder="Joyeux anniversaire ! Un cadeau vous attend 🎂"
+                    rows={2}
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className={`absolute bottom-2 right-3 text-[10px] tabular-nums ${birthdayMessage.length > 100 ? "text-destructive" : "text-muted-foreground"}`}>
+                    {birthdayMessage.length}/120
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-border/30" />
+
+          {/* Welcome push */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Gift className="w-4 h-4 text-emerald-500" />
+                <div>
+                  <p className="text-sm font-medium">Message de bienvenue</p>
+                  <p className="text-[11px] text-muted-foreground">Envoyé dès qu'un nouveau client rejoint</p>
+                </div>
+              </div>
+              <Switch checked={welcomePushEnabled} onCheckedChange={setWelcomePushEnabled} />
+            </div>
+            {welcomePushEnabled && (
+              <div className="space-y-2 pl-6 animate-in slide-in-from-top-2 duration-200">
+                <Label className="text-xs">Message de bienvenue</Label>
+                <div className="relative">
+                  <textarea
+                    value={welcomePushMessage}
+                    onChange={(e) => { if (e.target.value.length <= 120) setWelcomePushMessage(e.target.value); }}
+                    placeholder="Bienvenue ! Votre carte de fidélité est prête 🎉"
+                    rows={2}
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className={`absolute bottom-2 right-3 text-[10px] tabular-nums ${welcomePushMessage.length > 100 ? "text-destructive" : "text-muted-foreground"}`}>
+                    {welcomePushMessage.length}/120
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-border/30" />
+
+          {/* VIP auto-segment */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-yellow-500" />
+                <div>
+                  <p className="text-sm font-medium">Passage VIP automatique</p>
+                  <p className="text-[11px] text-muted-foreground">Promu au niveau Gold au-delà d'un seuil</p>
+                </div>
+              </div>
+              <Switch checked={vipAutoEnabled} onCheckedChange={setVipAutoEnabled} />
+            </div>
+            {vipAutoEnabled && (
+              <div className="space-y-2 pl-6 animate-in slide-in-from-top-2 duration-200">
+                <Label className="text-xs">Seuil de points pour devenir VIP</Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={9999}
+                    value={vipAutoThreshold}
+                    onChange={(e) => setVipAutoThreshold(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="rounded-xl text-sm w-28"
+                  />
+                  <span className="text-xs text-muted-foreground">points → niveau Gold automatique</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Button
+            onClick={handleSaveAutomation}
+            disabled={savingAuto}
+            size="sm"
+            className="rounded-xl bg-gradient-primary text-primary-foreground w-full"
+          >
+            {savingAuto ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />Sauvegarde...</> : <><Check className="w-3.5 h-3.5 mr-2" />Sauvegarder les automatisations</>}
           </Button>
         </div>
 
