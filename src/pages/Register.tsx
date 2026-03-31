@@ -37,6 +37,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [sentToEmail, setSentToEmail] = useState("");
+  const [emailAlreadyUsed, setEmailAlreadyUsed] = useState(false);
 
   const handleGoogleRegister = async () => {
     await supabase.auth.signInWithOAuth({
@@ -50,6 +51,8 @@ const Register = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setEmailAlreadyUsed(false);
+
     if (!businessName.trim() || !email.trim() || !password.trim()) {
       toast.error("Veuillez remplir tous les champs");
       return;
@@ -58,7 +61,10 @@ const Register = () => {
       toast.error("Le mot de passe doit contenir au moins 8 caractères");
       return;
     }
+
     setLoading(true);
+    console.log("[Register] signUp attempt →", email.trim(), "plan:", selectedPlan);
+
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -67,17 +73,46 @@ const Register = () => {
         emailRedirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/dashboard/checkout?plan=${selectedPlan}`,
       },
     });
+
     setLoading(false);
+    console.log("[Register] signUp result →", {
+      userId: data?.user?.id,
+      identities: data?.user?.identities?.length,
+      session: !!data?.session,
+      errorMsg: error?.message ?? null,
+    });
+
     if (error) {
-      toast.error(error.message);
-    } else if (data.session) {
-      // Email confirmation disabled → user is authenticated immediately
+      console.error("[Register] error →", error.message);
+      const msg = error.message.toLowerCase();
+      if (msg.includes("already") || msg.includes("registered") || msg.includes("exists") || msg.includes("taken")) {
+        setEmailAlreadyUsed(true);
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+
+    // Supabase renvoie user sans erreur mais identities vide = email déjà enregistré
+    if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      console.log("[Register] silent duplicate detected — identities empty");
+      setEmailAlreadyUsed(true);
+      return;
+    }
+
+    if (data.session) {
+      // Email confirmation désactivée → utilisateur authentifié immédiatement
+      console.log("[Register] session created → redirecting to checkout");
       toast.success("Compte créé ! Redirection vers le paiement…");
       navigate(`/dashboard/checkout?plan=${selectedPlan}`);
-    } else {
-      // Email confirmation required → show confirmation screen
+    } else if (data.user) {
+      // Email confirmation requise → écran de confirmation
+      console.log("[Register] email confirmation required → showing confirmation screen");
       setSentToEmail(email.trim());
       setEmailSent(true);
+    } else {
+      console.error("[Register] unexpected state — no user, no session, no error");
+      toast.error("Une erreur inattendue s'est produite. Veuillez réessayer.");
     }
   };
 
@@ -326,7 +361,15 @@ const Register = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email professionnel</Label>
-                    <Input id="email" type="email" placeholder="vous@commerce.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 rounded-xl" autoComplete="email" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="vous@commerce.com"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setEmailAlreadyUsed(false); }}
+                      className={`h-11 rounded-xl ${emailAlreadyUsed ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                      autoComplete="email"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Mot de passe</Label>
@@ -345,6 +388,15 @@ const Register = () => {
                       </button>
                     </div>
                   </div>
+                  {emailAlreadyUsed && (
+                    <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/25 text-sm">
+                      <p className="font-semibold text-red-600">Cet email est déjà utilisé.</p>
+                      <p className="text-red-500/80 text-xs mt-1">
+                        <Link to="/login" className="font-bold underline hover:text-red-600">Se connecter</Link>
+                        {" "}ou utilisez une autre adresse email.
+                      </p>
+                    </div>
+                  )}
                   <Button type="submit" disabled={loading} className="w-full h-11 rounded-xl bg-gradient-primary text-primary-foreground hover:opacity-90 font-semibold gap-2">
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Créer et payer <ArrowRight className="w-4 h-4" /></>}
                   </Button>
