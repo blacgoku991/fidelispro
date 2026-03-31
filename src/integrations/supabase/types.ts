@@ -451,6 +451,36 @@ export type Database = {
           },
         ]
       }
+      faq_items: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          is_visible: boolean
+          question: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          question: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          question?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_campaigns: {
         Row: {
           business_id: string
@@ -760,6 +790,30 @@ export type Database = {
           },
         ]
       }
+      site_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       special_events: {
         Row: {
           business_id: string
@@ -810,6 +864,42 @@ export type Database = {
           reward_multiplier?: number
           start_hour?: string | null
           starts_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      testimonials: {
+        Row: {
+          business_name: string
+          category: string
+          created_at: string
+          id: string
+          is_visible: boolean
+          quote: string
+          rating: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          business_name: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          quote: string
+          rating?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          business_name?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          quote?: string
+          rating?: number
+          sort_order?: number
           updated_at?: string
         }
         Relationships: []
