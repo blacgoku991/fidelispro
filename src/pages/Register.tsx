@@ -39,7 +39,7 @@ const Register = () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/onboarding?plan=${selectedPlan}`,
+        redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/onboarding?plan=${selectedPlan}`,
         queryParams: { plan: selectedPlan },
       },
     });
