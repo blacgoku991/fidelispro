@@ -22,11 +22,7 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "").trim();
     if (!token) throw new Error("Non authentifié — token manquant");
 
-    const anonClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
-    const { data: userData, error: authErr } = await anonClient.auth.getUser(token);
+    const { data: userData, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !userData?.user) throw new Error("Non authentifié");
 
     const { data: roleRow } = await supabase
