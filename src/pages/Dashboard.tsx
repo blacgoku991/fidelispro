@@ -26,7 +26,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const levelConfig: Record<string, { bg: string; text: string; label: string; emoji: string }> = {
   bronze: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", label: "Bronze", emoji: "🥉" },
@@ -36,7 +36,17 @@ const levelConfig: Record<string, { bg: string; text: string; label: string; emo
 
 const Dashboard = () => {
   const { user, business } = useAuth();
+  const navigate = useNavigate();
   const { permissions, requestNotifications, requestGeolocation } = usePermissions();
+
+  // Safety net: if business name is still the default, redirect to onboarding
+  useEffect(() => {
+    if (!business) return;
+    const name = (business as any).name;
+    if (!name || name === "Mon Commerce") {
+      navigate("/onboarding-business");
+    }
+  }, [business]);
   const { data: siteSettings } = useSiteSettings();
   const [permissionsDismissed, setPermissionsDismissed] = useState(false);
   const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0 });
