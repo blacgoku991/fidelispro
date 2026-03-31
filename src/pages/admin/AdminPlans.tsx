@@ -99,14 +99,13 @@ const AdminPlans = () => {
     setSaving(plan);
     try {
       if (hasStripeProduct && (String(priceNum) !== oldPrice || f.name !== oldName)) {
-        // Update via Stripe API
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
+        // Update via Stripe API — supabase.functions.invoke envoie le JWT automatiquement
         const res = await supabase.functions.invoke("manage-stripe-plans", {
           body: { action: "update_price", plan, price: priceNum, name: f.name },
-          headers: { Authorization: `Bearer ${token}` },
         });
         if (res.error) throw new Error(res.error.message);
+        const data = res.data as any;
+        if (data?.error) throw new Error(data.error);
         toast.success(`Plan ${f.name} mis à jour sur Stripe`);
       } else {
         // Just update site_settings directly
@@ -140,13 +139,13 @@ const AdminPlans = () => {
   const createStripeProducts = async () => {
     setCreating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      // supabase.functions.invoke envoie le JWT de session automatiquement
       const res = await supabase.functions.invoke("manage-stripe-plans", {
         body: { action: "create_products" },
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.error) throw new Error(res.error.message);
+      const data = res.data as any;
+      if (data?.error) throw new Error(data.error);
       await queryClient.invalidateQueries({ queryKey: ["admin-plan-settings"] });
       setInitialized(false); // re-init forms with new IDs
       toast.success("Produits Stripe créés et Price IDs sauvegardés !");

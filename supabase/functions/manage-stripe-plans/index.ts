@@ -17,9 +17,11 @@ serve(async (req) => {
   );
 
   try {
-    // Vérifier que l'appelant est super_admin
+    // ── Auth : vérifier que l'appelant est super_admin ─────────────────
     const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
+    if (!token) throw new Error("Non authentifié — token manquant");
+
     const anonClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
@@ -34,15 +36,19 @@ serve(async (req) => {
       .maybeSingle();
     if (roleRow?.role !== "super_admin") throw new Error("Accès réservé aux super admins");
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
-      apiVersion: "2025-08-27.basil",
+    // ── Stripe ─────────────────────────────────────────────────────────
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY non configuré dans les secrets Supabase");
+
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: "2024-12-18.acacia" as any,
     });
 
     const body = await req.json();
     const { action } = body;
 
     // ── Lire les settings actuels ──────────────────────────────────────
-    const { data: rows } = await supabase
+    const { data: rows, error: settingsErr } = await supabase
       .from("site_settings")
       .select("key, value")
       .in("key", [
@@ -52,11 +58,16 @@ serve(async (req) => {
         "stripe_price_starter",   "stripe_price_pro",
       ]);
 
+    if (settingsErr) throw new Error(`Erreur lecture site_settings: ${settingsErr.message}`);
+
     const cfg: Record<string, string> = {};
     rows?.forEach(r => { cfg[r.key] = r.value; });
 
     const upsertSetting = async (key: string, value: string) => {
-      await supabase.from("site_settings").upsert({ key, value }, { onConflict: "key" });
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key, value }, { onConflict: "key" });
+      if (error) throw new Error(`Erreur upsert ${key}: ${error.message}`);
     };
 
     // ── ACTION : créer les produits et prix Stripe ─────────────────────
@@ -64,16 +75,19 @@ serve(async (req) => {
       const results: Record<string, string> = {};
 
       for (const plan of ["starter", "pro"] as const) {
-        const name   = cfg[`plan_${plan}_name`]  || (plan === "starter" ? "Starter" : "Pro");
+        const name   = cfg[`plan_${plan}_name`]?.trim()  || (plan === "starter" ? "Starter" : "Pro");
         const amount = parseInt(cfg[`plan_${plan}_price`]) || (plan === "starter" ? 29 : 59);
 
         // Trouver ou créer le produit Stripe
-        let productId = cfg[`stripe_product_${plan}`];
+        // On utilise list+metadata au lieu de search (plus fiable)
+        let productId = cfg[`stripe_product_${plan}`]?.trim() || "";
+
         if (!productId) {
-          // Chercher un produit existant avec ce nom
-          const existing = await stripe.products.search({ query: `name:'${name}'`, limit: 1 });
-          if (existing.data.length > 0) {
-            productId = existing.data[0].id;
+          // Chercher un produit existant via list (evite l'API search qui peut échouer)
+          const existing = await stripe.products.list({ limit: 100, active: true });
+          const found = existing.data.find(p => p.metadata?.plan === plan);
+          if (found) {
+            productId = found.id;
           } else {
             const product = await stripe.products.create({
               name,
@@ -89,18 +103,18 @@ serve(async (req) => {
         // Créer un nouveau prix récurrent mensuel
         const price = await stripe.prices.create({
           product: productId,
-          unit_amount: amount * 100, // centimes
+          unit_amount: amount * 100,
           currency: "eur",
           recurring: { interval: "month" },
           metadata: { plan },
         });
 
         // Archiver l'ancien Price ID s'il existait
-        const oldPriceId = cfg[`stripe_price_${plan}`];
+        const oldPriceId = cfg[`stripe_price_${plan}`]?.trim();
         if (oldPriceId && oldPriceId !== price.id) {
           try {
             await stripe.prices.update(oldPriceId, { active: false });
-          } catch (_) { /* price might not exist, ignore */ }
+          } catch (_) { /* ignore si le prix n'existe plus */ }
         }
 
         await upsertSetting(`stripe_price_${plan}`, price.id);
@@ -120,13 +134,11 @@ serve(async (req) => {
       };
       if (!plan || !newAmount) throw new Error("plan et price requis");
 
-      const productId = cfg[`stripe_product_${plan}`];
+      const productId = cfg[`stripe_product_${plan}`]?.trim();
       if (!productId) throw new Error(`Produit Stripe non trouvé pour ${plan}. Cliquez d'abord sur "Créer les produits Stripe".`);
 
-      // Mettre à jour le nom du produit si changé
       if (newName) await stripe.products.update(productId, { name: newName });
 
-      // Créer nouveau prix
       const price = await stripe.prices.create({
         product: productId,
         unit_amount: newAmount * 100,
@@ -135,8 +147,7 @@ serve(async (req) => {
         metadata: { plan },
       });
 
-      // Archiver l'ancien
-      const oldPriceId = cfg[`stripe_price_${plan}`];
+      const oldPriceId = cfg[`stripe_price_${plan}`]?.trim();
       if (oldPriceId && oldPriceId !== price.id) {
         try { await stripe.prices.update(oldPriceId, { active: false }); } catch (_) { /* ignore */ }
       }
@@ -151,6 +162,7 @@ serve(async (req) => {
     }
 
     throw new Error(`Action inconnue : ${action}`);
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("manage-stripe-plans error:", msg);
