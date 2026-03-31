@@ -17,7 +17,7 @@ export function HeroSection() {
   const stat1 = settings?.hero_stat_1 || "⭐ 4.9/5";
   const stat2 = settings?.hero_stat_2 || "📲 50 000 cartes générées";
   const stat3 = settings?.hero_stat_3 || "🚀 Sans engagement";
-  const liveMerchantCount = (settings as any)?.live_merchant_count || 247;
+  const liveMerchantCount = parseInt((settings as any)?.live_merchant_count) || 247;
 
   return (
     <section className="relative min-h-[92vh] flex items-center overflow-hidden">

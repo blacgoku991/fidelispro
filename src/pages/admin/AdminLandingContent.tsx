@@ -27,6 +27,7 @@ const SETTING_SECTIONS = [
       { key: "hero_stat_1", label: "Stat 1" },
       { key: "hero_stat_2", label: "Stat 2" },
       { key: "hero_stat_3", label: "Stat 3" },
+      { key: "live_merchant_count", label: "🟢 Compteur commerçants actifs (badge live)", numeric: true },
     ],
   },
   {
@@ -86,7 +87,10 @@ const AdminLandingContent = () => {
 
   const updateSetting = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
-      const { error } = await supabase.from("site_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
+      const { error } = await supabase.from("site_settings").upsert(
+        { key, value, updated_at: new Date().toISOString() },
+        { onConflict: "key" }
+      );
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-site-settings"] }); qc.invalidateQueries({ queryKey: ["site-settings"] }); },
@@ -263,7 +267,7 @@ const AdminLandingContent = () => {
             <div key={section.title} className="rounded-2xl bg-card border border-border/40 p-6 shadow-sm space-y-4">
               <h3 className="font-display font-semibold text-sm">{section.title}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
-                {section.keys.map(({ key, label, long }) => {
+                {section.keys.map(({ key, label, long, numeric }: any) => {
                   const setting = settings?.find((s: any) => s.key === key);
                   const currentValue = editedSettings[key] ?? setting?.value ?? "";
                   return (
@@ -276,6 +280,18 @@ const AdminLandingContent = () => {
                           rows={3}
                           className="text-sm"
                         />
+                      ) : numeric ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            value={currentValue}
+                            onChange={(e) => setEditedSettings({ ...editedSettings, [key]: e.target.value })}
+                            className="text-sm w-36"
+                            placeholder="247"
+                          />
+                          <span className="text-xs text-muted-foreground">Fallback : 247</span>
+                        </div>
                       ) : (
                         <Input
                           value={currentValue}
