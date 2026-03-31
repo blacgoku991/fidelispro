@@ -166,7 +166,8 @@ const CustomizePage = () => {
   };
 
   // QR code helpers
-  const publicUrl = `${window.location.origin}/b/${business?.id}`;
+  const appBase = import.meta.env.VITE_APP_URL || window.location.origin;
+  const publicUrl = `${appBase}/b/${business?.id}`;
   const copyLink = () => { navigator.clipboard.writeText(publicUrl); toast.success("Lien copié !"); };
   const downloadQR = () => {
     const svg = document.getElementById("business-qr-svg");

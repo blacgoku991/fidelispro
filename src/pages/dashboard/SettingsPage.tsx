@@ -263,8 +263,9 @@ const SettingsPage = () => {
   };
 
   // Use slug if set, otherwise fall back to business ID (always works without migration)
+  const appBase = import.meta.env.VITE_APP_URL || window.location.origin;
   const vitrineUrl = business
-    ? `${window.location.origin}/vitrine/${slug || business.id}`
+    ? `${appBase}/vitrine/${slug || business.id}`
     : "";
 
   const radiusLabel = geoRadius >= 1000 ? `${(geoRadius / 1000).toFixed(1)} km` : `${geoRadius} m`;
@@ -302,7 +303,7 @@ const SettingsPage = () => {
             <div className="flex gap-2">
               <div className="flex-1 flex items-center rounded-xl border border-input bg-secondary text-sm overflow-hidden">
                 <span className="px-3 text-muted-foreground text-xs whitespace-nowrap border-r border-border/50 pr-3 py-2.5">
-                  {window.location.origin}/vitrine/
+                  {appBase}/vitrine/
                 </span>
                 <input
                   value={slug}
@@ -434,14 +435,14 @@ const SettingsPage = () => {
               <Label className="text-xs">Code à copier sur votre site</Label>
               <div className="relative">
                 <pre className="rounded-xl bg-secondary text-xs p-3.5 overflow-x-auto text-muted-foreground border border-border/30 pr-12 leading-relaxed">
-{`<script src="${window.location.origin}/widget.js?id=${business.id}"></script>`}
+{`<script src="${appBase}/widget.js?id=${business.id}"></script>`}
                 </pre>
                 <Button
                   size="icon"
                   variant="ghost"
                   className="absolute top-2 right-2 h-7 w-7 rounded-lg"
                   onClick={() => {
-                    navigator.clipboard.writeText(`<script src="${window.location.origin}/widget.js?id=${business.id}"></script>`);
+                    navigator.clipboard.writeText(`<script src="${appBase}/widget.js?id=${business.id}"></script>`);
                     toast.success("Code copié !");
                   }}
                 >

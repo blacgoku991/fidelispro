@@ -15,7 +15,8 @@ const VitrinePage = () => {
   const [notFound, setNotFound] = useState(false);
   const [showQr, setShowQr] = useState(false);
 
-  const joinUrl = business ? `${window.location.origin}/b/${business.id}` : "";
+  const appBase = import.meta.env.VITE_APP_URL || window.location.origin;
+  const joinUrl = business ? `${appBase}/b/${business.id}` : "";
 
   // Dynamic OG meta tags for social sharing
   useEffect(() => {
@@ -24,7 +25,7 @@ const VitrinePage = () => {
     const description = business.description
       ? `${business.description} Rejoignez le programme de fidélité de ${business.name}.`
       : `Rejoignez le programme de fidélité de ${business.name} et cumulez des points à chaque visite.`;
-    const image = business.logo_url || `${window.location.origin}/icon-512.png`;
+    const image = business.logo_url || `${appBase}/icon-512.png`;
     const url = window.location.href;
 
     document.title = title;

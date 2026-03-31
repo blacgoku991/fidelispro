@@ -724,7 +724,8 @@ const Dashboard = () => {
 
 // ── QR Vitrine Section ──────────────────────────────────────────
 function QrVitrineSection({ business }: { business: any }) {
-  const publicUrl = `${window.location.origin}/b/${business.id}`;
+  const appBase = import.meta.env.VITE_APP_URL || window.location.origin;
+  const publicUrl = `${appBase}/b/${business.id}`;
 
   const downloadQR = () => {
     const svg = document.getElementById("vitrine-qr-svg");
