@@ -105,8 +105,10 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/vnd.apple.pkpass",
-        "Content-Disposition": 'attachment; filename="card.pkpass"',
-        "Cache-Control": "no-store",
+        "Content-Disposition": 'attachment; filename="fidelispro.pkpass"',
+        "Content-Length": String(pkpassBuffer.byteLength),
+        "Access-Control-Expose-Headers": "Content-Disposition, Content-Length",
+        "Cache-Control": "no-cache",
       },
     });
   } catch (err: any) {

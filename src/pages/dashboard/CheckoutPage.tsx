@@ -30,9 +30,12 @@ const CheckoutPage = () => {
   const checkoutSuccess = searchParams.get("checkout");
   const sessionId = searchParams.get("session_id");
 
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>(
-    planParam && pricingPlans[planParam] ? planParam : "pro"
-  );
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey>(() => {
+    const stored = localStorage.getItem("selectedPlan") as PlanKey | null;
+    if (stored && pricingPlans[stored]) return stored;
+    if (planParam && pricingPlans[planParam]) return planParam;
+    return "pro";
+  });
   // null = sélecteur visible | string = redirection en cours vers Stripe
   const [redirecting, setRedirecting] = useState<PlanKey | null>(null);
   const [checkoutStarted, setCheckoutStarted] = useState(false);
@@ -126,6 +129,8 @@ const CheckoutPage = () => {
   const startCheckout = async (plan: PlanKey) => {
     setError(null);
     setRedirecting(plan);
+    setSelectedPlan(plan);
+    localStorage.setItem("selectedPlan", plan);
     setCheckoutStarted(true);
     try {
       const { data, error: fnErr } = await supabase.functions.invoke("create-checkout", {
@@ -326,7 +331,11 @@ const CheckoutPage = () => {
                   Redirection vers Stripe…
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Plan {pricingPlans[selectedPlan].name} — {pricingPlans[selectedPlan].price}€/mois
+                  {(() => {
+                    const key = redirecting || (localStorage.getItem("selectedPlan") as PlanKey) || selectedPlan;
+                    const p = pricingPlans[key];
+                    return p ? `Plan ${p.name} — ${p.price}€/mois` : "";
+                  })()}
                 </p>
               </div>
             </motion.div>
