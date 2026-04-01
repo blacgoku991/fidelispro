@@ -1,0 +1,2 @@
+[functions.wallet-webservice]
+verify_jwt = false
