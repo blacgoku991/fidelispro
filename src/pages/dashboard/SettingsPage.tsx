@@ -220,7 +220,7 @@ const SettingsPage = () => {
               pass_type_id: "pass.app.fidelispro",
               change_message: "📍 Zone de proximité mise à jour",
               last_updated: new Date().toISOString(),
-            }, { onConflict: "serial_number" });
+            }, { onConflict: "serial_number,pass_type_id" });
           }
 
           // Send APNs push to all devices
