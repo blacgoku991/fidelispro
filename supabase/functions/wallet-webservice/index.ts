@@ -22,7 +22,11 @@ function getSupabase() {
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
-  const pathParts = url.pathname.replace(/^\/wallet-webservice\/?/, "").replace(/^functions\/v1\/wallet-webservice\/?/, "");
+  // Supabase Edge Functions receive the full pathname: /functions/v1/wallet-webservice/v1/...
+  // Strip the Supabase prefix so segments start with "v1" as Apple expects
+  const pathParts = url.pathname
+    .replace(/^\/functions\/v1\/wallet-webservice\/?/, "")
+    .replace(/^\/wallet-webservice\/?/, "");
   const segments = pathParts.split("/").filter(Boolean);
 
   console.log(`[PassKit WS] ${req.method} ${url.pathname} -> segments:`, segments);
