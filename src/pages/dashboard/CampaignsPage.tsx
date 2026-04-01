@@ -144,7 +144,7 @@ const CampaignsPage = () => {
     if (!business) return;
     const { data } = await supabase
       .from("customers")
-      .select("id, last_visit_at, level, created_at, city, customer_cards(current_points)")
+      .select("id, last_visit_at, level, created_at, customer_cards(current_points)")
       .eq("business_id", (business as any).id);
     if (data) setAllCustomers(data);
     return data || [];
