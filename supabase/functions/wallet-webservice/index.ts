@@ -24,6 +24,34 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const rawPathname = url.pathname;
 
+  // ── GLOBAL REQUEST LOG — fires on every single request ──────────────────
+  const allHeaders: Record<string, string> = {};
+  req.headers.forEach((v, k) => { allHeaders[k] = k.toLowerCase() === "authorization" ? v.slice(0, 30) + "..." : v; });
+  console.log(`[PassKit WS] ════ INCOMING REQUEST ════`);
+  console.log(`[PassKit WS]   method=${req.method}`);
+  console.log(`[PassKit WS]   url=${req.url}`);
+  console.log(`[PassKit WS]   rawPathname=${rawPathname}`);
+  console.log(`[PassKit WS]   headers=${JSON.stringify(allHeaders)}`);
+
+  // ── Diagnostic ping — call GET /ping to confirm function is alive ────────
+  if (req.method === "GET" && rawPathname.endsWith("/ping")) {
+    const config = {
+      alive: true,
+      timestamp: new Date().toISOString(),
+      PASS_TYPE_ID,
+      SUPABASE_URL: Deno.env.get("SUPABASE_URL"),
+      has_p12: !!Deno.env.get("APPLE_P12_BASE64"),
+      has_team_id: !!Deno.env.get("APPLE_TEAM_ID"),
+      has_service_role: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+      webServiceURL_expected: `${Deno.env.get("SUPABASE_URL")}/functions/v1/wallet-webservice`,
+    };
+    console.log(`[PassKit WS] PING →`, JSON.stringify(config));
+    return new Response(JSON.stringify(config, null, 2), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
   // Supabase Edge Functions receive the full URL pathname, e.g.:
   //   /functions/v1/wallet-webservice/v1/devices/{id}/registrations/{passType}/{serial}
   // Strip the Supabase function prefix to isolate the Apple PassKit sub-path.
@@ -33,9 +61,8 @@ Deno.serve(async (req) => {
     .replace(/^\//, "");                                      // Remove any remaining leading slash
   const segments = pathParts.split("/").filter(Boolean);
 
-  console.log(`[PassKit WS] ▶ ${req.method} raw=${rawPathname}`);
   console.log(`[PassKit WS]   pathParts="${pathParts}" segments=[${segments.join(",")}]`);
-  console.log(`[PassKit WS]   Authorization=${req.headers.get("Authorization")?.slice(0, 20)}...`);
+  console.log(`[PassKit WS]   Authorization=${req.headers.get("Authorization")?.slice(0, 30)}...`);
 
   // Route: POST /v1/devices/{deviceLibraryIdentifier}/registrations/{passTypeIdentifier}/{serialNumber}
   if (req.method === "POST" && segments[0] === "v1" && segments[1] === "devices" && segments[3] === "registrations") {
@@ -64,7 +91,7 @@ Deno.serve(async (req) => {
     return new Response("", { status: 200 });
   }
 
-  console.log("[PassKit WS] No route matched");
+  console.log(`[PassKit WS] ✗ No route matched — method=${req.method} segments=[${segments.join(",")}]`);
   return new Response("Not found", { status: 404 });
 });
 
@@ -102,9 +129,13 @@ async function handleRegisterDevice(
     return new Response("Unauthorized", { status: 401 });
   }
   if (card.wallet_auth_token !== authToken) {
-    console.log(`[PassKit WS]   ✗ Auth token mismatch: pass has len=${authToken.length} DB has len=${card.wallet_auth_token?.length ?? 0}`);
+    console.log(`[PassKit WS]   ✗ Auth token MISMATCH`);
+    console.log(`[PassKit WS]     pass token (len=${authToken.length}): ${authToken.slice(0, 8)}...${authToken.slice(-8)}`);
+    console.log(`[PassKit WS]     DB   token (len=${card.wallet_auth_token?.length ?? 0}): ${card.wallet_auth_token?.slice(0, 8) ?? "NULL"}...${card.wallet_auth_token?.slice(-8) ?? ""}`);
+    console.log(`[PassKit WS]     DB wallet_auth_token IS NULL: ${card.wallet_auth_token === null}`);
     return new Response("Unauthorized", { status: 401 });
   }
+  console.log(`[PassKit WS]   ✓ Auth token MATCH (len=${authToken.length})`);
   console.log(`[PassKit WS]   ✓ Card found, business=${card.business_id}`);
 
   const body = await req.json().catch(() => ({}));
