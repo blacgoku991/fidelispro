@@ -22,14 +22,20 @@ function getSupabase() {
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
-  // Supabase Edge Functions receive the full pathname: /functions/v1/wallet-webservice/v1/...
-  // Strip the Supabase prefix so segments start with "v1" as Apple expects
-  const pathParts = url.pathname
-    .replace(/^\/functions\/v1\/wallet-webservice\/?/, "")
-    .replace(/^\/wallet-webservice\/?/, "");
+  const rawPathname = url.pathname;
+
+  // Supabase Edge Functions receive the full URL pathname, e.g.:
+  //   /functions/v1/wallet-webservice/v1/devices/{id}/registrations/{passType}/{serial}
+  // Strip the Supabase function prefix to isolate the Apple PassKit sub-path.
+  const pathParts = rawPathname
+    .replace(/^\/functions\/v1\/wallet-webservice\/?/, "")  // Supabase standard prefix
+    .replace(/^\/wallet-webservice\/?/, "")                  // Fallback: function-name only
+    .replace(/^\//, "");                                      // Remove any remaining leading slash
   const segments = pathParts.split("/").filter(Boolean);
 
-  console.log(`[PassKit WS] ${req.method} ${url.pathname} -> segments:`, segments);
+  console.log(`[PassKit WS] ▶ ${req.method} raw=${rawPathname}`);
+  console.log(`[PassKit WS]   pathParts="${pathParts}" segments=[${segments.join(",")}]`);
+  console.log(`[PassKit WS]   Authorization=${req.headers.get("Authorization")?.slice(0, 20)}...`);
 
   // Route: POST /v1/devices/{deviceLibraryIdentifier}/registrations/{passTypeIdentifier}/{serialNumber}
   if (req.method === "POST" && segments[0] === "v1" && segments[1] === "devices" && segments[3] === "registrations") {
@@ -70,30 +76,44 @@ async function handleRegisterDevice(
   passTypeId: string,
   serialNumber: string
 ): Promise<Response> {
-  console.log(`[PassKit WS] Register device=${deviceLibraryId} pass=${passTypeId} serial=${serialNumber}`);
+  console.log(`[PassKit WS] ── REGISTER device=${deviceLibraryId?.slice(0, 12)}... pass=${passTypeId} serial=${serialNumber}`);
 
   const authToken = extractAuthToken(req);
-  if (!authToken) return new Response("Unauthorized", { status: 401 });
+  if (!authToken) {
+    console.log("[PassKit WS]   ✗ No ApplePass auth token in header");
+    return new Response("Unauthorized", { status: 401 });
+  }
+  console.log(`[PassKit WS]   authToken present, length=${authToken.length}`);
 
   const supabase = getSupabase();
 
-  const { data: card } = await supabase
+  const { data: card, error: cardErr } = await supabase
     .from("customer_cards")
     .select("id, business_id, customer_id, wallet_auth_token")
     .eq("id", serialNumber)
     .maybeSingle();
 
-  if (!card || card.wallet_auth_token !== authToken) {
-    console.log("[PassKit WS] Auth token mismatch");
+  if (cardErr) {
+    console.error("[PassKit WS]   ✗ DB error fetching card:", cardErr.message);
+    return new Response("Server error", { status: 500 });
+  }
+  if (!card) {
+    console.log(`[PassKit WS]   ✗ No card found for serialNumber=${serialNumber}`);
     return new Response("Unauthorized", { status: 401 });
   }
+  if (card.wallet_auth_token !== authToken) {
+    console.log(`[PassKit WS]   ✗ Auth token mismatch: pass has len=${authToken.length} DB has len=${card.wallet_auth_token?.length ?? 0}`);
+    return new Response("Unauthorized", { status: 401 });
+  }
+  console.log(`[PassKit WS]   ✓ Card found, business=${card.business_id}`);
 
   const body = await req.json().catch(() => ({}));
   const pushToken = body?.pushToken;
   if (!pushToken) {
-    console.log("[PassKit WS] Missing pushToken in body");
+    console.log("[PassKit WS]   ✗ Missing pushToken in request body");
     return new Response("Missing pushToken", { status: 400 });
   }
+  console.log(`[PassKit WS]   pushToken present, suffix=...${pushToken.slice(-8)}`);
 
   const { error } = await supabase.from("wallet_registrations").upsert(
     {
@@ -110,9 +130,10 @@ async function handleRegisterDevice(
   );
 
   if (error) {
-    console.error("[PassKit WS] Registration error:", error);
+    console.error("[PassKit WS]   ✗ Upsert error:", error.message, error.code);
     return new Response("Server error", { status: 500 });
   }
+  console.log(`[PassKit WS]   ✓ Registration upserted successfully`);
 
   await supabase
     .from("customer_cards")

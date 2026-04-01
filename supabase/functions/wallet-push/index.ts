@@ -78,12 +78,30 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Failed to fetch wallet targets" }, 500);
     }
 
+    // ── COUNT total registrations in table for this business (diagnostic) ──
+    const { count: totalRegCount } = await supabase
+      .from("wallet_registrations")
+      .select("*", { count: "exact", head: true })
+      .eq("business_id", business_id);
+
+    console.log(`[Wallet Push] business_id=${business_id}`);
+    console.log(`[Wallet Push] wallet_registrations for this business: ${totalRegCount ?? "ERROR"}`);
+    console.log(`[Wallet Push] targetSerials found: ${targetSerials?.length ?? 0}`);
+
     if (!targetSerials || targetSerials.length === 0) {
+      console.log(`[Wallet Push] ✗ No wallet registrations → pushed=0. Table total=${totalRegCount ?? "?"}`);
       return jsonResponse({
         success: true,
         message: "No wallet registrations found",
         pushed: 0,
         total_registrations: 0,
+        diagnostic: {
+          business_id,
+          total_registrations_in_table: totalRegCount ?? 0,
+          hint: totalRegCount === 0
+            ? "wallet_registrations table is EMPTY for this business. iPhone must add pass to Wallet first."
+            : "Registrations exist but query returned nothing — check filters.",
+        },
       }, 200);
     }
 
