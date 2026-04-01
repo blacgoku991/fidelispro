@@ -1,6 +1,6 @@
 // wallet-debug — diagnostic endpoint for Apple Wallet registration state
 // Returns real DB state: wallet_registrations, apns_logs, customer_cards wallet info
-// Requires authenticated JWT (merchant owner) or service_role key
+// NO AUTH REQUIRED — debug only, verify_jwt = false
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -23,34 +23,21 @@ Deno.serve(async (req) => {
     const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
 
-    // Auth: validate JWT and resolve business
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.replace("Bearer ", "").trim();
-    if (!token) return json({ error: "Non authentifié" }, 401);
-
-    const isInternal = token === sbKey;
-    let businessId: string | null = null;
-
+    // No auth required — resolve business_id from query param or first business in DB
     const url = new URL(req.url);
-    const paramBusinessId = url.searchParams.get("business_id");
+    let businessId: string | null = url.searchParams.get("business_id");
 
-    if (isInternal) {
-      businessId = paramBusinessId;
-    } else {
-      const { data: userData, error: authErr } = await supabase.auth.getUser(token);
-      if (authErr || !userData?.user) return json({ error: "Token invalide" }, 401);
-
-      const { data: biz } = await supabase
+    if (!businessId) {
+      const { data: firstBiz } = await supabase
         .from("businesses")
         .select("id, name")
-        .eq("owner_id", userData.user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
-
-      if (!biz) return json({ error: "Aucun commerce trouvé pour cet utilisateur" }, 404);
-      businessId = biz.id;
+      businessId = firstBiz?.id ?? null;
     }
 
-    if (!businessId) return json({ error: "business_id requis" }, 400);
+    if (!businessId) return json({ error: "Aucun business trouvé en base" }, 404);
 
     // ── 1. wallet_registrations ───────────────────────────────────────────
     const { data: registrations, error: regErr } = await supabase
