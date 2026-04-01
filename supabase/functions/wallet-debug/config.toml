@@ -1,0 +1,2 @@
+[functions.wallet-debug]
+verify_jwt = false
